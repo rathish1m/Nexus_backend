@@ -1,0 +1,77 @@
+# Environment variables
+.env
+
+# Python cache and bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Django migrations (DO NOT ignore in team projects)
+# Only ignore empty __init__.py files if needed
+# Uncomment the next line ONLY if you're prototyping solo
+# */migrations/
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Virtual environments
+env/
+venv/
+.venv/
+shubham_dev/
+.python-version
+
+# Logs and debug files
+debug.log
+
+# Media uploads (optional: if stored locally during dev)
+media/
+
+# Database backups
+backup_*.json
+
+# Static files (collected via collectstatic)
+staticfiles/
+
+# Node.js dependencies
+node_modules/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+*.sqlite3
+*.log
+*.pot
+*.mo
+
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+test-results/
+tmp/
+workspace_tmp/
+
+# SonarQube generated files
+.sonar/
+.scannerwork/
+sonar-project.properties.local
+
+.coverage*
+coverage.json
+
+# Test files at root (should be in tests/ or scripts/)
+/test_*.py
+/conftest_new.py
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

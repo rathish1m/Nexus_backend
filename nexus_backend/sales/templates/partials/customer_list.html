@@ -1,0 +1,2229 @@
+{% load i18n %}
+<!-- ====================== Assets (add SheetJS for Excel) ====================== -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<script src="https://unpkg.com/openlocationcode@1.0.3/openlocationcode.js"></script>
+<!-- SheetJS for parsing .xlsx client-side (optional but handy) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+     /* Action bar layout */
+  .action-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;               /* consistent spacing between pills */
+    justify-content: center;  /* keeps them centered in the cell */
+    align-items: center;
+  }
+
+  /* Base pill button */
+  .btn-pill {
+    --pill-bg: #f3f4f6;
+    --pill-bg-hover: #e5e7eb;
+    --pill-text: #111827;
+    --pill-ring: rgba(99,102,241,.35);
+
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .8rem;
+    border-radius: 9999px;
+    background: var(--pill-bg);
+    color: var(--pill-text);
+    border: 1px solid rgba(17,24,39,.08);
+    box-shadow: 0 1px 2px rgba(16,24,40,.06);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1;
+    transition: transform .14s ease, background-color .18s ease, box-shadow .18s ease, border-color .18s ease;
+    will-change: transform;
+  }
+  .btn-pill:hover{
+    background: var(--pill-bg-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 12px rgba(2,6,23,.08);
+    border-color: rgba(17,24,39,.12);
+  }
+  .btn-pill:active{
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(2,6,23,.12) inset;
+  }
+  .btn-pill:focus-visible{
+    outline: none;
+    box-shadow: 0 0 0 4px var(--pill-ring);
+  }
+
+  /* Icon style */
+  .btn-pill i {
+    font-size: .9rem;
+    opacity: .9;
+  }
+
+  /* Color variants */
+  .btn-view   { --pill-bg:#eef2ff; --pill-bg-hover:#e0e7ff; --pill-text:#3730a3; }
+  .btn-subs   { --pill-bg:#ecfeff; --pill-bg-hover:#cffafe; --pill-text:#155e75; }
+  .btn-order  { --pill-bg:#ecfdf5; --pill-bg-hover:#d1fae5; --pill-text:#065f46; }
+  .btn-ticket { --pill-bg:#fef3c7; --pill-bg-hover:#fde68a; --pill-text:#92400e; }
+
+  .btn-disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    filter: grayscale(20%);
+  }
+
+  /* Label hides on very small screens; keeps row compact */
+  @media (max-width: 420px){
+    .btn-pill .btn-label { display: none; }
+    .btn-pill { padding: .5rem; }
+  }
+  /* … keep your existing styles … */
+  /* Stepper */
+  .stepper { display:flex; gap:.75rem; align-items:center; }
+  .step-dot{ width:26px;height:26px;border-radius:9999px;display:flex;align-items:center;justify-content:center;font-weight:700; }
+  .step-active{ background:#2563eb;color:#fff; }
+  .step-done{ background:#10b981;color:#fff; }
+  .step-idle{ background:#e5e7eb;color:#374151; }
+  .step-label{ font-weight:600;color:#111827; }
+  .step-sub{ font-size:.75rem;color:#6b7280;margin-left:2.25rem;margin-top:.15rem }
+  .glass-card{ background:#fff;border:1px solid #e5e7eb;border-radius:1rem;box-shadow:0 10px 25px rgba(2,6,23,.06); }
+  .hidden-imp{ display:none !important; }
+
+  /* Review table */
+  .review-row:hover{ background:#f9fafb; }
+
+  /* Coupon badges */
+  .coupon-ok    { background:#dcfce7; color:#065f46; border:1px solid #a7f3d0; }
+  .coupon-warn  { background:#fef9c3; color:#854d0e; border:1px solid #fde68a; }
+  .coupon-bad   { background:#fee2e2; color:#991b1b; border:1px solid #fecaca; }
+</style>
+
+<!-- ====================== Modals ====================== -->
+<!-- Subscription Billing Modal -->
+<div id="subscriptionBillingModal"
+     class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-2 sm:p-4">
+  <div
+    class="bg-white rounded-xl sm:rounded-2xl shadow-xl w-full
+           max-w-6xl sm:max-w-5xl lg:max-w-6xl
+           p-4 sm:p-6 md:p-8 relative
+           max-h-[90vh] overflow-y-auto">
+    <!-- Close -->
+    <button onclick="closeModal('subscriptionBillingModal')"
+            class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-xl sm:text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <!-- Title -->
+    <h2 class="text-xl sm:text-2xl font-semibold mb-2 text-gray-800">
+      Billing & Status
+    </h2>
+    <!-- Status summary will be injected here -->
+    <div id="billingStatusSummary" class="mb-4 text-sm"></div>
+
+    <!-- Table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-200 shadow">
+      <table class="responsive-table min-w-full divide-y divide-gray-200 text-xs sm:text-sm">
+        <thead class="bg-gray-100 text-gray-700 sticky top-0 z-10 hidden sm:table-header-group">
+          <tr>
+            <th class="px-4 py-2 text-left">Date</th>
+            <th class="px-4 py-2 text-left">Order Ref.</th>
+            <th class="px-4 py-2 text-left">Amount (USD)</th>
+            <th class="px-4 py-2 text-left">Status</th>
+            <th class="px-4 py-2 text-left">Payment Method</th>
+            <th class="px-4 py-2 text-left">Invoice</th>
+          </tr>
+        </thead>
+        <tbody id="subscriptionBillingTableBody" class="divide-y divide-gray-100">
+          <!-- Filled dynamically -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Resubmit Personal KYC Modal -->
+<div id="resubmitKycModal" class="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm hidden items-center justify-center p-4 z-[60]">
+  <div class="bg-white rounded-2xl shadow-lg max-w-3xl w-full p-6 relative">
+    <button type="button" onclick="closeResubmitKycModal()" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <i class="fas fa-sync-alt text-blue-500"></i> Resubmit Personal KYC
+    </h2>
+    <form id="resubmitPersonalKycForm" class="space-y-5" enctype="multipart/form-data" onsubmit="submitResubmitKyc(event)">
+      {% csrf_token %}
+      <input type="hidden" id="resubmitCustomerId" name="customer_id">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Full Name</label>
+          <input id="resubmitFullName" name="full_name" type="text" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Date of Birth</label>
+          <input id="resubmitDob" name="date_of_birth" type="date" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Nationality</label>
+          <select id="resubmitNationality" name="nationality" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required></select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">ID Document Type</label>
+          <select id="resubmitDocumentType" name="id_document_type" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+            <option value="">{% trans "Select Document Type" %}</option>
+            <option value="voter_card">{% trans "Voter Card" %}</option>
+            <option value="drivers_license">{% trans "Driver's License" %}</option>
+            <option value="passport">{% trans "Passport" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Document Number</label>
+          <input id="resubmitDocumentNumber" name="document_number" type="text" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Issue Date</label>
+          <input id="resubmitIssueDate" name="id_issue_date" type="date" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Expiry Date</label>
+          <input id="resubmitExpiryDate" name="id_expiry_date" type="date" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Address</label>
+          <input id="resubmitAddress" name="address" type="text" class="mt-1 w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="border border-dashed border-gray-300 rounded-xl p-4">
+          <label class="block text-sm font-medium text-gray-700">Identity Document</label>
+          <p class="text-xs text-gray-500 mb-2">Current file: <span id="resubmitCurrentDoc" class="font-semibold text-gray-700">—</span></p>
+          <input id="resubmitDocumentFile" name="document_file" type="file" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm text-gray-600">
+          <p class="text-xs text-gray-500 mt-2">Uploading a new file will replace the existing document.</p>
+        </div>
+        <div id="resubmitVisaWrapper" class="border border-dashed border-gray-300 rounded-xl p-4 hidden">
+          <label class="block text-sm font-medium text-gray-700">Last Visa Page</label>
+          <p class="text-xs text-gray-500 mb-2">Current file: <span id="resubmitCurrentVisa" class="font-semibold text-gray-700">—</span></p>
+          <input id="resubmitVisaFile" name="visa_file" type="file" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-sm text-gray-600">
+          <p class="text-xs text-indigo-600 mt-2">Required for non-Congolese nationals.</p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" class="px-4 py-2 rounded-lg border text-gray-600 hover:text-red-500" onclick="closeResubmitKycModal()">Cancel</button>
+        <button type="submit" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-5 py-2 rounded-lg shadow transition">
+          <i class="fas fa-paper-plane"></i> Submit
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Billing / Create Order Modal (LOCATION FIRST + GPS + region kits) -->
+<div id="billingModal"
+     class="fixed inset-0 z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/50 backdrop-blur-sm transition-opacity duration-300">
+  <div class="w-full sm:rounded-2xl sm:max-w-3xl lg:max-w-4xl overflow-hidden bg-white shadow-2xl
+              max-h-[100vh] sm:max-h-[90vh] flex flex-col">
+
+    <!-- Header -->
+    <div class="relative bg-gradient-to-r from-indigo-600 via-sky-500 to-cyan-500 text-white">
+      <div class="p-4 sm:p-6 pr-12">
+        <h2 class="text-xl sm:text-2xl font-bold flex items-center gap-2">
+          <i class="fas fa-receipt text-white/90"></i> Create Order(s)
+        </h2>
+        <p class="text-white/90 text-xs sm:text-sm mt-1">Create one or multiple orders for this customer. Locations are required per order.</p>
+        <div class="bg-white/10 rounded-xl p-3 mt-3">
+          <div class="stepper">
+            <div id="stepDot1" class="step-dot step-active">1</div>
+            <div>
+              <div class="step-label">Orders & Locations</div>
+              <div class="step-sub">Add orders manually or upload from Excel/CSV.</div>
+            </div>
+            <div class="flex-1 h-[2px] mx-3 bg-white/30"></div>
+            <div id="stepDot2" class="step-dot step-idle">2</div>
+            <div>
+              <div class="step-label">Coupon, Review & Payment</div>
+              <div class="step-sub">Apply a global coupon, validate, and pay.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <button onclick="closeModal('billingModal')" class="absolute top-3 right-3 inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/20 hover:bg-white/30 text-white focus:outline-none focus:ring-2 focus:ring-white/60 transition">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- Content -->
+    <div class="overflow-y-auto p-4 sm:p-6 space-y-6">
+      <form method="POST" action="{% url 'submit_order_sales' %}" id="createOrderForm" class="space-y-6">
+        {% csrf_token %}
+        <input type="hidden" name="customer_name" id="customerNameField">
+        <input type="hidden" name="email" id="customerEmailField">
+
+        <!-- ==================== STEP 1: ORDERS & LOCATIONS ==================== -->
+        <section id="step1" class="space-y-4">
+          <!-- Mode + Upload -->
+          <div class="glass-card p-4">
+            <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <label for="isBulkOrder" class="text-sm font-semibold text-gray-800">Multiple Orders</label>
+                <input id="isBulkOrder" type="checkbox" class="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                <span class="text-xs text-gray-500">Enable adding multiple order blocks</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <label class="text-sm font-semibold text-gray-800">Upload Excel/CSV</label>
+                <input id="ordersUpload" type="file" accept=".xlsx,.xls,.csv" class="text-sm" />
+                <button type="button" class="px-3 py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50"
+                        onclick="downloadOrdersTemplate()">Download template</button>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2">
+              Template columns: <code>address</code>, <code>lat</code>, <code>lng</code>, <code>plus_code</code>, <code>kit_id</code>, <code>subscription_plan_id</code>, <code>billing_cycle</code> (monthly/quarterly/yearly), <code>services</code> (comma-separated ids)
+            </p>
+          </div>
+
+          <!-- Container of order blocks -->
+          <div id="ordersContainer" class="space-y-6">
+            <!-- One order block by default -->
+            <div class="order-block border border-gray-200 rounded-xl p-4 bg-gray-50 relative">
+              <div class="absolute top-3 right-3 hidden removeOrderBtn">
+                <button type="button" class="text-rose-600 hover:text-rose-800 text-sm font-semibold">
+                  <i class="fa-solid fa-trash"></i> Remove
+                </button>
+              </div>
+              <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-map-location-dot text-indigo-500"></i> Order #1
+              </h3>
+
+              <!-- LOCATION -->
+              <div class="space-y-3 mb-4">
+                <label class="block text-sm font-medium text-gray-700">Installation Address or Plus Code</label>
+                <div class="relative">
+                  <input type="text" name="address[]" class="manualAddress w-full border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-indigo-500" placeholder="Enter address or plus code">
+                  <span class="chip px-2 py-0.5 text-xs rounded bg-gray-100 text-gray-600 border border-gray-200" id="addressStatus">Typing…</span>
+                </div>
+                <div class="map h-64 w-full rounded-lg border border-gray-200"></div>
+                <input type="hidden" name="lat[]" class="latField">
+                <input type="hidden" name="lng[]" class="lngField">
+                <input type="hidden" name="plus_code[]" class="plusCodeField">
+              </div>
+
+              <!-- KIT & PLAN -->
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Select Kit</label>
+                  <select name="kit_id[]" class="kitSelect w-full border-gray-300 rounded-lg px-4 py-2">
+                    <option value="">Waiting for location…</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-1">Subscription Plan</label>
+                  <select name="subscription_plan_id[]" class="planSelect w-full border-gray-300 rounded-lg px-4 py-2">
+                    <option value="">Loading plans...</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="mt-3">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Billing Cycle</label>
+                <select name="billing_cycle[]" class="billingCycle w-full border-gray-300 rounded-lg px-4 py-2">
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly (3 months)</option>
+                  <option value="yearly">Yearly (12 months)</option>
+                </select>
+              </div>
+
+              <!-- ADDITIONAL SERVICES -->
+              <div class="mt-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Additional Services</label>
+                <select name="services[]" multiple class="servicesSelect w-full border-gray-300 rounded-lg px-4 py-2"></select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add More Button -->
+          <div id="addOrderBtnWrapper" class="hidden">
+            <button type="button" id="addOrderBtn" class="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2.5 mt-3 rounded-lg border border-indigo-300 text-indigo-700 hover:bg-indigo-50 font-medium">
+              <i class="fa-solid fa-plus"></i> Add Another Order
+            </button>
+          </div>
+
+          <!-- Step controls -->
+          <div class="flex justify-end pt-2">
+            <button type="button" id="goStep2" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-medium shadow hover:bg-indigo-700">
+              Next: Coupon, Review & Payment <i class="fas fa-arrow-right"></i>
+            </button>
+          </div>
+        </section>
+
+        <!-- ==================== STEP 2: COUPON, REVIEW & PAYMENT ==================== -->
+        <section id="step2" class="space-y-5 hidden-imp">
+          <!-- Coupon -->
+          <div class="glass-card p-4">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2 mb-2">
+              <i class="fa-solid fa-badge-percent text-emerald-600"></i> Global Coupon
+            </h3>
+            <div class="flex flex-col sm:flex-row gap-2">
+              <input type="text" id="globalCoupon" class="flex-1 border-gray-300 rounded-lg px-4 py-2" placeholder="Enter coupon (applies to all orders)">
+              <div class="flex gap-2">
+                <button type="button" id="btnValidateCoupon" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700">
+                  <i class="fa-solid fa-check-double"></i> Validate
+                </button>
+                <button type="button" id="btnClearCoupon" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                  <i class="fa-solid fa-rotate-left"></i> Clear
+                </button>
+              </div>
+            </div>
+            <input type="hidden" name="coupon_code_global" id="coupon_code_global">
+            <div id="couponStatusGlobal" class="text-xs mt-2 text-gray-600"></div>
+          </div>
+
+          <!-- Review -->
+          <div class="glass-card p-4">
+            <h3 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <i class="fa-solid fa-clipboard-list text-blue-600"></i> Review Order(s)
+            </h3>
+            <div class="overflow-x-auto">
+              <table class="min-w-full text-sm border rounded-xl overflow-hidden">
+                <thead class="bg-gray-100 text-gray-700">
+                  <tr>
+                    <th class="px-3 py-2 text-left">#</th>
+                    <th class="px-3 py-2 text-left">Address / Plus Code</th>
+                    <th class="px-3 py-2 text-left">Kit</th>
+                    <th class="px-3 py-2 text-left">Plan (Cycle)</th>
+                    <th class="px-3 py-2 text-left">Services</th>
+                    <th class="px-3 py-2 text-right">Install Fee</th>
+                    <th class="px-3 py-2 text-right">Pre-Tax</th>
+                    <th class="px-3 py-2 text-right">Tax</th>
+                    <th class="px-3 py-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewBody"></tbody>
+                <tfoot class="bg-gray-50 font-semibold">
+                  <tr>
+                    <td colspan="6" class="px-3 py-2 text-right">Grand Total (before coupon)</td>
+                    <td class="px-3 py-2 text-right" id="gtPreTax">$0.00</td>
+                    <td class="px-3 py-2 text-right" id="gtTax">$0.00</td>
+                    <td class="px-3 py-2 text-right" id="gtTotal">$0.00</td>
+                  </tr>
+                  <tr id="couponRow" class="hidden">
+                    <td colspan="8" class="px-3 py-2 text-right">Coupon Discount</td>
+                    <td class="px-3 py-2 text-right text-emerald-700" id="gtDiscount">-$0.00</td>
+                  </tr>
+                  <tr id="grandAfterRow" class="hidden">
+                    <td colspan="8" class="px-3 py-2 text-right">Grand Total (after coupon)</td>
+                    <td class="px-3 py-2 text-right" id="gtAfter">$0.00</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <!-- Payment -->
+          <section class="glass-card">
+            <div class="flex items-center gap-2 px-4 py-3 border-b border-gray-200">
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-600 text-white text-xs font-bold">💰</span>
+              <h3 class="font-semibold text-emerald-900">Payment</h3>
+            </div>
+            <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-emerald-900 mb-1">Payment Method</label>
+                <select name="payment_method" id="paymentMethod" class="w-full border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-emerald-500" required>
+                  <option value="cash">Cash</option>
+                  <option value="momo">Mobile Money</option>
+                </select>
+              </div>
+              <div id="mobilePhoneWrapper" class="hidden"></div>
+            </div>
+          </section>
+
+          <!-- Step controls -->
+          <div class="sticky bottom-0 left-0 right-0 bg-white/90 backdrop-blur border-t mt-2">
+            <div class="p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:justify-between">
+              <div class="flex gap-3">
+                <button type="button" id="backStep1" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                  <i class="fas fa-arrow-left"></i> Back
+                </button>
+              </div>
+              <div class="flex gap-3">
+                <button type="button" onclick="closeModal('billingModal')" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+                  Cancel
+                </button>
+                <button type="submit" id="submitOrdersBtn" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-indigo-600 via-sky-500 to-cyan-500 text-white font-medium shadow hover:shadow-md active:scale-[0.99] transition" disabled>
+                  <i class="fas fa-paper-plane"></i> Submit Order(s)
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </form>
+    </div>
+  </div>
+</div>
+
+
+<!-- ====================== Support Ticket Modal ====================== -->
+<div id="supportTicketModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg max-w-xl w-full p-6 relative">
+    <button onclick="closeModal('supportTicketModal')" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <i class="fas fa-life-ring text-rose-500"></i> Create Support Ticket
+    </h2>
+
+    <form id="supportTicketForm" class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="customer_id" id="ticketCustomerId">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Customer</label>
+          <input type="text" id="ticketCustomerName" class="w-full px-4 py-2 border rounded-lg bg-gray-50" readonly>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Email</label>
+          <input type="email" id="ticketCustomerEmail" name="email" class="w-full px-4 py-2 border rounded-lg bg-gray-50" readonly>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Subject</label>
+        <input type="text" name="subject" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500">
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Category</label>
+          <select name="category" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500">
+            <option value="technical">Technical Issue</option>
+            <option value="billing">Billing</option>
+            <option value="installation">Installation</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Priority</label>
+          <select name="priority" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Description</label>
+        <textarea name="description" rows="4" required class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-rose-500" placeholder="Describe the issue..."></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Attachments (optional)</label>
+        <input type="file" name="attachments[]" multiple class="w-full border rounded-lg file:mr-4 file:px-3 file:py-1.5 file:border-0 file:rounded-md file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100">
+      </div>
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button type="button" onclick="closeModal('supportTicketModal')" class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-50">Cancel</button>
+        <button type="submit" class="px-5 py-2 rounded-lg bg-rose-600 text-white font-medium hover:bg-rose-700 shadow">Create Ticket</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Subscriptions Modal (PAGINATED 5/pg) -->
+<div id="subscriptionModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg max-w-5xl w-full p-6 relative">
+    <button onclick="closeModal('subscriptionModal')" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <i class="fas fa-layer-group text-blue-500"></i>
+      <span>Subscriptions for</span>
+      <span id="subsCustomerName" class="font-bold"></span>
+    </h2>
+
+    <div class="overflow-x-auto rounded-lg border border-gray-200 shadow table-wrap">
+      <table class="responsive-table min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gradient-to-r from-blue-50 to-blue-100 text-blue-900 font-semibold">
+          <tr>
+            <th class="px-4 py-3">#ID</th>
+            <th class="px-4 py-3">Subscription Plan</th>
+            <th class="px-4 py-3">Billing Cycle</th>
+            <th class="px-4 py-3">Price (USD)</th>
+            <th class="px-4 py-3">Start Date</th>
+            <th class="px-4 py-3">Next Billing Date</th>
+            <th class="px-4 py-3">End Date</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="subscriptionTableBody" class="divide-y divide-gray-100 text-gray-800">
+          <tr><td colspan="9" class="px-4 py-4 text-center text-gray-400">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6 text-sm">
+      <span id="subPageIndicator" class="text-gray-600"></span>
+      <div class="flex items-center gap-2">
+        <button id="prevSubPage" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+          <i class="fas fa-chevron-left"></i> Prev
+        </button>
+        <button id="nextSubPage" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Subscription Detail Modal -->
+<div id="subscriptionDetailModal" class="fixed inset-0 bg-black/40 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg max-w-2xl w-full p-6 relative">
+    <button onclick="closeModal('subscriptionDetailModal')" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <i class="fas fa-info-circle text-indigo-500"></i> Subscription Details
+    </h2>
+    <div id="subscriptionDetailContent" class="space-y-3 text-gray-700 text-sm">
+      <p class="text-gray-400">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<!-- Customer Details Modal -->
+<div id="customerDetailsModal" class="fixed inset-0 bg-black bg-opacity-40 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-lg max-w-2xl w-full p-6 relative">
+    <button onclick="closeModal('customerDetailsModal')" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 text-lg">
+      <i class="fas fa-times"></i>
+    </button>
+    <h2 class="text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <i class="fas fa-id-card text-blue-500"></i> Customer Details
+    </h2>
+    <div id="customerDetailsContent" class="space-y-4 text-gray-700 text-sm">
+      <p class="text-gray-400">Loading...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ====================== Customers Table ====================== -->
+<div id="customerTableWrapper">
+  <div class="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <h2 class="text-2xl font-bold text-gray-900 flex items-center gap-2">
+        <i class="fas fa-users text-blue-500"></i> Registered Customers
+      </h2>
+      <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+        <input id="customerSearch" type="text" placeholder="🔍 Search by name/email/phone" class="w-full sm:w-64 px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-400" />
+        <select id="filterStatus" class="w-full sm:w-40 px-4 py-2 rounded-lg border focus:ring-2 focus:ring-blue-400">
+          <option value="">All Statuses</option>
+          <option value="Active">Active</option>
+          <option value="Inactive">Inactive</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-auto rounded-2xl border border-gray-200 shadow-lg">
+      <table class="responsive-table min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gradient-to-r from-indigo-50 to-indigo-100 text-indigo-900 uppercase text-xs font-semibold sticky top-0">
+          <tr>
+            <th class="px-5 py-3">Customer</th>
+            <th class="px-5 py-3">Email</th>
+            <th class="px-5 py-3">Phone</th>
+            <th class="px-5 py-3">Account Status</th>
+            <th class="px-5 py-3">KYC Status</th>
+            <th class="px-5 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="customerTableBody" class="divide-y divide-gray-100 text-gray-800">
+          <!-- Rows populated by JS -->
+        </tbody>
+      </table>
+    </div>
+
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-3 mt-6 text-sm">
+      <button id="prevPage" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+        <i class="fas fa-chevron-left"></i> Previous
+      </button>
+      <span id="pageIndicator" class="text-gray-600">Page 1</span>
+      <button id="nextPage" class="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg shadow hover:bg-gray-200">
+        Next <i class="fas fa-chevron-right"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ===================== URLS / ENDPOINTS ===================== */
+const URL_CHECKOUT_OPTIONS = "{% url 'get_checkout_options' %}";
+window.ENDPOINTS = window.ENDPOINTS || {
+  kitsByLocation: "{% url 'get_kits_by_location' %}",
+  plans: "{% url 'get_plans' %}",
+  validateCoupon: ""   // <-- set your coupon validation endpoint here
+};
+const RESUBMIT_KYC_URL_TEMPLATE = "{% url 'sales_resubmit_personal_kyc' 0 %}";
+
+function formatDateTime(value){
+  if(!value) return '—';
+  const date = new Date(value);
+  if(Number.isNaN(date.getTime())){
+    return value;
+  }
+  return date.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function isCongoleseNationality(value, label){
+  const val = (value || '').toLowerCase().trim();
+  const lbl = (label || '').toLowerCase().trim();
+  return val.startsWith('congol') || lbl.startsWith('congol');
+}
+
+function applyPersonalDocumentOptions(select, isCongolese){
+  if(!select) return;
+  let base = Array.isArray(window.__personalDocOptions) && window.__personalDocOptions.length
+    ? window.__personalDocOptions
+    : null;
+  if(!base){
+    base = Array.from(select.options).map(opt => ({ value: opt.value, label: opt.textContent }));
+    select.dataset.allOptions = JSON.stringify(base);
+  }else if(!select.dataset.allOptions){
+    select.dataset.allOptions = JSON.stringify(base);
+  }
+  console.log('[resubmit_modal] applyPersonalDocumentOptions', { isCongolese, base });
+  const desired = isCongolese
+    ? base
+    : base.filter(opt => opt.value === '' || opt.value === 'passport');
+
+  const previous = select.value;
+  select.innerHTML = '';
+  desired.forEach(opt => {
+    const optionEl = document.createElement('option');
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    select.appendChild(optionEl);
+  });
+
+  if(desired.some(opt => opt.value === previous)){
+    select.value = previous;
+  }else if(!isCongolese){
+    select.value = 'passport';
+  }
+  console.log('[resubmit_modal] desired options & final', { desired, finalValue: select.value });
+}
+
+/* ===================== Generic Helpers ===================== */
+function closeModal(id){ const el=document.getElementById(id); if(!el) return; el.classList.add('hidden'); el.classList.remove('flex'); }
+function getCookie(name){ const v=`; ${document.cookie}`; const p=v.split(`; ${name}=`); return p.length===2?decodeURIComponent(p.pop().split(';').shift()):''; }
+function esc(s){ return (s||'').replace(/\\/g,'\\\\').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+const money = (n)=>Number(n||0);
+const fmt   = (n)=>`$${Number(n||0).toFixed(2)}`;
+function step2Visible(){ return !document.getElementById('step2')?.classList.contains('hidden-imp'); }
+function refreshReviewIfVisible(){ if(step2Visible()) buildReviewTable(); }
+
+/* ===================== Validation helpers (MANDATORY FIELDS) ===================== */
+/* Required per order block:
+   - Address OR Plus Code AND valid lat/lng (map pin)
+   - Kit
+   - Plan
+   - Billing Cycle
+*/
+function fieldError(el, on){
+  if(!el) return;
+  el.classList.toggle('ring-2', on);
+  el.classList.toggle('ring-rose-400', on);
+  el.classList.toggle('border-rose-400', on);
+  el.classList.toggle('ring-offset-1', on);
+}
+function selectError(sel, on){ fieldError(sel, on); }
+
+function getOrderValues(block){
+  const addr      = (block.querySelector('.manualAddress')?.value || '').trim();
+  const plusCode  = (block.querySelector('.plusCodeField')?.value || '').trim();
+  const lat       = (block.querySelector('.latField')?.value || '').trim();
+  const lng       = (block.querySelector('.lngField')?.value || '').trim();
+  const kitVal    = block.querySelector('.kitSelect')?.value || '';
+  const planVal   = block.querySelector('.planSelect')?.value || '';
+  const cycleVal  = (block.querySelector('.billingCycle')?.value || '').trim();
+  return { addr, plusCode, lat, lng, kitVal, planVal, cycleVal };
+}
+
+function validateOrderBlock(block, index){
+  const errs = [];
+  const { addr, plusCode, lat, lng, kitVal, planVal, cycleVal } = getOrderValues(block);
+
+  // elements (for highlighting)
+  const addrEl = block.querySelector('.manualAddress');
+  const plusEl = block.querySelector('.plusCodeField');
+  const latEl  = block.querySelector('.latField');
+  const lngEl  = block.querySelector('.lngField');
+  const kitSel = block.querySelector('.kitSelect');
+  const planSel= block.querySelector('.planSelect');
+  const cycSel = block.querySelector('.billingCycle');
+
+  // 1) Address or PlusCode + coords
+  const hasAddressLike = !!(addr || plusCode);
+  const hasCoords      = !!(lat && lng);
+
+  if (!hasAddressLike){
+    errs.push('Address/Plus Code'); fieldError(addrEl, true); fieldError(plusEl, true);
+  } else { fieldError(addrEl, false); fieldError(plusEl, false); }
+
+  if (!hasCoords){
+    errs.push('Map location (pin)'); fieldError(latEl, true); fieldError(lngEl, true);
+  } else { fieldError(latEl, false); fieldError(lngEl, false); }
+
+  // 2) Kit
+  if (!kitVal){ errs.push('Kit'); selectError(kitSel, true); } else { selectError(kitSel, false); }
+
+  // 3) Plan
+  if (!planVal){ errs.push('Subscription plan'); selectError(planSel, true); } else { selectError(planSel, false); }
+
+  // 4) Billing cycle
+  if (!cycleVal){ errs.push('Billing cycle'); selectError(cycSel, true); } else { selectError(cycSel, false); }
+
+  return { ok: errs.length === 0, errs };
+}
+
+function validateAllOrders(){
+  const blocks = [...document.querySelectorAll('#ordersContainer .order-block')];
+  const messages = [];
+  let allOk = true;
+
+  blocks.forEach((b, i)=>{
+    const res = validateOrderBlock(b, i);
+    if (!res.ok){
+      allOk = false;
+      const title = b.querySelector('h3')?.textContent?.trim() || `Order #${i+1}`;
+      messages.push(`• ${title}: ${res.errs.join(', ')}`);
+    }
+  });
+
+  if (!allOk){
+    alert(
+`Please complete the required fields before continuing:
+
+${messages.join('\n')}
+
+Required per order:
+- Installation Address or Plus Code (and a pin on the map)
+- Kit
+- Subscription Plan
+- Billing Cycle`
+    );
+  }
+  return allOk;
+}
+
+/* ===================== Stepper (Order Modal) ===================== */
+function setStep(n){
+  const s1=document.getElementById('step1'), s2=document.getElementById('step2');
+  const d1=document.getElementById('stepDot1'), d2=document.getElementById('stepDot2');
+  if(n===1){
+    s1.classList.remove('hidden-imp'); s2.classList.add('hidden-imp');
+    d1.className='step-dot step-active'; d2.className='step-dot step-idle';
+  }else{
+    s1.classList.add('hidden-imp'); s2.classList.remove('hidden-imp');
+    d1.className='step-dot step-done'; d2.className='step-dot step-active';
+  }
+}
+document.getElementById('goStep2')?.addEventListener('click', async ()=>{
+  if (!validateAllOrders()) return;
+  const ok = await buildReviewTable();
+  if(!ok){ alert('Please complete all required fields for each order.'); return; }
+  setStep(2);
+});
+document.getElementById('backStep1')?.addEventListener('click', ()=> setStep(1));
+
+/* ===================== Show Order Form (multi-order) ===================== */
+async function showOrderForm(name, email){
+  const modal=document.getElementById('billingModal');
+  modal.classList.remove('hidden'); modal.classList.add('flex');
+  document.getElementById('customerNameField').value=name||'';
+  document.getElementById('customerEmailField').value=email||'';
+  const container=document.getElementById('ordersContainer');
+  const block=container.querySelector('.order-block');
+  await hydrateBlock(block);
+  initMapInstance(block);
+  setStep(1);
+}
+
+/* ===================== Plans/services loader ===================== */
+window._plansCache = new Map();
+
+async function hydrateBlock(block){
+  const kitSelect   = block.querySelector('.kitSelect');
+  const planSelect  = block.querySelector('.planSelect');
+  const servicesSel = block.querySelector('.servicesSelect');
+  const cycleSelect = block.querySelector('.billingCycle');
+
+  kitSelect.innerHTML = `<option value="">Waiting for location…</option>`;
+
+  try{
+    const res = await fetch(URL_CHECKOUT_OPTIONS,{ headers:{ "X-Requested-With":"XMLHttpRequest" }});
+    const data= await res.json();
+    if(!data.success) throw new Error(data.message||'Failed to fetch options');
+
+    const plans = Array.isArray(data.plans)?data.plans:[];
+    planSelect.innerHTML = plans.length
+      ? `<option value="">-- Select a plan --</option>` + plans.map(p=>`
+          <option value="${p.id}" data-name="${esc(p.name)}" data-price="${p.price_usd}">
+            ${p.name}${p.data_cap_gb?` • ${p.data_cap_gb}GB`:''} (${fmt(p.price_usd)} / mo)
+          </option>`).join('')
+      : `<option disabled>No plans available</option>`;
+
+    const services = Array.isArray(data.services)?data.services:[];
+    servicesSel.innerHTML = services.length
+      ? services.map(s=>`
+          <option value="${s.id}" data-name="${esc(s.name)}" data-price="${s.price_usd}">
+            ${s.name} (${fmt(s.price_usd)})
+          </option>`).join('')
+      : `<option disabled>No services available</option>`;
+
+    ['change','input'].forEach(ev=>{
+      planSelect.addEventListener(ev, window.updateTotalsAll);
+      cycleSelect.addEventListener(ev, window.updateTotalsAll);
+      servicesSel.addEventListener(ev, window.updateTotalsAll);
+    });
+    window.updateTotalsAll?.();
+  }catch(e){
+    console.error('hydrateBlock:',e);
+    alert(e.message||'Failed to load checkout options.');
+  }
+}
+
+async function loadPlansForKitType(kitType, targetPlanSelect){
+  if(!targetPlanSelect) return;
+  const key=kitType||'__ALL__';
+  if(window._plansCache.has(key)){ fillPlansDropdown(targetPlanSelect, window._plansCache.get(key)); return; }
+
+  const url=new URL(window.ENDPOINTS.plans, window.location.origin);
+  if(kitType) url.searchParams.set('kit_type', kitType);
+  try{
+    const res = await fetch(url.toString(), { headers:{ "X-Requested-With":"XMLHttpRequest" }, cache:"no-cache" });
+    const data= await res.json().catch(()=>({}));
+    const plans = Array.isArray(data?.plans)?data.plans:[];
+    window._plansCache.set(key, plans);
+    fillPlansDropdown(targetPlanSelect, plans);
+  }catch(e){
+    console.error('loadPlansForKitType:',e);
+    targetPlanSelect.innerHTML = '<option value="">{% trans "Failed to load plans" %}</option>';
+  }
+}
+function fillPlansDropdown(selectEl, plans){
+  selectEl.innerHTML = plans.length
+    ? '<option value="">-- Select a plan --</option>' +
+      plans.map(p=>`<option value="${p.id}" data-name="${esc(p.name)}" data-price="${p.price_usd}">${p.name}${p.data_cap_gb?` • ${p.data_cap_gb}GB`:''} (${fmt(p.price_usd)} / mo)</option>`).join('')
+    : '<option value="">{% trans "No plans available" %}</option>';
+}
+
+document.addEventListener('DOMContentLoaded', ()=>{
+  const container=document.getElementById('ordersContainer');
+
+  container.addEventListener('change', (e)=>{
+    if(!e.target.matches('.kitSelect')) return;
+    const block = e.target.closest('.order-block');
+    const planSel= block.querySelector('.planSelect');
+    const opt    = e.target.options[e.target.selectedIndex];
+    const kitType= opt ? (opt.dataset.kitType || opt.getAttribute('data-kit-type')) : null;
+    loadPlansForKitType(kitType, planSel);
+    window.updateTotalsAll?.();
+    refreshReviewIfVisible();
+  });
+
+  container.addEventListener('change', (e)=>{
+    if(e.target.matches('.planSelect,.billingCycle,.servicesSelect')) {
+      window.updateTotalsAll?.();
+      refreshReviewIfVisible();
+    }
+  });
+});
+
+/* ===================== Bulk toggle / add / remove blocks ===================== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  const isBulk=document.getElementById('isBulkOrder');
+  const container=document.getElementById('ordersContainer');
+  const addBtnWrapper=document.getElementById('addOrderBtnWrapper');
+  const addBtn=document.getElementById('addOrderBtn');
+
+  isBulk?.addEventListener('change', ()=>{
+    if(isBulk.checked){
+      addBtnWrapper.classList.remove('hidden');
+      container.querySelectorAll('.removeOrderBtn').forEach(b=>b.classList.remove('hidden'));
+    }else{
+      addBtnWrapper.classList.add('hidden');
+      container.querySelectorAll('.order-block').forEach((b,i)=>{ if(i>0) b.remove(); });
+      container.querySelector('.removeOrderBtn')?.classList.add('hidden');
+      resetMapInstances();
+      window.updateTotalsAll?.();
+      refreshReviewIfVisible();
+    }
+  });
+
+  addBtn?.addEventListener('click', async ()=>{
+    const first=container.querySelector('.order-block');
+    const count=container.querySelectorAll('.order-block').length+1;
+    const nb=first.cloneNode(true);
+
+    // reset fields
+    nb.querySelector('.manualAddress').value='';
+    nb.querySelector('.map').innerHTML='';
+    nb.querySelector('.latField').value='';
+    nb.querySelector('.lngField').value='';
+    nb.querySelector('.plusCodeField').value='';
+    nb.querySelector('.kitSelect').innerHTML=`<option value="">Waiting for location…</option>`;
+    nb.querySelector('.planSelect').innerHTML=`<option value="">-- Select a plan --</option>`;
+    Array.from(nb.querySelector('.servicesSelect')?.options||[]).forEach(o=>o.selected=false);
+    nb.querySelector('.removeOrderBtn').classList.remove('hidden');
+    nb.querySelector('h3').innerHTML=`<i class="fa-solid fa-map-location-dot text-indigo-500"></i> Order #${count}`;
+    nb.dataset.installFee = '0';
+
+    container.appendChild(nb);
+    await hydrateBlock(nb);
+    initMapInstance(nb);
+    window.updateTotalsAll?.();
+    refreshReviewIfVisible();
+  });
+
+  container.addEventListener('click', (e)=>{
+    if(e.target.closest('.removeOrderBtn')){
+      e.target.closest('.order-block').remove();
+      container.querySelectorAll('.order-block').forEach((b,i)=> b.querySelector('h3').innerHTML = `<i class="fa-solid fa-map-location-dot text-indigo-500"></i> Order #${i+1}`);
+      window.updateTotalsAll?.();
+      refreshReviewIfVisible();
+    }
+  });
+});
+
+/* ===================== Excel/CSV upload -> blocks ===================== */
+document.getElementById('ordersUpload')?.addEventListener('change', async (e)=>{
+  const file=e.target.files?.[0]; if(!file) return;
+  const ext=(file.name.split('.').pop()||'').toLowerCase();
+  try{
+    let rows=[];
+    if(ext==='csv'){
+      const text=await file.text();
+      rows=parseCSV(text);
+    }else{
+      const data=await file.arrayBuffer();
+      const wb=XLSX.read(data,{type:'array'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      rows=XLSX.utils.sheet_to_json(ws, {defval:''});
+    }
+    await addRowsAsBlocks(rows);
+  }catch(err){
+    console.error(err); alert('Failed to read the file. Please use the provided template.');
+  }finally{ e.target.value=''; }
+});
+function parseCSV(txt){
+  const lines=txt.split(/\r?\n/).filter(Boolean);
+  const headers=lines.shift().split(',').map(h=>h.trim());
+  return lines.map(line=>{
+    const cells=line.split(','); const obj={};
+    headers.forEach((h,i)=>obj[h]=cells[i]?.trim()||'');
+    return obj;
+  });
+}
+async function addRowsAsBlocks(rows){
+  if(!Array.isArray(rows)||!rows.length){ alert('No rows found in file.'); return; }
+  const container=document.getElementById('ordersContainer');
+  const first=container.querySelector('.order-block');
+  const ensureBulk=()=>{ const isBulk=document.getElementById('isBulkOrder'); if(!isBulk.checked){ isBulk.checked=true; isBulk.dispatchEvent(new Event('change')); } };
+  let indexStart=container.querySelectorAll('.order-block').length;
+
+  for(const r of rows){
+    let block;
+    if(indexStart===0){ block=first; } else {
+      block=first.cloneNode(true);
+      container.appendChild(block);
+    }
+    indexStart += 1;
+    block.querySelector('h3').innerHTML=`<i class="fa-solid fa-map-location-dot text-indigo-500"></i> Order #${indexStart}`;
+    block.querySelector('.removeOrderBtn').classList.remove('hidden');
+
+    await hydrateBlock(block);
+    initMapInstance(block);
+
+    // prefill
+    if(r.address) block.querySelector('.manualAddress').value=r.address;
+    if(r.plus_code) block.querySelector('.plusCodeField').value=r.plus_code;
+    if(r.lat && r.lng){ setBlockMarker(block, parseFloat(r.lat), parseFloat(r.lng)); }
+
+    if(r.kit_id){ setSelectValue(block.querySelector('.kitSelect'), String(r.kit_id)); }
+    if(r.subscription_plan_id){ setSelectValue(block.querySelector('.planSelect'), String(r.subscription_plan_id)); }
+    if(r.billing_cycle){ setSelectValue(block.querySelector('.billingCycle'), r.billing_cycle.toLowerCase()); }
+    if(r.services){
+      const ids=(String(r.services).split(',').map(s=>s.trim()).filter(Boolean));
+      const sel=block.querySelector('.servicesSelect');
+      ids.forEach(id=>{ const opt=[...sel.options].find(o=>String(o.value)===String(id)); if(opt) opt.selected=true; });
+    }
+
+    ensureBulk();
+  }
+  window.updateTotalsAll?.();
+  refreshReviewIfVisible();
+}
+function setSelectValue(sel, val){ if(!sel) return; const opt=[...sel.options].find(o=>String(o.value)===String(val)); if(opt){ sel.value=val; sel.dispatchEvent(new Event('change')); } }
+function downloadOrdersTemplate(){
+  const csv = [
+    'address,lat,lng,plus_code,kit_id,subscription_plan_id,billing_cycle,services',
+    '"Lubumbashi city center",,,"6F8Q+X5 Lubumbashi",,,monthly,"1|2|3"',
+  ].join('\n');
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='orders_template.csv'; a.click();
+}
+
+/* ===================== Maps per block ===================== */
+let orderMaps=[];
+function initMapInstance(block){
+  const mapEl=block.querySelector('.map');
+  const addrIn=block.querySelector('.manualAddress');
+  const latField=block.querySelector('.latField');
+  const lngField=block.querySelector('.lngField');
+  const plusField=block.querySelector('.plusCodeField');
+  if(!mapEl) return;
+
+  // --- Reverse geocoder (Nominatim) to auto-fill address from pin ---
+  async function reverseGeocode(lat, lng){
+    try{
+      const u = new URL('https://nominatim.openstreetmap.org/reverse');
+      u.searchParams.set('format','jsonv2');
+      u.searchParams.set('lat', String(lat));
+      u.searchParams.set('lon', String(lng));
+      u.searchParams.set('zoom','18');
+      const r = await fetch(u.toString(), { headers: { 'Accept':'application/json' }});
+      const d = await r.json().catch(()=>null);
+      return d?.display_name || '';
+    }catch{ return ''; }
+  }
+
+  // Debounced setter to avoid spamming reverse geocode while dragging
+  let rgTimer = null;
+  function setAddressFromLatLng(lat, lng){
+    if(rgTimer) clearTimeout(rgTimer);
+    rgTimer = setTimeout(async ()=>{
+      const text = await reverseGeocode(lat, lng);
+      if(text && addrIn) addrIn.value = text; // <-- auto-fill the Address field
+      refreshReviewIfVisible();
+    }, 250);
+  }
+
+  const map=L.map(mapEl).setView([-11.67, 27.48], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ attribution:'© OpenStreetMap' }).addTo(map);
+  let marker=null;
+
+  async function fetchInstallFee(lat,lng){
+    try{
+      const r=await fetch(`/orders/get_installation_fee/?lat=${lat}&lng=${lng}`,{ headers:{'X-Requested-With':'XMLHttpRequest'} });
+      const d=await r.json();
+      setInstallFee(block, d.success? Number(d.amount_usd||0):0);
+      window.updateTotalsAll?.();
+      refreshReviewIfVisible(); // <-- reflect new fee in Step 2 instantly
+    }catch{
+      setInstallFee(block,0);
+      window.updateTotalsAll?.();
+      refreshReviewIfVisible();
+    }
+  }
+
+  function setMarker(lat,lng){
+    lat=parseFloat(lat); lng=parseFloat(lng);
+    if(!Number.isFinite(lat)||!Number.isFinite(lng)) return;
+    if(!marker){
+      marker=L.marker([lat,lng],{draggable:true}).addTo(map);
+      marker.on('dragend', (e)=>{
+        const {lat,lng}=e.target.getLatLng();
+        latField.value=lat; lngField.value=lng;
+        loadKitsByLocation({lat,lng,context:block});
+        try{ plusField.value=OpenLocationCode.encode(lat,lng); }catch(_){}
+        fetchInstallFee(lat,lng);
+        setAddressFromLatLng(lat,lng);
+      });
+    }else{
+      marker.setLatLng([lat,lng]);
+    }
+    latField.value=lat; lngField.value=lng;
+    try{ plusField.value=OpenLocationCode.encode(lat,lng); }catch(_){}
+    loadKitsByLocation({lat,lng,context:block});
+    fetchInstallFee(lat,lng);
+    setAddressFromLatLng(lat,lng);
+    map.setView([lat,lng], 14);
+  }
+  block.__setMarker = setMarker;
+
+  map.on('click', (e)=> setMarker(e.latlng.lat, e.latlng.lng));
+
+  // Forward geocode on address change/blur:
+  addrIn.addEventListener('change', async ()=>{
+    const q=addrIn.value; if((q||'').length<3) return;
+    const res=await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}`);
+    const data=await res.json();
+    if(data.length>0){
+      const lat=parseFloat(data[0].lat), lon=parseFloat(data[0].lon);
+      setMarker(lat, lon);
+    }
+  });
+  addrIn.addEventListener('blur', ()=>{
+    const q=addrIn.value; if((q||'').trim().length>=3) addrIn.dispatchEvent(new Event('change'));
+  });
+
+  orderMaps.push(map);
+}
+function resetMapInstances(){ orderMaps.forEach(m=>m.remove()); orderMaps=[]; }
+function setBlockMarker(block, lat, lng){ if(typeof block.__setMarker==='function'){ block.__setMarker(lat,lng); } }
+
+/* ===================== Kits by location (per block) ===================== */
+async function loadKitsByLocation({lat=null,lng=null,regionId=null,context=null}){
+  const scope=context||document;
+  const kitSelect=scope.querySelector('.kitSelect'); if(!kitSelect) return;
+  kitSelect.innerHTML=`<option value="">Loading kits…</option>`;
+  try{
+    const url=new URL(window.ENDPOINTS.kitsByLocation, window.location.origin);
+    if(regionId){ url.searchParams.set('region_id', regionId); }
+    else if(Number.isFinite(+lat) && Number.isFinite(+lng)){
+      const latR=Math.round(+lat*1e5)/1e5;
+      const lonR=Math.round(+lng*1e5)/1e5;
+      url.searchParams.set('lat', latR); url.searchParams.set('lon', lonR); url.searchParams.set('lng', lonR);
+    }
+    const res=await fetch(url.toString(),{ headers:{ "X-Requested-With":"XMLHttpRequest" }, cache:"no-cache" });
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    const kitsByType=data?.kits||{};
+    let html='<option value="">-- Select a kit --</option>';
+    let hasAny=false;
+    Object.entries(kitsByType).forEach(([type,items])=>{
+      const available=(items||[]).filter(k=>(k.quantity||0)>0);
+      if(!available.length) return;
+      hasAny=true; html += `<optgroup label="${type.charAt(0).toUpperCase()+type.slice(1)}">`;
+      available.forEach(k=>{
+        html += `<option value="${k.id}" data-name="${esc(k.name)}" data-price="${k.price_usd}" data-kit-type="${k.kit_type||type}">
+          ${k.name} — ${k.quantity ?? 0} in stock (${fmt(k.price_usd)})
+        </option>`;
+      });
+      html += `</optgroup>`;
+    });
+    kitSelect.innerHTML = hasAny ? html : `<option value="">{% trans "No stock available for this region" %}</option>`;
+    window.updateTotalsAll?.();
+    refreshReviewIfVisible();
+  }catch(e){
+    console.error('loadKitsByLocation:',e);
+    kitSelect.innerHTML=`<option value="">{% trans "Failed to load kits" %}</option>`;
+  }
+}
+
+/* ===================== Totals (preview only) ===================== */
+function getInstallFee(block){ const v=block.dataset.installFee; return v!==undefined?money(v):money(window.__globalInstallFee); }
+function setInstallFee(block, fee){ block.dataset.installFee=String(fee||0); }
+function computeTotals(block){
+  const kitSel   = block.querySelector('.kitSelect');
+  const planSel  = block.querySelector('.planSelect');
+  const cycleSel = block.querySelector('.billingCycle');
+  const servSel  = block.querySelector('.servicesSelect');
+
+  const kitPrice  = kitSel?.selectedOptions[0]?.dataset.price ? money(kitSel.selectedOptions[0].dataset.price) : 0;
+  const planPrice = planSel?.selectedOptions[0]?.dataset.price ? money(planSel.selectedOptions[0].dataset.price) : 0;
+  const cycle     = (cycleSel?.value || 'monthly').toLowerCase();
+  const MONTHS    = { monthly:1, quarterly:3, yearly:12 };
+  const months    = MONTHS[cycle] || 1;
+
+  let servicesTotal=0;
+  Array.from(servSel?.selectedOptions||[]).forEach(opt=> servicesTotal += money(opt.dataset.price||0));
+  const planCycle  = planPrice * months;
+  const baseInstall= getInstallFee(block) || 0;
+
+  const preTaxSubtotal = Math.max(0, kitPrice + planCycle + servicesTotal + baseInstall);
+  const EXCISE_RATE=0.10, VAT_RATE=0.16;
+  const excise= planCycle * EXCISE_RATE;
+  const vat   = (preTaxSubtotal + excise) * VAT_RATE;
+  const taxTot= excise + vat;
+  const total = preTaxSubtotal + taxTot;
+
+  return { kitPrice, planCycle, servicesTotal, baseInstall, preTaxSubtotal, excise, vat, taxTot, total };
+}
+window.updateTotalsAll = function(){
+  document.querySelectorAll('#ordersContainer .order-block').forEach(block=> computeTotals(block));
+};
+
+/* ===================== Step 2: Review + Coupon ===================== */
+async function buildReviewTable(){
+  const rows=[...document.querySelectorAll('#ordersContainer .order-block')];
+  if(!rows.length) return false;
+
+  const body=document.getElementById('reviewBody');
+  body.innerHTML='';
+  let ok=true, gtPre=0, gtTax=0, gt=0;
+
+  rows.forEach((block, i)=>{
+    const addr = (block.querySelector('.manualAddress')?.value || block.querySelector('.plusCodeField')?.value || '').trim();
+    const lat  = (block.querySelector('.latField')?.value||'').trim();
+    const lng  = (block.querySelector('.lngField')?.value||'').trim();
+    const kit  = block.querySelector('.kitSelect')?.value||'';
+    const plan = block.querySelector('.planSelect')?.value||'';
+    const cyc  = (block.querySelector('.billingCycle')?.value||'').trim();
+
+    if(!addr || !lat || !lng || !kit || !plan || !cyc){ ok=false; }
+
+    const totals = computeTotals(block);
+    const servicesTxt = [...block.querySelectorAll('.servicesSelect option:checked')].map(o=>o.textContent.trim()).join(', ') || '-';
+
+    gtPre += totals.preTaxSubtotal;
+    gtTax += totals.taxTot;
+    gt    += totals.total;
+
+    body.insertAdjacentHTML('beforeend', `
+      <tr class="review-row">
+        <td class="px-3 py-2">${i+1}</td>
+        <td class="px-3 py-2">${addr || '-'}</td>
+        <td class="px-3 py-2">${block.querySelector('.kitSelect')?.selectedOptions[0]?.dataset.name || block.querySelector('.kitSelect')?.selectedOptions[0]?.textContent || '-'}</td>
+        <td class="px-3 py-2">${block.querySelector('.planSelect')?.selectedOptions[0]?.dataset.name || block.querySelector('.planSelect')?.selectedOptions[0]?.textContent || '-'} (${cyc})</td>
+        <td class="px-3 py-2">${servicesTxt}</td>
+        <td class="px-3 py-2 text-right">${fmt(totals.baseInstall)}</td>
+        <td class="px-3 py-2 text-right">${fmt(totals.preTaxSubtotal)}</td>
+        <td class="px-3 py-2 text-right">${fmt(totals.taxTot)}</td>
+        <td class="px-3 py-2 text-right">${fmt(totals.total)}</td>
+      </tr>
+    `);
+  });
+
+  document.getElementById('gtPreTax').textContent = fmt(gtPre);
+  document.getElementById('gtTax').textContent    = fmt(gtTax);
+  document.getElementById('gtTotal').textContent  = fmt(gt);
+
+  // reset coupon preview
+  document.getElementById('couponRow').classList.add('hidden');
+  document.getElementById('grandAfterRow').classList.add('hidden');
+  document.getElementById('gtDiscount').textContent='-$0.00';
+  document.getElementById('gtAfter').textContent=fmt(gt);
+  document.getElementById('submitOrdersBtn').disabled = true;
+
+  // If no coupon entered, allow submit
+  const code=(document.getElementById('globalCoupon')?.value||'').trim();
+  if(!code) document.getElementById('submitOrdersBtn').disabled=false;
+
+  return ok;
+}
+
+document.getElementById('btnClearCoupon')?.addEventListener('click', ()=>{
+  document.getElementById('globalCoupon').value='';
+  document.getElementById('coupon_code_global').value='';
+  const st=document.getElementById('couponStatusGlobal');
+  st.textContent=''; st.className='text-xs mt-2 text-gray-600';
+  document.getElementById('couponRow').classList.add('hidden');
+  document.getElementById('grandAfterRow').classList.add('hidden');
+  document.getElementById('submitOrdersBtn').disabled=false;
+});
+
+document.getElementById('btnValidateCoupon')?.addEventListener('click', async ()=>{
+  const code=(document.getElementById('globalCoupon')?.value||'').trim();
+  const st=document.getElementById('couponStatusGlobal');
+  if(!code){
+    st.textContent='Enter a coupon to validate.'; st.className='text-xs mt-2 coupon-warn px-2 py-1 rounded inline-block';
+    return;
+  }
+  st.textContent='Validating…'; st.className='text-xs mt-2 text-gray-600';
+
+  const cart = [...document.querySelectorAll('#ordersContainer .order-block')].map(b=>{
+    const kit  = b.querySelector('.kitSelect')?.value || null;
+    const plan = b.querySelector('.planSelect')?.value || null;
+    const cycle= (b.querySelector('.billingCycle')?.value||'monthly').toLowerCase();
+    const services=[...b.querySelectorAll('.servicesSelect option:checked')].map(o=>o.value);
+    const totals=computeTotals(b);
+    return {
+      kit_id: kit? Number(kit):null,
+      plan_id: plan? Number(plan):null,
+      billing_cycle: cycle,
+      service_ids: services.map(Number),
+      pre_tax_subtotal: totals.preTaxSubtotal,
+      tax_total: totals.taxTot,
+      grand_total: totals.total
+    };
+  });
+
+  try{
+    const res=await fetch(window.ENDPOINTS.validateCoupon, {
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ code, cart })
+    });
+    const data=await res.json();
+    if(data.success){
+      const discount= Number(data.discount_amount || 0);
+      const grand   = Number((document.getElementById('gtTotal').textContent||'$0').replace(/[^0-9.\-]/g,'')) || 0;
+      const after   = Math.max(0, grand - discount);
+
+      document.getElementById('couponStatusGlobal').innerHTML = `Coupon <strong>${esc(code)}</strong> valid. Discount: <strong>${fmt(discount)}</strong>`;
+      document.getElementById('couponStatusGlobal').className='text-xs mt-2 coupon-ok px-2 py-1 rounded inline-block';
+      document.getElementById('couponRow').classList.remove('hidden');
+      document.getElementById('grandAfterRow').classList.remove('hidden');
+      document.getElementById('gtDiscount').textContent = `-${fmt(discount).slice(1)}`;
+      document.getElementById('gtAfter').textContent    = fmt(after);
+      document.getElementById('coupon_code_global').value = code;
+
+      document.getElementById('submitOrdersBtn').disabled=false;
+    }else{
+      document.getElementById('couponStatusGlobal').textContent = data.message || 'Coupon invalid.';
+      document.getElementById('couponStatusGlobal').className='text-xs mt-2 coupon-bad px-2 py-1 rounded inline-block';
+      document.getElementById('submitOrdersBtn').disabled=true;
+      document.getElementById('couponRow').classList.add('hidden');
+      document.getElementById('grandAfterRow').classList.add('hidden');
+    }
+  }catch(err){
+    console.error(err);
+    document.getElementById('couponStatusGlobal').textContent='Error validating coupon.';
+    document.getElementById('couponStatusGlobal').className='text-xs mt-2 coupon-bad px-2 py-1 rounded inline-block';
+    document.getElementById('submitOrdersBtn').disabled=true;
+  }
+});
+
+/* ===================== Submit (multi-order) ===================== */
+document.addEventListener('DOMContentLoaded', ()=>{
+  const orderForm=document.querySelector('#billingModal form');
+  if(!orderForm) return;
+
+  // MoMo phone toggle
+  const paymentMethodSelect=document.getElementById('paymentMethod');
+  const mobilePhoneWrapper=document.getElementById('mobilePhoneWrapper');
+  paymentMethodSelect?.addEventListener('change', function(){
+    if(this.value==='momo'){
+      mobilePhoneWrapper.classList.remove('hidden');
+      mobilePhoneWrapper.innerHTML=`
+        <label class="block text-sm font-semibold text-gray-700 mb-1">Mobile Number for Payment</label>
+        <input type="tel" name="mobile_number" id="mobile_number" pattern="\\+?[0-9\\s]+" placeholder="+243 000 000 000"
+               class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" required>`;
+    }else{
+      mobilePhoneWrapper.classList.add('hidden'); mobilePhoneWrapper.innerHTML='';
+    }
+  });
+
+  orderForm.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+
+    if (!validateAllOrders()) return;
+
+    // attach install fees per block
+    const blocks=document.querySelectorAll('#ordersContainer .order-block');
+    blocks.forEach((block)=>{
+      const fee=getInstallFee(block);
+      orderForm.insertAdjacentHTML('beforeend', `<input type="hidden" name="install_fee[]" value="${fee}">`);
+    });
+
+    const formData=new FormData(orderForm);
+    const phoneInput=document.querySelector('input[name="mobile_number"]');
+    if(phoneInput) formData.set('mobile_number', phoneInput.value);
+
+    const submitBtn=document.getElementById('submitOrdersBtn');
+    submitBtn.disabled=true; submitBtn.textContent='Submitting...';
+
+    try{
+      const response=await fetch(orderForm.action,{
+        method:'POST',
+        headers:{ "X-Requested-With":"XMLHttpRequest", "X-CSRFToken": getCookie("csrftoken") },
+        body: formData
+      });
+      const result=await response.json();
+      if(result.success){
+        alert('✅ Order(s) submitted successfully!');
+        orderForm.reset();
+        closeModal('billingModal');
+        window.location.reload();
+      }else{
+        alert(result.message || '⚠️ An error occurred while processing your order.');
+      }
+    }catch(err){
+      console.error('Order submission error:', err);
+      alert('❌ An unexpected error occurred.');
+    }finally{
+      submitBtn.disabled=false; submitBtn.textContent='Submit Order(s)';
+    }
+  });
+});
+
+/* ===================================================================== */
+/* ===================== Customers list / filters ====================== */
+/* ===================================================================== */
+const searchInput = document.getElementById('customerSearch');
+const filterSelect = document.getElementById('filterStatus');
+const tableBody = document.getElementById('customerTableBody');
+let currentPage = 1, totalPages = 1;
+
+searchInput?.addEventListener('input', filterTable);
+filterSelect?.addEventListener('change', filterTable);
+
+function filterTable() {
+  const search = (searchInput?.value || '').toLowerCase();
+  const statusFilter = filterSelect?.value || '';
+  if(!tableBody) return;
+  const rows = tableBody.querySelectorAll('tr');
+  rows.forEach(row => {
+    const [name, email, phone, statusCell] = row.querySelectorAll('td');
+    const status = statusCell?.innerText.trim();
+    const matchesSearch =
+      (name?.innerText||'').toLowerCase().includes(search) ||
+      (email?.innerText||'').toLowerCase().includes(search) ||
+      (phone?.innerText||'').toLowerCase().includes(search);
+    const matchesStatus = !statusFilter || status === statusFilter;
+    row.style.display = matchesSearch && matchesStatus ? '' : 'none';
+  });
+}
+
+function renderCustomerRow(customer) {
+  const canTransact = !!(customer.is_active && customer.kyc_status === "approved");
+  const fullNameEsc = esc(customer.full_name);
+  const emailEsc = esc(customer.email);
+
+  return `
+    <tr class="hover:bg-gray-50 transition duration-200 ease-in-out">
+      <td class="px-4 py-3 flex items-center gap-3" data-label="Customer">
+        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold uppercase shadow-sm">
+          ${customer.full_name.charAt(0)}
+        </div>
+        <span class="font-medium">${fullNameEsc}</span>
+      </td>
+
+      <td class="px-4 py-3" data-label="Email">${emailEsc}</td>
+      <td class="px-4 py-3" data-label="Phone">${customer.phone}</td>
+
+      <td class="px-4 py-3" data-label="Account Status">
+        <span class="text-xs font-semibold inline-block px-3 py-1 rounded-full shadow-sm ${
+          customer.is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }">
+          ${customer.is_active ? 'Active' : 'Inactive'}
+        </span>
+      </td>
+
+      <td class="px-4 py-3" data-label="KYC Status">
+        ${
+          customer.kyc_status === "approved"
+            ? '<span class="text-green-600 font-bold">✅</span>'
+            : customer.kyc_status === "not_submitted"
+              ? '<span class="text-red-600 font-bold">❌</span>'
+              : '<span class="text-yellow-500 font-semibold animate-pulse">pending</span>'
+        }
+      </td>
+
+      <td class="px-4 py-3 whitespace-nowrap td-actions text-center" data-label="Actions">
+        <div class="action-pills">
+          <!-- View -->
+          <button onclick="viewCustomerDetails(${customer.id})"
+                  class="btn-pill btn-view" title="View details">
+            <i class="fas fa-eye"></i><span class="btn-label">View</span>
+          </button>
+          <!-- Subscriptions -->
+          ${
+            canTransact
+              ? `<button onclick='openSubscriptionsModal(${customer.id}, "${fullNameEsc}")'
+                        class="btn-pill btn-subs" title="View subscriptions">
+                   <i class="fas fa-layer-group"></i><span class="btn-label">Subs</span>
+                 </button>`
+              : `<button class="btn-pill btn-subs btn-disabled" disabled
+                        title="Requires active account & KYC approved">
+                   <i class="fas fa-layer-group"></i><span class="btn-label">Subs</span>
+                 </button>`
+          }
+          <!-- Order -->
+          ${
+            canTransact
+              ? `<button onclick="showOrderForm('${fullNameEsc}', '${emailEsc}')"
+                        class="btn-pill btn-order" title="Create order">
+                   <i class="fas fa-shopping-cart"></i><span class="btn-label">Order</span>
+                 </button>`
+              : `<button class="btn-pill btn-order btn-disabled" disabled
+                        title="Requires active account & KYC approved">
+                   <i class="fas fa-shopping-cart"></i><span class="btn-label">Order</span>
+                 </button>`
+          }
+          <!-- Ticket -->
+          <button onclick="openSupportTicketModal(${customer.id}, '${fullNameEsc}', '${emailEsc}')"
+                  class="btn-pill btn-ticket" title="Create support ticket">
+            <i class="fas fa-life-ring"></i><span class="btn-label">Ticket</span>
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
+}
+
+async function loadCustomers(page = 1) {
+  if(!tableBody) return;
+  try {
+    const response = await fetch(`/sales/customer_list/?page=${page}`);
+    const data = await response.json();
+    const customers = data.customers || [];
+    totalPages = data.total_pages || 1;
+    currentPage = data.page || 1;
+
+    tableBody.innerHTML = customers.map(renderCustomerRow).join('');
+    const pi=document.getElementById('pageIndicator');
+    const prev=document.getElementById('prevPage');
+    const next=document.getElementById('nextPage');
+    if(pi) pi.textContent = `Page ${currentPage} of ${totalPages}`;
+    if(prev) prev.disabled = currentPage <= 1;
+    if(next) next.disabled = currentPage >= totalPages;
+  } catch (err) {
+    console.error('Load error:', err);
+  }
+}
+document.getElementById('prevPage')?.addEventListener('click', () => currentPage > 1 && loadCustomers(currentPage - 1));
+document.getElementById('nextPage')?.addEventListener('click', () => currentPage < totalPages && loadCustomers(currentPage + 1));
+window.addEventListener('DOMContentLoaded', () => loadCustomers());
+
+/* ===================== Subscriptions (paginated) ===================== */
+const __subsPager = { customerId:null, page:1, perPage:5, totalPages:1, totalCount:0, cache:new Map() };
+function fmtMoney(n){ return Number(n || 0).toFixed(2); }
+function escHTML(s){ return (s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+function renderSubRow(sub){
+  return `
+    <tr class="hover:bg-gray-50 transition">
+      <td class="px-4 py-3" data-label="#ID">${sub.subscription_id}</td>
+      <td class="px-4 py-3" data-label="Subscription Plan">${escHTML(sub.plan_name || '')}</td>
+      <td class="px-4 py-3" data-label="Billing Cycle">${escHTML(sub.billing_cycle || '')}</td>
+      <td class="px-4 py-3 text-right" data-label="Price (USD)">$${fmtMoney(sub.price_usd)}</td>
+      <td class="px-4 py-3" data-label="Start Date">${sub.start_date || '-'}</td>
+      <td class="px-4 py-3" data-label="Next Billing Date">${sub.next_billing_date || '-'}</td>
+      <td class="px-4 py-3" data-label="End Date">${sub.end_date || '-'}</td>
+      <td class="px-4 py-3" data-label="Status">${escHTML(sub.status || '')}</td>
+      <td class="px-4 py-3 td-actions" data-label="Actions">
+        <div class="flex flex-wrap gap-2">
+          <button onclick="viewSubscriptionDetail(${sub.subscription_id})"
+                  class="inline-flex items-center gap-1 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 text-xs font-medium px-3 py-1.5 rounded-full shadow transition">
+            <i class="fas fa-eye text-xs"></i> View
+          </button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+function updateSubPagerControls(meta){
+  const prevBtn = document.getElementById('prevSubPage');
+  const nextBtn = document.getElementById('nextSubPage');
+  const indicator = document.getElementById('subPageIndicator');
+
+  __subsPager.page       = Number(meta.page || 1);
+  __subsPager.totalPages = Number(meta.total_pages || 1);
+  __subsPager.totalCount = Number(meta.total_count || 0);
+
+  const start = ((__subsPager.page - 1) * __subsPager.perPage) + 1;
+  const end   = Math.min(__subsPager.page * __subsPager.perPage, __subsPager.totalCount);
+  if(indicator){
+    indicator.textContent = __subsPager.totalCount
+      ? `Showing ${start}–${end} of ${__subsPager.totalCount} (Page ${__subsPager.page} of ${__subsPager.totalPages})`
+      : `Page ${__subsPager.page} of ${__subsPager.totalPages}`;
+  }
+
+  const showControls = __subsPager.totalPages > 1;
+  prevBtn?.classList.toggle('hidden', !showControls);
+  nextBtn?.classList.toggle('hidden', !showControls);
+
+  if(prevBtn) prevBtn.disabled = !meta.has_prev;
+  if(nextBtn) nextBtn.disabled = !meta.has_next;
+
+  if(prevBtn) prevBtn.onclick = () => meta.has_prev && loadSubscriptionsPage(__subsPager.customerId, __subsPager.page - 1);
+  if(nextBtn) nextBtn.onclick = () => meta.has_next && loadSubscriptionsPage(__subsPager.customerId, __subsPager.page + 1);
+}
+
+function loadSubscriptionsPage(customerId, page=1){
+  const tbody = document.getElementById('subscriptionTableBody');
+  const url = new URL(`/sales/user_subscriptions_list/${customerId}/`, window.location.origin);
+  url.searchParams.set('page', page);
+  url.searchParams.set('per_page', __subsPager.perPage);
+
+  if(tbody) tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-4 text-center text-gray-400">Loading...</td></tr>`;
+
+  fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+    .then(r => r.json())
+    .then(data => {
+      __subsPager.cache.clear();
+
+      if (tbody){
+        if (data.success && Array.isArray(data.subscriptions) && data.subscriptions.length){
+          tbody.innerHTML = data.subscriptions.map(s => {
+            __subsPager.cache.set(Number(s.subscription_id), s);
+            return renderSubRow(s);
+          }).join('');
+        } else {
+          tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-4 text-center text-gray-500">No subscriptions found.</td></tr>`;
+        }
+      }
+
+      updateSubPagerControls({
+        page: data.page, total_pages: data.total_pages, total_count: data.total_count,
+        has_next: data.has_next, has_prev: data.has_prev
+      });
+    })
+    .catch(() => {
+      if(tbody) tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-4 text-center text-red-500">Error loading subscriptions.</td></tr>`;
+      updateSubPagerControls({ page: 1, total_pages: 1, total_count: 0, has_next: false, has_prev: false });
+    });
+}
+
+function openSubscriptionsModal(customerId, fullName){
+  __subsPager.customerId = customerId;
+  __subsPager.page = 1;
+
+  const modal = document.getElementById('subscriptionModal');
+  const nameSlot = document.getElementById('subsCustomerName');
+  const tbody = document.getElementById('subscriptionTableBody');
+  const indicator = document.getElementById('subPageIndicator');
+
+  if(nameSlot) nameSlot.textContent = fullName || '';
+  if(tbody)    tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-4 text-center text-gray-400">Loading...</td></tr>`;
+  if(indicator) indicator.textContent = '';
+
+  modal?.classList.remove('hidden'); modal?.classList.add('flex');
+
+  loadSubscriptionsPage(customerId, 1);
+}
+
+function viewSubscriptionDetail(subscriptionId){
+  const sub = __subsPager.cache.get(Number(subscriptionId));
+  const modal = document.getElementById('subscriptionDetailModal');
+  const box = document.getElementById('subscriptionDetailContent');
+
+  if (!sub){
+    if(box) box.innerHTML = `<p class="text-red-500">Details unavailable for #${subscriptionId}.</p>`;
+  } else if (box) {
+    box.innerHTML = `
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <p><strong>ID:</strong> ${sub.subscription_id}</p>
+        <p><strong>Status:</strong> ${escHTML(sub.status || '')}</p>
+        <p><strong>Plan:</strong> ${escHTML(sub.plan_name || '')}</p>
+        <p><strong>Plan Type:</strong> ${escHTML(sub.plan_type || '')}</p>
+        <p><strong>Billing Cycle:</strong> ${escHTML(sub.billing_cycle || '')}</p>
+        <p><strong>Price (USD):</strong> $${Number(sub.price_usd || 0).toFixed(2)}</p>
+        <p><strong>Standard Data (GB):</strong> ${sub.data_cap_gb ?? '-'}</p>
+        <p><strong>Priority Data (GB):</strong> ${sub.priority_data_gb ?? '-'}</p>
+        <p><strong>Start:</strong> ${sub.start_date || '-'}</p>
+        <p><strong>Next Billing:</strong> ${sub.next_billing_date || '-'}</p>
+        <p><strong>End:</strong> ${sub.end_date || '-'}</p>
+        <p><strong>Order Ref:</strong> ${escHTML(sub.order_reference || '')}</p>
+      </div>
+      <div class="mt-4">
+        <button onclick="viewBilling('${sub.subscription_id}')"
+          class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow">
+          <i class="fas fa-file-invoice-dollar"></i> View Billing Status
+        </button>
+      </div>
+    `;
+  }
+
+  modal?.classList.remove('hidden'); modal?.classList.add('flex');
+}
+
+/* ===================== Billing detail ===================== */
+function normalizePaymentStatus(raw) {
+  const s = String(raw || '').toLowerCase().trim();
+  if (['paid','succeeded','success','completed','captured','settled'].includes(s)) {
+    return { key: 'paid', label: 'Paid', cls: 'bg-emerald-100 text-emerald-800' };
+  }
+  if (['pending','processing','authorized','awaiting_payment'].includes(s)) {
+    return { key: 'pending', label: 'Pending', cls: 'bg-amber-100 text-amber-900' };
+  }
+  if (['refunded','partially_refunded','chargeback','disputed'].includes(s)) {
+    return { key: 'refunded', label: 'Refunded', cls: 'bg-indigo-100 text-indigo-800' };
+  }
+  if (['failed','declined','canceled','cancelled','voided','error'].includes(s)) {
+    return { key: 'failed', label: 'Failed', cls: 'bg-rose-100 text-rose-800' };
+  }
+  return { key: 'unknown', label: raw || 'Unknown', cls: 'bg-gray-100 text-gray-700' };
+}
+function summarizeBilling(payments){
+  const counts = { paid:0, pending:0, failed:0, refunded:0, unknown:0 };
+  let lastPaid = null;
+  payments.forEach(p=>{
+    const st = normalizePaymentStatus(p.payment_status ?? p.status);
+    counts[st.key] = (counts[st.key] || 0) + 1;
+    if (st.key === 'paid') lastPaid = p;
+  });
+  let label = 'No records';
+  let cls = 'bg-gray-100 text-gray-800';
+  if (counts.failed > 0){ label = 'Attention: Failed payments'; cls='bg-rose-100 text-rose-800'; }
+  else if (counts.pending > 0){ label = 'Pending payments'; cls='bg-amber-100 text-amber-900'; }
+  else if (counts.refunded > 0){ label = 'Refunded'; cls='bg-indigo-100 text-indigo-800'; }
+  else if (counts.paid > 0){ label = 'Up-to-date'; cls='bg-emerald-100 text-emerald-800'; }
+  return { counts, lastPaid, label, cls };
+}
+
+async function viewBilling(subscriptionId) {
+  ['subscriptionModal', 'subscriptionDetailModal'].forEach(id=>{
+    const m = document.getElementById(id);
+    if (m && !m.classList.contains('hidden')) { m.classList.add('hidden'); m.classList.remove('flex'); }
+  });
+
+  const billingModal = document.getElementById('subscriptionBillingModal');
+  const tbody = document.getElementById('subscriptionBillingTableBody');
+  const summaryBox = document.getElementById('billingStatusSummary');
+
+  if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-gray-400">Loading…</td></tr>`;
+  if(summaryBox) summaryBox.innerHTML = '';
+  billingModal?.classList.remove('hidden'); billingModal?.classList.add('flex');
+
+  try {
+    const res = await fetch(`/sales/get_billing/${subscriptionId}/`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    });
+    const data = await res.json();
+
+    const payments = Array.isArray(data.payments) ? data.payments : [];
+
+    if (tbody){
+      if (data.success && payments.length) {
+        tbody.innerHTML = payments.map(p => {
+          const exactStatus = (p.payment_status ?? p.status ?? '').toString();
+          return `
+            <tr class="hover:bg-gray-50 transition">
+              <td class="px-4 py-2" data-label="Date">${p.created_at || '-'}</td>
+              <td class="px-4 py-2" data-label="Order Ref.">${p.order_reference || '-'}</td>
+              <td class="px-4 py-2 font-semibold" data-label="Amount (USD)">$${Number(p.amount || 0).toFixed(2)}</td>
+              <td class="px-4 py-2" data-label="Status">${escHTML(exactStatus)}</td>
+              <td class="px-4 py-2" data-label="Payment Method">${p.payment_type || '-'}</td>
+              <td class="px-4 py-2 td-actions" data-label="Invoice">
+                <button onclick="viewInvoice('${p.order_id}')"
+                        class="bg-blue-100 hover:bg-blue-200 text-blue-800 px-3 py-1 text-xs rounded-full shadow transition">
+                  View Invoice
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">No billing records found.</td></tr>`;
+      }
+    }
+
+    const { counts, lastPaid, label, cls } = summarizeBilling(payments);
+    const lastLine = lastPaid
+      ? `<span class="inline-block px-2 py-1 rounded-full bg-gray-100 text-gray-700">Last payment: ${lastPaid.created_at || '-'} ($${Number(lastPaid.amount||0).toFixed(2)})</span>`
+      : `<span class="inline-block px-2 py-1 rounded-full bg-gray-100 text-gray-700">No successful payments yet</span>`;
+
+    if(summaryBox){
+      summaryBox.innerHTML = `
+        <div class="flex flex-wrap gap-2 items-center">
+          <span class="inline-block px-3 py-1 rounded-full font-medium ${cls}">${label}</span>
+          <span class="inline-block px-2 py-1 rounded-full bg-emerald-50 text-emerald-700">Paid: ${counts.paid}</span>
+          <span class="inline-block px-2 py-1 rounded-full bg-amber-50 text-amber-900">Pending: ${counts.pending}</span>
+          <span class="inline-block px-2 py-1 rounded-full bg-rose-50 text-rose-800">Failed: ${counts.failed}</span>
+          <span class="inline-block px-2 py-1 rounded-full bg-indigo-50 text-indigo-800">Refunded: ${counts.refunded}</span>
+          ${lastLine}
+        </div>
+      `;
+    }
+  } catch (err) {
+    console.error('Billing load error:', err);
+    if(tbody) tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-4 text-center text-red-500">Error loading billing records.</td></tr>`;
+    if(summaryBox) summaryBox.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-rose-100 text-rose-800">Error fetching billing status</span>`;
+  }
+}
+
+function viewInvoice(orderId) {
+  if (!orderId) { alert("⚠️ Missing order ID."); return; }
+  const baseUrl = `{% url 'report_invoice_pdf' 0 %}`;
+  const url = baseUrl.replace(/0\/pdf\/?$/, `${orderId}/pdf/`);
+  window.open(url, "_blank");
+}
+
+/* ===================== Customer details & edit ===================== */
+async function viewCustomerDetails(customerId) {
+  const modal = document.getElementById("customerDetailsModal");
+  const content = document.getElementById("customerDetailsContent");
+  modal?.classList.remove("hidden"); modal?.classList.add("flex");
+  if(content) content.innerHTML = `<p class="text-gray-400">Loading details...</p>`;
+
+  try {
+    const res = await fetch(`/sales/customer_details/${customerId}/`, { headers: { "X-Requested-With": "XMLHttpRequest" } });
+    const data = await res.json();
+
+    if (data.success) {
+      const c = data.customer;
+      window.__currentCustomerDetails = c;
+      let kycBlock = "";
+      if (c.kyc_type === "personal") {
+        kycBlock = `
+          <h3 class="text-lg font-semibold mt-4 mb-2">Personal KYC</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <p><strong>Full Name:</strong> ${c.kyc.full_name || "-"}</p>
+            <p><strong>Document #:</strong> ${c.kyc.document_number || "-"}</p>
+            <p><strong>Status:</strong> ${c.kyc.status || "-"}</p>
+            <p><strong>Submitted:</strong> ${c.kyc.submitted_at || "-"}</p>
+            <p><strong>Nationality:</strong> ${c.kyc.nationality || "-"}</p>
+            <p><strong>Date of birth:</strong> ${c.kyc.date_of_birth || "-"}</p>
+          </div>`;
+        if ((c.kyc.status || '').toLowerCase() === 'rejected') {
+          const reason = c.kyc.rejection_reason_display || c.kyc.rejection_reason || '—';
+          const rejectedAt = formatDateTime(c.kyc.rejected_at_iso || c.kyc.rejected_at);
+          const rejectedBy = c.kyc.rejected_by || '—';
+          const remarks = c.kyc.remarks || '—';
+          kycBlock += `
+            <div class="mt-4 border border-rose-200 bg-rose-50 rounded-xl p-4 text-sm text-rose-700">
+              <h4 class="font-semibold text-rose-800 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> Rejection Details</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <p><strong>Reason:</strong> ${reason}</p>
+                <p><strong>Rejected at:</strong> ${rejectedAt}</p>
+                <p><strong>Rejected by:</strong> ${rejectedBy}</p>
+                <p class="sm:col-span-2"><strong>Remarks:</strong> ${remarks}</p>
+              </div>
+            </div>`;
+        }
+      } else if (c.kyc_type === "company") {
+        kycBlock = `
+          <h3 class="text-lg font-semibold mt-4 mb-2">Business KYC</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <p><strong>Company Name:</strong> ${c.kyc.company_name || "-"}</p>
+            <p><strong>RCCM:</strong> ${c.kyc.rccm || "-"}</p>
+            <p><strong>Status:</strong> ${c.kyc.status || "-"}</p>
+            <p><strong>Submitted:</strong> ${c.kyc.submitted_at || "-"}</p>
+          </div>`;
+        if ((c.kyc.status || '').toLowerCase() === 'rejected') {
+          const reason = c.kyc.rejection_reason_display || c.kyc.rejection_reason || '—';
+          const rejectedAt = formatDateTime(c.kyc.rejected_at_iso || c.kyc.rejected_at);
+          const rejectedBy = c.kyc.rejected_by || '—';
+          const remarks = c.kyc.remarks || '—';
+          kycBlock += `
+            <div class="mt-4 border border-rose-200 bg-rose-50 rounded-xl p-4 text-sm text-rose-700">
+              <h4 class="font-semibold text-rose-800 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> Rejection Details</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                <p><strong>Reason:</strong> ${reason}</p>
+                <p><strong>Rejected at:</strong> ${rejectedAt}</p>
+                <p><strong>Rejected by:</strong> ${rejectedBy}</p>
+                <p class="sm:col-span-2"><strong>Remarks:</strong> ${remarks}</p>
+              </div>
+            </div>`;
+        }
+      }
+
+      const statusValue = (c.kyc_status || '').toLowerCase();
+      const hasPersonalKyc = c.kyc_type === 'personal';
+      const statusImpliesPersonal = !c.kyc_type && statusValue === 'not_submitted';
+      const isPersonalCandidate = hasPersonalKyc || statusImpliesPersonal;
+      const canResubmitPersonalKyc =
+        isPersonalCandidate && (statusValue === 'rejected' || statusValue === 'not_submitted');
+      const isRejectedPersonalKyc = hasPersonalKyc && statusValue === 'rejected';
+      console.log('[customer_details] resubmit control', {
+        rawStatus: c.kyc_status,
+        statusValue,
+        kycType: c.kyc_type,
+        isPersonalCandidate,
+        hasPersonalKyc,
+        statusImpliesPersonal,
+        canResubmitPersonalKyc,
+        isRejectedPersonalKyc,
+      });
+      const resubmitButtonHtml = canResubmitPersonalKyc ? `
+              <button onclick="openResubmitKyc('${statusValue}')" class="flex items-center gap-2 ${isRejectedPersonalKyc
+                ? 'bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600'
+                : 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700'} text-white px-5 py-2 rounded-lg shadow transition">
+                <i class="fas ${isRejectedPersonalKyc ? 'fa-sync-alt' : 'fa-paper-plane'}"></i> ${isRejectedPersonalKyc ? 'Resubmit KYC' : 'Submit KYC'}
+              </button>` : '';
+
+      if(content){
+        content.innerHTML = `
+          <div id="customerInfoView">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <p><strong>Name:</strong> ${c.full_name}</p>
+              <p><strong>Email:</strong> ${c.email}</p>
+              <p><strong>Phone:</strong> ${c.phone}</p>
+              <p><strong>Account:</strong> ${c.is_active ? "Active ✅" : "Inactive ❌"}</p>
+              <p><strong>KYC Status:</strong> ${c.kyc_status}</p>
+            </div>
+            ${kycBlock}
+            <div class="mt-6 flex justify-end gap-3">
+              ${resubmitButtonHtml}
+              <button onclick="resetPassword('${c.email}')" class="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-5 py-2 rounded-lg shadow transition">
+                <i class="fas fa-key"></i> Reset Password
+              </button>
+              <button onclick="openEditCustomer(${c.id}, '${esc(c.full_name)}', '${esc(c.email)}', '${esc(c.phone)}')" class="flex items-center gap-2 bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white px-5 py-2 rounded-lg shadow transition">
+                <i class="fas fa-edit"></i> Edit
+              </button>
+            </div>
+          </div>`;
+      }
+    } else if(content) {
+      content.innerHTML = `<p class="text-red-500">${data.message || "No details available."}</p>`;
+    }
+  } catch (err) {
+    console.error("Error:", err);
+    if(content) content.innerHTML = `<p class="text-red-500">Failed to load details.</p>`;
+  }
+}
+
+function openEditCustomer(id, name, email, phone) {
+  const content = document.getElementById("customerDetailsContent");
+  if(!content) return;
+  content.innerHTML = `
+    <h3 class="text-lg font-bold mb-4">Edit Customer</h3>
+    <form id="editCustomerForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Full Name</label>
+        <input type="text" name="full_name" value="${name}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Email</label>
+        <input type="email" name="email" value="${email}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-gray-700">Phone</label>
+        <input type="text" name="phone" value="${phone}" class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+      </div>
+      <div class="flex justify-end gap-3 mt-6">
+        <button type="button" onclick="viewCustomerDetails(${id})" class="px-4 py-2 rounded-lg border text-gray-600 hover:text-red-500">Cancel</button>
+        <button type="submit" class="px-5 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg shadow hover:shadow-lg">Save Changes</button>
+      </div>
+    </form>`;
+
+  const form = document.getElementById("editCustomerForm");
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const formData = Object.fromEntries(new FormData(form).entries());
+    try {
+      const res = await fetch(`/sales/edit_customer/${id}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+        body: JSON.stringify(formData),
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ Customer updated successfully!");
+        viewCustomerDetails(id);
+      } else {
+        alert(`⚠️ ${data.message}`);
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      alert("❌ Failed to update customer.");
+    }
+  });
+}
+
+function ensureResubmitNationalityOptions(){
+  const select = document.getElementById('resubmitNationality');
+  if(!select) return null;
+  if(select.options.length === 0){
+    const source = document.querySelector('#registerModal select[name="nationality"]') || document.querySelector('select[name="nationality"]');
+    if(source){
+      select.innerHTML = source.innerHTML;
+    }else{
+      select.innerHTML = '<option value="">{% trans "Select nationality" %}</option><option value="Congolese">{% trans "Congolese (DRC)" %}</option>';
+    }
+  }
+  return select;
+}
+function updateResubmitVisaRequirement(){
+  const select = document.getElementById('resubmitNationality');
+  const wrapper = document.getElementById('resubmitVisaWrapper');
+  const input = document.getElementById('resubmitVisaFile');
+  const label = select?.selectedOptions?.[0]?.textContent || '';
+  const docSelect = document.getElementById('resubmitDocumentType');
+  const isCongolese = select ? isCongoleseNationality(select.value || '', label) : false;
+  const requires = !isCongolese;
+  console.log('[resubmit_modal] updateResubmitVisaRequirement', { value: select?.value, label, isCongolese });
+  applyPersonalDocumentOptions(docSelect, isCongolese);
+  if(docSelect && requires){
+    docSelect.value = 'passport';
+  }
+  if(wrapper){
+    wrapper.classList.toggle('hidden', !requires);
+  }
+  if(input){
+    if(requires){
+      input.setAttribute('required','required');
+    }else{
+      input.removeAttribute('required');
+    }
+  }
+}
+function openResubmitKyc(status='rejected'){
+  const c = window.__currentCustomerDetails;
+  if(!c){
+    console.error('[resubmit_modal] missing current customer');
+    return;
+  }
+  const statusValue = (status || c.kyc_status || '').toLowerCase();
+  const treatAsPersonal = c.kyc_type === 'personal' || (!c.kyc_type && statusValue === 'not_submitted');
+  console.log('[resubmit_modal] open', {
+    rawStatus: status,
+    fallbackStatus: c.kyc_status,
+    statusValue,
+    kycType: c.kyc_type,
+    treatAsPersonal,
+  });
+  if(!treatAsPersonal){
+    alert('Resubmission is only available for personal KYC records.');
+    return;
+  }
+  const modal = document.getElementById('resubmitKycModal');
+  const detailsModal = document.getElementById('customerDetailsModal');
+  const form = document.getElementById('resubmitPersonalKycForm');
+  if(!modal || !form) return;
+
+  if(detailsModal){
+    detailsModal.classList.add('pointer-events-none');
+  }
+
+  const select = ensureResubmitNationalityOptions();
+  document.getElementById('resubmitCustomerId').value = c.id || c.id_user || '';
+  document.getElementById('resubmitFullName').value = c.kyc.full_name || c.full_name || '';
+  document.getElementById('resubmitDob').value = c.kyc.date_of_birth || '';
+  if(select){
+    select.value = c.kyc.nationality || '';
+    if(select.value === '' && c.kyc.nationality){
+      const opt = document.createElement('option');
+      opt.value = c.kyc.nationality;
+      opt.textContent = c.kyc.nationality;
+      select.appendChild(opt);
+      select.value = c.kyc.nationality;
+    }
+  }
+  document.getElementById('resubmitDocumentNumber').value = c.kyc.document_number || '';
+  document.getElementById('resubmitIssueDate').value = c.kyc.id_issue_date || '';
+  document.getElementById('resubmitExpiryDate').value = c.kyc.id_expiry_date || '';
+  document.getElementById('resubmitAddress').value = c.kyc.address || '';
+  const docSpan = document.getElementById('resubmitCurrentDoc');
+  if(docSpan) docSpan.textContent = c.kyc.document_name || '—';
+  const visaSpan = document.getElementById('resubmitCurrentVisa');
+  if(visaSpan) visaSpan.textContent = c.kyc.visa_name || '—';
+  const docInput = document.getElementById('resubmitDocumentFile');
+  if(docInput) docInput.value = '';
+  const visaInput = document.getElementById('resubmitVisaFile');
+  if(visaInput) visaInput.value = '';
+  updateResubmitVisaRequirement();
+  const docType = document.getElementById('resubmitDocumentType');
+  if(docType){
+    const desired = c.kyc.id_document_type || '';
+    const exists = Array.from(docType.options).some(opt => opt.value === desired);
+    if(exists){
+      docType.value = desired;
+    }
+  }
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
+function closeResubmitKycModal(){
+  const modal = document.getElementById('resubmitKycModal');
+  const detailsModal = document.getElementById('customerDetailsModal');
+  if(!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  if(detailsModal){
+    detailsModal.classList.remove('pointer-events-none');
+  }
+}
+
+document.getElementById('resubmitNationality')?.addEventListener('change', updateResubmitVisaRequirement);
+
+function submitResubmitKyc(event){
+  event.preventDefault();
+  const form = event.target;
+  const customerId = document.getElementById('resubmitCustomerId').value;
+  const submitBtn = form.querySelector('button[type="submit"]');
+  const originalText = submitBtn ? submitBtn.innerHTML : '';
+  if(submitBtn){
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Submitting...';
+  }
+  (async ()=>{
+    try{
+      const fd = new FormData(form);
+      const postUrl = RESUBMIT_KYC_URL_TEMPLATE.replace(/0\/?$/, `${customerId}/`);
+      const res = await fetch(postUrl, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' },
+        body: fd
+      });
+      const data = await res.json().catch(()=>({success:false}));
+      if(data.success){
+        alert(data.message || 'KYC resubmitted successfully.');
+        closeResubmitKycModal();
+        if(window.__currentCustomerDetails){
+          const refreshId = window.__currentCustomerDetails.id || window.__currentCustomerDetails.id_user;
+          if(refreshId) viewCustomerDetails(refreshId);
+        }
+      }else{
+        alert(data.message || 'Submission failed.');
+        if(data.field){
+          const field = form.querySelector(`[name="${data.field}"]`);
+          field?.classList.add('border-red-500');
+          field?.focus();
+        }
+      }
+    }catch(err){
+      console.error(err);
+      alert('⚠️ An error occurred while resubmitting the KYC.');
+    }finally{
+      if(submitBtn){
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+      }
+    }
+  })();
+}
+
+document.querySelectorAll('#resubmitPersonalKycForm input, #resubmitPersonalKycForm select').forEach(el => {
+  el.addEventListener('input', () => el.classList.remove('border-red-500'));
+  el.addEventListener('change', () => el.classList.remove('border-red-500'));
+});
+
+function resetPassword(email) {
+  if (!confirm(`Reset password for ${email}?`)) return;
+  fetch("{% url 'reset_user_password' %}", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+    body: JSON.stringify({ email })
+  })
+  .then(res => res.json())
+  .then(data => alert(data.message || "Password reset."))
+  .catch(() => alert("Error resetting password"));
+}
+
+/* ===================== Support Ticket ===================== */
+function openSupportTicketModal(customerId, name, email){
+  const modal = document.getElementById('supportTicketModal');
+  const idF   = document.getElementById('ticketCustomerId');
+  const nF    = document.getElementById('ticketCustomerName');
+  const eF    = document.getElementById('ticketCustomerEmail');
+  if(idF) idF.value = customerId;
+  if(nF)  nF.value  = name || '';
+  if(eF)  eF.value  = email || '';
+  modal?.classList.remove('hidden'); modal?.classList.add('flex');
+}
+(function wireTicketForm(){
+  const form = document.getElementById('supportTicketForm');
+  if (!form) return;
+
+  const SUPPORT_TICKET_URL = '/support/create_ticket/';
+
+  form.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const submitBtn = form.querySelector('button[type="submit"]');
+    submitBtn.disabled = true; submitBtn.textContent = 'Creating...';
+    try{
+      const fd = new FormData(form);
+      const res = await fetch(SUPPORT_TICKET_URL, {
+        method: 'POST',
+        headers: { 'X-Requested-With':'XMLHttpRequest', 'X-CSRFToken': getCookie('csrftoken') },
+        body: fd
+      });
+      const data = await res.json().catch(()=>({success:false}));
+      if (data.success){
+        alert('🎟️ Ticket created successfully!');
+        form.reset();
+        closeModal('supportTicketModal');
+      }else{
+        alert(data.message || '⚠️ Failed to create ticket.');
+      }
+    }catch(err){
+      console.error(err);
+      alert('❌ Error creating ticket.');
+    }finally{
+      submitBtn.disabled = false; submitBtn.textContent = 'Create Ticket';
+    }
+  });
+})();
+</script>

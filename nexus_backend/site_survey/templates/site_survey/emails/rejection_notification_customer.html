@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mise à Jour - Étude de Site</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .email-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .header .icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+        .content {
+            padding: 30px;
+        }
+        .info-box {
+            background-color: #e3f2fd;
+            border: 1px solid #b3e5fc;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .info-value {
+            color: #212529;
+        }
+        .timeline {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .timeline-title {
+            color: #495057;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin: 10px 0;
+            padding: 10px 0;
+        }
+        .timeline-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 14px;
+            color: white;
+        }
+        .timeline-completed {
+            background-color: #28a745;
+        }
+        .timeline-current {
+            background-color: #ffc107;
+        }
+        .timeline-pending {
+            background-color: #6c757d;
+        }
+        .support-section {
+            background-color: #e8f5e8;
+            border: 1px solid #c3e6c3;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .support-title {
+            color: #155724;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        .contact-info {
+            margin: 10px 0;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .center-text {
+            text-align: center;
+        }
+        .emphasis {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 6px 6px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div class="icon">📋</div>
+            <h1>Mise à Jour de Votre Installation</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Étude de site en cours de révision</p>
+        </div>
+
+        <div class="content">
+            <p><strong>{{ customer_name }},</strong></p>
+
+            <p>Nous vous informons que l'étude technique de votre site fait actuellement l'objet d'une révision par notre équipe d'experts.</p>
+
+            <div class="info-grid">
+                <span class="info-label">Référence commande:</span>
+                <span class="info-value">{{ order_reference }}</span>
+
+                <span class="info-label">Date de mise à jour:</span>
+                <span class="info-value">{{ current_date }}</span>
+
+                <span class="info-label">Statut actuel:</span>
+                <span class="info-value">En cours de révision technique</span>
+            </div>
+
+            <div class="info-box">
+                <strong>🔍 Que se passe-t-il maintenant ?</strong><br>
+                Notre équipe technique étudie les spécificités de votre site pour identifier la meilleure solution d'installation. Cette révision nous permet de garantir une installation optimale et conforme à vos besoins.
+            </div>
+
+            <div class="timeline">
+                <div class="timeline-title">📅 Étapes du processus :</div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon timeline-completed">✓</div>
+                    <div>
+                        <strong>Commande validée</strong><br>
+                        <small>Votre commande a été confirmée</small>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon timeline-completed">✓</div>
+                    <div>
+                        <strong>Visite technique effectuée</strong><br>
+                        <small>Notre technicien a évalué votre site</small>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon timeline-current">⚡</div>
+                    <div>
+                        <strong>Révision en cours</strong><br>
+                        <small>Analyse technique approfondie</small>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon timeline-pending">⏳</div>
+                    <div>
+                        <strong>Planification installation</strong><br>
+                        <small>Validation finale et programmation</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="emphasis">
+                <strong>⏰ Délai prévu:</strong> Nous vous recontacterons dans les <strong>48 heures</strong> avec les prochaines étapes et la planification de votre installation.
+            </div>
+
+            <p><strong>Pourquoi cette révision ?</strong><br>
+            Cette étape nous permet de :</p>
+            <ul>
+                <li>Optimiser l'emplacement de votre équipement Starlink</li>
+                <li>Vérifier la conformité avec les normes techniques</li>
+                <li>Identifier d'éventuelles optimisations</li>
+                <li>Garantir la meilleure qualité de signal possible</li>
+            </ul>
+
+            <div class="support-section">
+                <div class="support-title">💬 Une question ? Notre équipe est là pour vous !</div>
+                <div class="contact-info">
+                    <strong>📧 Email:</strong> {{ support_email }}<br>
+                    <strong>📞 Téléphone:</strong> {{ support_phone }}<br>
+                    <strong>🕒 Horaires:</strong> Lundi - Vendredi, 9h - 18h
+                </div>
+            </div>
+
+            <div class="center-text">
+                <p><strong>Merci de votre confiance.</strong><br>
+                Nous mettons tout en œuvre pour vous offrir la meilleure expérience d'installation.</p>
+
+                <p>Cordialement,<br>
+                <strong>L'équipe Nexus</strong></p>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Cet email a été envoyé automatiquement concernant votre commande {{ order_reference }}.</p>
+            <p><strong>Nexus</strong> - Votre partenaire pour l'internet par satellite</p>
+        </div>
+    </div>
+</body>
+</html>

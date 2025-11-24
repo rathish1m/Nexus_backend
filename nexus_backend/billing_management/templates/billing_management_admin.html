@@ -1,0 +1,1058 @@
+{% extends 'billing/billing_management_main.html' %}
+{% load i18n static %}
+
+{% block main_content %}
+
+<!-- Header / Actions -->
+<div class="bg-white border rounded-xl shadow-sm p-5 mb-6">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div>
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <a href="{% url 'dashboard' %}" class="hover:text-gray-700">{% trans "Dashboard" %}</a>
+        <i class="fa-solid fa-angle-right text-gray-300"></i>
+        <span class="text-gray-700">{% trans "Finance" %}</span>
+        <i class="fa-solid fa-angle-right text-gray-300"></i>
+        <span class="font-medium text-gray-900">{% trans "Billing Management" %}</span>
+      </div>
+      <h1 class="mt-2 text-2xl font-bold text-gray-800">
+        <i class="fa-solid fa-file-invoice-dollar text-blue-600 mr-2"></i>
+        {% trans "Billing Management" %}
+      </h1>
+      <p class="mt-1 text-sm text-gray-500">
+        {% trans "Monitor AR health." %}
+      </p>
+    </div>
+
+    <div class="flex flex-wrap items-center gap-2">
+      <!-- NEW: Set daily FX rate -->
+      <button data-open="#modal-fx-rate"
+              class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border bg-white hover:bg-gray-50 text-sm font-semibold">
+        <i class="fa-solid fa-coins text-amber-600"></i> {% trans "Set daily FX rate" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Daily FX Rate -->
+<div id="modal-fx-rate" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative mx-auto max-w-md w-[92%] sm:w-full mt-24">
+    <div class="bg-white rounded-2xl shadow-xl ring-1 ring-gray-200 p-6">
+      <div class="flex items-start justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">
+          <i class="fa-solid fa-coins text-amber-600 mr-2"></i>
+          {% trans "Set daily conversion rate" %}
+        </h2>
+        <button data-close="#modal-fx-rate" class="text-gray-400 hover:text-gray-600">
+          <i class="fa-solid fa-xmark text-xl"></i>
+        </button>
+      </div>
+
+      <form id="fxRateForm" class="mt-4 space-y-4">
+        {% csrf_token %}
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" for="fx_date">{% trans "Date" %}</label>
+          <input id="fx_date" name="date" type="date"
+                 value="{{ today|default:None }}"
+                 class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" for="fx_pair">{% trans "Pair" %}</label>
+          <input id="fx_pair" name="pair" type="text" value="USD/CDF"
+                 class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+          <p class="text-xs text-gray-500 mt-1">{% trans "Format: BASE/QUOTE" %}</p>
+        </div>
+        <div>
+          <label class="block text-sm text-gray-600 mb-1" for="fx_rate">{% trans "Rate" %}</label>
+          <input id="fx_rate" name="rate" type="number" step="0.0001" min="0"
+                 placeholder="e.g. 2850.00"
+                 class="w-full rounded-lg border-gray-300 focus:ring-blue-500 focus:border-blue-500">
+          <p class="text-xs text-gray-500 mt-1">{% trans "Example: 1 USD = 2850 CDF → enter 2850" %}</p>
+        </div>
+
+        <div class="pt-2 flex items-center justify-end gap-2">
+          <button type="button" data-close="#modal-fx-rate"
+                  class="px-4 py-2 rounded-lg border hover:bg-gray-50">{% trans "Cancel" %}</button>
+          <button type="submit"
+                  class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold">
+            {% trans "Save rate" %}
+          </button>
+        </div>
+      </form>
+
+      <div id="fxMsg" class="hidden mt-3 text-sm"></div>
+    </div>
+  </div>
+</div>
+
+{#<!-- KPI Row -->#}
+{#<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">#}
+{#  <!-- AR Outstanding -->#}
+{#  <section class="bg-white rounded-xl border shadow-sm p-4">#}
+{#    <div class="flex items-start justify-between gap-3">#}
+{#      <div>#}
+{#        <p class="text-xs uppercase tracking-wide text-gray-500">{% trans "Accounts Receivable" %}</p>#}
+{#        <div id="arOutstanding" class="mt-1 text-3xl font-extrabold text-rose-600">$0.00</div>#}
+{#        <p class="mt-2 text-xs text-gray-500">#}
+{#          {% trans "Past due invoices" %}: <span id="pastDueCount">0</span>#}
+{#          <span id="worstAging" class="ml-2 px-2 py-0.5 rounded-full bg-rose-50 text-rose-700">{% trans "0–30d" %}</span>#}
+{#        </p>#}
+{#      </div>#}
+{#      <div class="flex flex-col gap-2">#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-layer-group mr-2"></i>{% trans "AR aging" %}#}
+{#        </a>#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-envelope-open-text mr-2"></i>{% trans "Dunning" %}#}
+{#        </a>#}
+{#      </div>#}
+{#    </div>#}
+{#  </section>#}
+{##}
+{#  <!-- Credits / Prepayments -->#}
+{#  <section class="bg-white rounded-xl border shadow-sm p-4">#}
+{#    <div class="flex items-start justify-between gap-3">#}
+{#      <div>#}
+{#        <p class="text-xs uppercase tracking-wide text-gray-500">{% trans "Credits & Prepayments" %}</p>#}
+{#        <div id="creditLiability" class="mt-1 text-3xl font-extrabold text-emerald-600">$0.00</div>#}
+{#        <p class="mt-2 text-xs text-gray-500">{% trans "Auto-applied to upcoming invoices." %}</p>#}
+{#      </div>#}
+{#      <div class="flex flex-col gap-2">#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-receipt mr-2"></i>{% trans "View credits" %}#}
+{#        </a>#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-file-circle-plus mr-2"></i>{% trans "Issue credit note" %}#}
+{#        </a>#}
+{#      </div>#}
+{#    </div>#}
+{#  </section>#}
+{##}
+{#  <!-- Collections (MTD) -->#}
+{#  <section class="bg-white rounded-xl border shadow-sm p-4">#}
+{#    <div class="flex items-start justify-between gap-3">#}
+{#      <div>#}
+{#        <p class="text-xs uppercase tracking-wide text-gray-500">{% trans "Collections (MTD)" %}</p>#}
+{#        <div id="collectionsMtd" class="mt-1 text-3xl font-extrabold text-gray-900">$0.00</div>#}
+{#        <p class="mt-2 text-xs text-gray-500">{% trans "Success rate" %}: <span id="collectionRate">0%</span></p>#}
+{#      </div>#}
+{#      <div class="flex flex-col gap-2">#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-arrow-trend-up mr-2"></i>{% trans "View payments" %}#}
+{#        </a>#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-solid fa-scale-balanced mr-2"></i>{% trans "Reconcile" %}#}
+{#        </a>#}
+{#      </div>#}
+{#    </div>#}
+{#  </section>#}
+{##}
+{#  <!-- Renewals (next 7d) -->#}
+{#  <section class="bg-white rounded-xl border shadow-sm p-4">#}
+{#    <div class="flex items-start justify-between gap-3">#}
+{#      <div>#}
+{#        <p class="text-xs uppercase tracking-wide text-gray-500">{% trans "Renewals (Next 7 days)" %}</p>#}
+{#        <div class="mt-1 text-3xl font-extrabold text-indigo-700">#}
+{#          <span id="renewalsCount">0</span>#}
+{#        </div>#}
+{#        <p class="mt-2 text-xs text-gray-500">{% trans "Projected MRR" %}: <span id="renewalsMRR">$0.00</span></p>#}
+{#      </div>#}
+{#      <div class="flex flex-col gap-2">#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">#}
+{#          <i class="fa-regular fa-calendar-days mr-2"></i>{% trans "See list" %}#}
+{#        </a>#}
+{#        <a href="" class="px-3 py-2 rounded-lg text-sm font-semibold bg-gray-900 hover:bg-black text-white">#}
+{#          <i class="fa-solid fa-bolt mr-2"></i>{% trans "Run bulk billing" %}#}
+{#        </a>#}
+{#      </div>#}
+{#    </div>#}
+{#  </section>#}
+{#</div>#}
+
+<!-- Customer Statement & Exports -->
+<div class="bg-white rounded-xl border shadow-sm p-4 mb-4">
+  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 items-end">
+    <div>
+      <label class="block text-xs text-gray-500 mb-1">{% trans "Customer" %}</label>
+      <div class="relative">
+        <input id="custSearch" class="form-input-styled w-full" placeholder="{% trans 'Search name or email…' %}" autocomplete="off">
+        <input type="hidden" id="custUserId" value="">
+        <div id="custResults" class="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-lg hidden max-h-64 overflow-auto"></div>
+      </div>
+      <p id="custHint" class="text-xs text-gray-500 mt-1">{% trans "Type 2+ letters to search. Click a result to select." %}</p>
+    </div>
+    <div class="grid grid-cols-2 gap-2">
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "From" %}</span>
+        <input id="dateFrom" type="date" class="form-input-styled w-full">
+      </label>
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "To" %}</span>
+        <input id="dateTo" type="date" class="form-input-styled w-full">
+      </label>
+      <label class="inline-flex items-center gap-2 col-span-2">
+        <input id="includeCdf" type="checkbox" class="rounded border-gray-300" checked>
+        <span class="text-sm text-gray-700">{% trans "Include CDF equivalent" %}</span>
+      </label>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <button id="btnLedgerXlsx" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">
+        <i class="fa-solid fa-file-excel mr-2 text-emerald-600"></i>{% trans "Export Ledger (XLSX)" %}
+      </button>
+      <button id="btnLedgerPdf" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">
+        <i class="fa-solid fa-file-pdf mr-2 text-rose-600"></i>{% trans "Export Ledger (PDF)" %}
+      </button>
+      <button id="btnStmtXlsx" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">
+        <i class="fa-solid fa-file-excel mr-2 text-emerald-600"></i>{% trans "Export Statement (XLSX)" %}
+      </button>
+      <button id="btnStmtPdf" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">
+        <i class="fa-solid fa-file-pdf mr-2 text-rose-600"></i>{% trans "Export Statement (PDF)" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Revenue Reporting -->
+<section class="bg-white rounded-xl border shadow-sm overflow-hidden mb-6" id="revenueSection">
+  <div class="px-4 py-3 border-b flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+    <div>
+      <h2 class="font-semibold">{% trans "Revenue" %}</h2>
+      <p class="text-xs text-gray-500">{% trans "Grouped revenue with optional CDF equivalents" %}</p>
+    </div>
+    <div class="grid grid-cols-2 md:grid-cols-6 gap-2 items-end">
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "From" %}</span>
+        <input id="revFrom" type="date" class="form-input-styled w-full">
+      </label>
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "To" %}</span>
+        <input id="revTo" type="date" class="form-input-styled w-full">
+      </label>
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "Perspective" %}</span>
+        <select id="revPerspective" class="form-input-styled w-full text-sm">
+          <option value="invoiced">{% trans "Invoiced" %}</option>
+          <option value="collected">{% trans "Collected" %}</option>
+        </select>
+      </label>
+      <label class="block">
+        <span class="block text-xs text-gray-500 mb-1">{% trans "Group by" %}</span>
+        <select id="revGroupBy" class="form-input-styled w-full text-sm">
+          <option value="month">{% trans "Month" %}</option>
+          <option value="week">{% trans "Week" %}</option>
+          <option value="day">{% trans "Day" %}</option>
+          <option value="region">{% trans "Region" %}</option>
+        </select>
+      </label>
+      <label class="inline-flex items-center gap-2">
+        <input id="revIncludeCdf" type="checkbox" class="rounded border-gray-300" checked>
+        <span class="text-sm text-gray-700">{% trans "Include CDF" %}</span>
+      </label>
+      <div class="flex items-center">
+        <button id="revRefresh" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50 w-full">{% trans "Refresh" %}</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary strip -->
+  <div class="px-4 py-3 bg-gray-50 border-b grid grid-cols-1 md:grid-cols-2 gap-3">
+    <div>
+      <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "USD Totals" %}</div>
+      <div id="revSummaryUsd" class="text-sm text-gray-700">—</div>
+    </div>
+    <div id="revSummaryCdfWrap" class="hidden">
+      <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "CDF Totals" %}</div>
+      <div id="revSummaryCdf" class="text-sm text-gray-700">—</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600">
+        <tr>
+          <th class="px-4 py-3 text-left">{% trans "Group" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Subtotal (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "VAT (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Excise (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Tax total (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Grand total (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Credits/Adj (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Collected (USD)" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Net (USD)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Subtotal (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "VAT (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Excise (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Tax total (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Grand total (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Credits/Adj (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Collected (CDF)" %}</th>
+          <th class="px-4 py-3 text-right revCdfCol hidden">{% trans "Net (CDF)" %}</th>
+        </tr>
+      </thead>
+      <tbody id="revRows" class="[&_tr:nth-child(even)]:bg-gray-50"></tbody>
+    </table>
+  </div>
+
+  <!-- Pager -->
+  <div class="px-4 py-3 border-t bg-gray-50 flex items-center justify-between gap-3">
+    <div class="text-xs text-gray-500" id="revStatus">—</div>
+    <div class="flex items-center gap-2">
+      <label for="revSize" class="text-xs text-gray-500">{% trans "Rows" %}</label>
+      <select id="revSize" class="form-input-styled text-sm w-24">
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+      <button id="revPrev" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50" disabled>{% trans "Prev" %}</button>
+      <span id="revPageInfo" class="text-xs text-gray-600">—</span>
+      <button id="revNext" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">{% trans "Next" %}</button>
+    </div>
+  </div>
+</section>
+
+<!-- Ledger -->
+<section class="bg-white rounded-xl border shadow-sm overflow-hidden">
+  <!-- Header -->
+  <div class="px-4 py-3 border-b flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <h2 class="font-semibold">{% trans "Account Ledger" %}</h2>
+      <span id="ledgerBadge" class="hidden md:inline-block text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-600"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="ledgerSearch" class="form-input-styled text-sm" placeholder="{% trans 'Search description or account…' %}">
+      <select id="ledgerType" class="form-input-styled text-sm">
+        <option value="">{% trans "All types" %}</option>
+        <option value="invoice">{% trans "Invoice" %}</option>
+        <option value="payment">{% trans "Payment" %}</option>
+        <option value="credit_note">{% trans "Credit Note" %}</option>
+        <option value="adjustment">{% trans "Adjustment" %}</option>
+        <option value="tax">{% trans "Tax" %}</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="overflow-x-auto hidden md:block">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gray-50 text-gray-600 sticky top-0 z-10">
+        <tr>
+          <th class="px-4 py-3 text-left">{% trans "Date" %}</th>
+          <th class="px-4 py-3 text-left">{% trans "Account" %}</th>
+          <th class="px-4 py-3 text-left">{% trans "Type" %}</th>
+          <th class="px-4 py-3 text-left">{% trans "Description" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Amount" %}</th>
+          <th class="px-4 py-3 text-right">{% trans "Running Balance" %}</th>
+        </tr>
+      </thead>
+      <tbody id="ledgerRows" class="[&_tr:nth-child(even)]:bg-gray-50"></tbody>
+    </table>
+  </div>
+
+  <!-- Mobile cards -->
+  <div id="ledgerCards" class="md:hidden divide-y"></div>
+
+  <!-- Loading skeleton -->
+  <div id="ledgerSkeleton" class="p-4 hidden">
+    <div class="animate-pulse space-y-2">
+      <div class="h-4 bg-gray-200 rounded"></div>
+      <div class="h-4 bg-gray-200 rounded"></div>
+      <div class="h-4 bg-gray-200 rounded"></div>
+    </div>
+  </div>
+
+  <!-- Pager / status -->
+  <div class="px-4 py-3 border-t bg-gray-50 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+    <div class="flex items-center gap-2">
+      <label for="ledgerPageSize" class="text-xs text-gray-500">{% trans "Rows per page" %}</label>
+      <select id="ledgerPageSize" class="form-input-styled text-sm w-24">
+  <option value="10" selected>10</option>
+  <option value="25">25</option>
+  <option value="50">50</option>
+  <option value="100">100</option>
+</select>
+      <div class="text-xs text-gray-500" id="ledgerStatus" aria-live="polite"></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="prevPage" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50" disabled>
+        {% trans "Prev" %}
+      </button>
+      <span id="pageInfo" class="text-xs text-gray-600">—</span>
+      <button id="nextPage" class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50">
+        {% trans "Next" %}
+      </button>
+      <button id="loadMoreLedger"
+              class="px-3 py-2 rounded-lg text-sm font-semibold border bg-white hover:bg-gray-50 hidden">
+        {% trans "Load more" %}
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Record Payment Modal -->
+<div id="modal-record-payment" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40">
+  <div class="bg-white rounded-xl border shadow-sm w-full max-w-lg p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-semibold">{% trans "Record Payment" %}</h3>
+      <button data-close="#modal-record-payment" class="p-2 rounded hover:bg-gray-100">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <form method="post" action="" class="space-y-4">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label class="block">
+          <span class="block text-sm mb-1">{% trans "Customer" %}</span>
+          <input name="customer" class="form-input-styled w-full" placeholder="{% trans 'Email or name' %}" required>
+        </label>
+        <label class="block">
+          <span class="block text-sm mb-1">{% trans "Amount (USD)" %}</span>
+          <input type="number" step="0.01" min="0.01" name="amount_usd" class="form-input-styled w-full" required>
+        </label>
+        <label class="block">
+          <span class="block text-sm mb-1">{% trans "Source" %}</span>
+          <select name="source" class="form-input-styled w-full">
+            <option value="mobile">{% trans "Mobile Money" %}</option>
+            <option value="bank_transfer">{% trans "Bank Transfer" %}</option>
+            <option value="card">{% trans "Card" %}</option>
+            <option value="cash">{% trans "Cash" %}</option>
+            <option value="other">{% trans "Other" %}</option>
+          </select>
+        </label>
+        <label class="block">
+          <span class="block text-sm mb-1">{% trans "Reference" %}</span>
+          <input name="reference" class="form-input-styled w-full" placeholder="#REF123">
+        </label>
+      </div>
+      <div>
+        <label class="inline-flex items-center gap-2 text-sm">
+          <input type="checkbox" name="apply_to_oldest" class="rounded border-gray-300" checked>
+          <span>{% trans "Apply to oldest open invoice(s) automatically" %}</span>
+        </label>
+      </div>
+      <div class="flex items-center justify-end gap-2">
+        <button type="button" data-close="#modal-record-payment" class="px-3 py-2 text-sm rounded-lg border bg-white hover:bg-gray-50">{% trans "Cancel" %}</button>
+        <button class="px-3 py-2 text-sm rounded-lg bg-gray-900 text-white">{% trans "Save payment" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Utils
+  const _q  = (s) => document.querySelector(s);
+  const _money  = (n) => (Number(n)||0).toLocaleString(undefined, { style: 'currency', currency: 'USD' });
+  const _fmtDate = (s) => { if(!s) return "—"; const d = new Date(s); return isNaN(d) ? "—" : d.toISOString().slice(0,10); };
+  const _typeBadgeClass = (t) => ({
+    invoice:'bg-rose-100 text-rose-700', payment:'bg-emerald-100 text-emerald-700',
+    credit_note:'bg-amber-100 text-amber-700', adjustment:'bg-sky-100 text-sky-700',
+    tax:'bg-indigo-100 text-indigo-700'
+  }[t] || 'bg-gray-100 text-gray-700');
+
+  // ---- Revenue helpers ----
+  const _num = (n) => Number(n) || 0;
+  const _moneyCdf = (n) => `CDF ${(_num(n)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const _ymd = (val) => { try { if(!val) return ''; const d = new Date(val); if (isNaN(d)) return ''; return d.toISOString().slice(0,10); } catch(_) { return ''; } };
+
+  // ---- Revenue state ----
+  const RevenueState = {
+    rows: [],
+    page: 1,
+    size: 50,
+    hasMore: false,
+    totalGroups: 0,
+    includeCdf: true,
+    perspective: 'invoiced',
+    groupBy: 'month',
+    from: null,
+    to: null,
+  };
+
+  async function fetchRevenueSummary() {
+    const url = new URL('{% url "revenue_summary" %}', window.location.origin);
+    const f = document.getElementById('revFrom')?.value; const t = document.getElementById('revTo')?.value;
+    const perspective = document.getElementById('revPerspective')?.value || 'invoiced';
+    const includeCdf = document.getElementById('revIncludeCdf')?.checked;
+    if (!f || !t) return;
+    url.searchParams.set('from', _ymd(f));
+    url.searchParams.set('to', _ymd(t));
+    url.searchParams.set('perspective', perspective);
+    url.searchParams.set('include_cdf', includeCdf ? '1' : '0');
+    try {
+      const res = await fetch(url.toString(), { headers: { 'X-Requested-With':'XMLHttpRequest' }, cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      renderRevSummary(j);
+    } catch (e) {
+      document.getElementById('revSummaryUsd').textContent = '{% trans "Failed to load summary" %}';
+      const cdfWrap = document.getElementById('revSummaryCdfWrap'); if (cdfWrap) cdfWrap.classList.add('hidden');
+    }
+  }
+
+  async function fetchRevenueTable() {
+    const url = new URL('{% url "revenue_table" %}', window.location.origin);
+    const f = document.getElementById('revFrom')?.value; const t = document.getElementById('revTo')?.value;
+    const perspective = document.getElementById('revPerspective')?.value || 'invoiced';
+    const groupBy = document.getElementById('revGroupBy')?.value || 'month';
+    const includeCdf = document.getElementById('revIncludeCdf')?.checked;
+    const size = parseInt(document.getElementById('revSize')?.value || '50', 10) || 50;
+    if (!f || !t) { renderRevError('{% trans "Please choose a date range." %}'); return; }
+    url.searchParams.set('from', _ymd(f));
+    url.searchParams.set('to', _ymd(t));
+    url.searchParams.set('perspective', perspective);
+    url.searchParams.set('group_by', groupBy);
+    url.searchParams.set('include_cdf', includeCdf ? '1' : '0');
+    url.searchParams.set('page', RevenueState.page);
+    url.searchParams.set('size', size);
+
+    // Save to state
+    RevenueState.includeCdf = !!includeCdf;
+    RevenueState.perspective = perspective;
+    RevenueState.groupBy = groupBy;
+    RevenueState.size = size;
+    RevenueState.from = _ymd(f); RevenueState.to = _ymd(t);
+
+    try {
+      setRevLoading(true);
+      const res = await fetch(url.toString(), { headers: { 'X-Requested-With':'XMLHttpRequest' }, cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      RevenueState.rows = j.rows || [];
+      RevenueState.totalGroups = j.total_groups || 0;
+      RevenueState.hasMore = !!j.has_more;
+      renderRevTable(j);
+      renderRevPager(j);
+      toggleCdfColumns(RevenueState.includeCdf && (RevenueState.rows[0]?.cdf));
+    } catch (e) {
+      renderRevError('{% trans "Failed to load revenue table." %}');
+    } finally {
+      setRevLoading(false);
+    }
+  }
+
+  function renderRevSummary(j) {
+    const usd = j?.totals_usd || {};
+    const usdEl = document.getElementById('revSummaryUsd');
+    if (usdEl) {
+      usdEl.innerHTML = `
+        <span class="mr-3">{% trans "Subtotal" %}: <strong>${_money(usd.subtotal)}</strong></span>
+        <span class="mr-3">{% trans "VAT" %}: <strong>${_money(usd.vat)}</strong></span>
+        <span class="mr-3">{% trans "Excise" %}: <strong>${_money(usd.excise)}</strong></span>
+        <span class="mr-3">{% trans "Tax total" %}: <strong>${_money(usd.tax_total)}</strong></span>
+        <span class="mr-3">{% trans "Grand" %}: <strong>${_money(usd.grand_total)}</strong></span>
+        <span class="mr-3">{% trans "Collected" %}: <strong>${_money(usd.collected)}</strong></span>
+        <span class="mr-3">{% trans "Credits/Adj" %}: <strong>${_money(usd.credits_adjustments)}</strong></span>
+        <span>{% trans "Net" %}: <strong>${_money(usd.net)}</strong></span>
+      `;
+    }
+    const cdfWrap = document.getElementById('revSummaryCdfWrap');
+    const cdfEl = document.getElementById('revSummaryCdf');
+    const cdf = j?.totals_cdf || null;
+    if (cdf && cdfEl && cdfWrap) {
+      cdfWrap.classList.remove('hidden');
+      cdfEl.innerHTML = `
+        <span class="mr-3">{% trans "Subtotal" %}: <strong>${_moneyCdf(cdf.subtotal)}</strong></span>
+        <span class="mr-3">{% trans "VAT" %}: <strong>${_moneyCdf(cdf.vat)}</strong></span>
+        <span class="mr-3">{% trans "Excise" %}: <strong>${_moneyCdf(cdf.excise)}</strong></span>
+        <span class="mr-3">{% trans "Tax total" %}: <strong>${_moneyCdf(cdf.tax_total)}</strong></span>
+        <span class="mr-3">{% trans "Grand" %}: <strong>${_moneyCdf(cdf.grand_total)}</strong></span>
+        <span class="mr-3">{% trans "Collected" %}: <strong>${_moneyCdf(cdf.collected)}</strong></span>
+        <span class="mr-3">{% trans "Credits/Adj" %}: <strong>${_moneyCdf(cdf.credits_adjustments)}</strong></span>
+        <span>{% trans "Net" %}: <strong>${_moneyCdf(cdf.net)}</strong></span>
+      `;
+    } else if (cdfWrap) {
+      cdfWrap.classList.add('hidden');
+    }
+  }
+
+  function renderRevTable(j) {
+    const tbody = document.getElementById('revRows');
+    if (!tbody) return;
+    const rows = j?.rows || [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-6 text-center text-gray-500">{% trans "No data for the selected range." %}</td></tr>`;
+      return;
+    }
+    const html = rows.map(r => {
+      const u = r.usd || {};
+      const hasCdf = !!r.cdf;
+      const c = r.cdf || {};
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">${r.label || r.key}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.subtotal)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.vat)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.excise)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.tax_total)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.grand_total)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.credits_adjustments)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.collected)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(u.net)}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.subtotal) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.vat) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.excise) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.tax_total) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.grand_total) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.credits_adjustments) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.collected) : ''}</td>
+          <td class="px-4 py-3 text-right font-mono revCdfCol ${hasCdf ? '' : 'hidden'}">${hasCdf ? _moneyCdf(c.net) : ''}</td>
+        </tr>`;
+    }).join('');
+    tbody.innerHTML = html;
+  }
+
+  function renderRevPager(j) {
+    const total = j?.total_groups || 0;
+    const page = j?.page || RevenueState.page;
+    const size = j?.size || RevenueState.size;
+    const start = total ? (page - 1) * size + 1 : 0;
+    const end = Math.min(page * size, total);
+    const status = document.getElementById('revStatus');
+    const pageInfo = document.getElementById('revPageInfo');
+    const prevBtn = document.getElementById('revPrev');
+    const nextBtn = document.getElementById('revNext');
+    if (status) status.textContent = `${total} {% trans "groups" %}`;
+    if (pageInfo) pageInfo.textContent = total ? `${start}–${end} {% trans "of" %} ${total}` : '—';
+    if (prevBtn) prevBtn.disabled = page <= 1;
+    if (nextBtn) nextBtn.disabled = end >= total;
+  }
+
+  function setRevLoading(isLoading){
+    const status = document.getElementById('revStatus');
+    if (!status) return;
+    status.textContent = isLoading ? '{% trans "Loading…" %}' : status.textContent;
+  }
+
+  function renderRevError(msg){
+    const tbody = document.getElementById('revRows');
+    if (tbody) tbody.innerHTML = `<tr><td colspan="11" class="px-4 py-6 text-center text-red-600">${msg}</td></tr>`;
+  }
+
+  function toggleCdfColumns(show){
+    document.querySelectorAll('.revCdfCol').forEach(el => {
+      el.classList.toggle('hidden', !show);
+    });
+    const wrap = document.getElementById('revSummaryCdfWrap');
+    if (wrap) wrap.classList.toggle('hidden', !show);
+  }
+
+  function revRefresh(){
+    RevenueState.page = 1;
+    fetchRevenueSummary();
+    fetchRevenueTable();
+  }
+
+  // State
+  const LedgerState = {
+    rows: [],          // all rows loaded so far (newest->oldest from server)
+    filtered: [],      // filtered subset
+    computed: [],      // filtered subset with running_balance
+    nextCursor: null,
+    hasMore: false,
+    isLoading: false,
+    // pagination (client-side over filtered+computed)
+    page: 1,
+    perPage: 25
+  };
+
+  // Filters
+  function applyFilters() {
+    const q = (_q('#ledgerSearch')?.value || '').toLowerCase().trim();
+    const t = (_q('#ledgerType')?.value || '');
+    LedgerState.filtered = LedgerState.rows.filter(r => {
+      const typeOk = !t || r.entry_type === t;
+      const hay = `${r.description||''} ${r.user_name||''} ${r.user_email||''}`.toLowerCase();
+      const queryOk = !q || hay.includes(q);
+      return typeOk && queryOk;
+    });
+
+    // compute running balance on filtered set (oldest->newest)
+    let run = 0;
+    const oldestFirst = [...LedgerState.filtered].reverse();
+    const withBal = oldestFirst.map(r => {
+      const amt = Number(r.amount_usd || 0);
+      run += amt;
+      return { ...r, running_balance: run };
+    }).reverse();
+    LedgerState.computed = withBal;
+
+    // reset to first page on filter change
+    LedgerState.page = 1;
+  }
+
+  // Rendering helpers
+  function renderPager() {
+    const total = LedgerState.computed.length;
+    const startIdx = total ? (LedgerState.page - 1) * LedgerState.perPage + 1 : 0;
+    const endIdx = Math.min(LedgerState.page * LedgerState.perPage, total);
+    const status = _q('#ledgerStatus');
+    const pageInfo = _q('#pageInfo');
+    const prevBtn = _q('#prevPage');
+    const nextBtn = _q('#nextPage');
+    const loadMoreBtn = _q('#loadMoreLedger');
+
+    if (status) {
+      status.textContent = LedgerState.hasMore
+        ? `{% trans "Loaded" %} ${LedgerState.rows.length} {% trans "rows (more available)" %}`
+        : `{% trans "Loaded" %} ${LedgerState.rows.length} {% trans "rows" %}`;
+    }
+    if (pageInfo) {
+      pageInfo.textContent = total
+        ? `${startIdx}–${endIdx} {% trans "of" %} ${total}`
+        : '—';
+    }
+
+    const maxPage = Math.max(1, Math.ceil(total / LedgerState.perPage));
+    if (prevBtn) prevBtn.disabled = LedgerState.page <= 1;
+    if (nextBtn) {
+      // next page is disabled if we're at the last computed page AND there is no more server data
+      const atLastComputedPage = LedgerState.page >= maxPage;
+      nextBtn.disabled = atLastComputedPage && !LedgerState.hasMore;
+    }
+    if (loadMoreBtn) loadMoreBtn.classList.toggle('hidden', !LedgerState.hasMore);
+  }
+
+  function renderTableSlice() {
+    const tbody = _q('#ledgerRows');
+    const cards = _q('#ledgerCards');
+    const badge = _q('#ledgerBadge');
+
+    const total = LedgerState.computed.length;
+    const start = (LedgerState.page - 1) * LedgerState.perPage;
+    const end   = Math.min(LedgerState.page * LedgerState.perPage, total);
+    const slice = LedgerState.computed.slice(start, end);
+
+    if (badge) badge.textContent = `${total} {% trans "entries" %}`;
+
+    if (!slice.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">{% trans "No ledger entries." %}</td></tr>`;
+      cards.innerHTML = `<div class="p-4 text-center text-gray-500">{% trans "No ledger entries." %}</div>`;
+      return;
+    }
+
+    // rows
+    const rowsHtml = slice.map(r => {
+      const amt = Number(r.amount_usd || 0);
+      const amtCls = amt >= 0 ? 'text-rose-600' : 'text-emerald-600';
+      const badgeCls = _typeBadgeClass(r.entry_type);
+      return `
+        <tr class="hover:bg-gray-50">
+          <td class="px-4 py-3">${_fmtDate(r.created_at)}</td>
+          <td class="px-4 py-3">
+            <div class="flex flex-col">
+              <span class="font-medium">${r.user_name || '—'}</span>
+              <span class="text-xs text-gray-500">${r.user_email || ''}</span>
+            </div>
+          </td>
+          <td class="px-4 py-3">
+            <span class="px-2 py-0.5 text-xs rounded-full ${badgeCls}">
+              ${r.entry_type_label || r.entry_type}
+            </span>
+          </td>
+          <td class="px-4 py-3">${r.description || '—'}</td>
+          <td class="px-4 py-3 text-right font-mono ${amtCls}">${_money(amt)}</td>
+          <td class="px-4 py-3 text-right font-mono">${_money(r.running_balance)}</td>
+        </tr>
+      `;
+    }).join('');
+    tbody.innerHTML = rowsHtml;
+
+    // mobile cards
+    cards.innerHTML = slice.map(r => {
+      const amt = Number(r.amount_usd || 0);
+      const amtCls = amt >= 0 ? 'text-rose-600' : 'text-emerald-600';
+      const badgeCls = _typeBadgeClass(r.entry_type);
+      return `
+        <div class="px-4 py-3">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="text-sm font-medium">${r.user_name || '—'}</div>
+              <div class="text-xs text-gray-500">${r.user_email || ''}</div>
+              <div class="mt-1 text-xs">
+                <span class="px-2 py-0.5 rounded-full ${badgeCls}">
+                  ${r.entry_type_label || r.entry_type}
+                </span>
+                <span class="ml-2 text-gray-600">${r.description || '—'}</span>
+              </div>
+            </div>
+            <div class="text-right">
+              <div class="font-mono ${amtCls}">${_money(amt)}</div>
+              <div class="text-xs text-gray-500">{% trans "Balance" %}: <span class="font-mono">${_money(r.running_balance)}</span></div>
+              <div class="text-xs text-gray-400">${_fmtDate(r.created_at)}</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function renderAll() {
+    renderTableSlice();
+    renderPager();
+  }
+
+  // Data fetch (cursor pagination server-side)
+  async function fetchLedgerPage({ cursor=null } = {}) {
+    if (LedgerState.isLoading) return;
+    LedgerState.isLoading = true;
+
+    _q('#ledgerSkeleton')?.classList.remove('hidden');
+    const loadMoreBtn = _q('#loadMoreLedger');
+    if (loadMoreBtn) { loadMoreBtn.disabled = true; loadMoreBtn.textContent = "{% trans 'Loading…' %}"; }
+
+    try {
+      const url = new URL("{% url 'general_ledger' %}", window.location.origin);
+      if (cursor) url.searchParams.set('cursor', cursor);
+      // Server filters where supported
+      const q = (_q('#ledgerSearch')?.value || '').trim();
+      const t = (_q('#ledgerType')?.value || '').trim();
+      const uid = (_q('#custUserId')?.value || '').trim();
+      if (q) url.searchParams.set('q', q);
+      if (t) url.searchParams.set('type', t);
+      if (uid) url.searchParams.set('user_id', uid);
+      // Optionally add server limit:
+      // url.searchParams.set('limit', 200);
+
+      const res = await fetch(url.toString(), { headers: { 'X-Requested-With':'XMLHttpRequest' }, cache: 'no-cache' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const j = await res.json();
+      if (!j?.success) throw new Error(j?.message || 'Failed');
+
+      const pageRows = Array.isArray(j.ledger) ? j.ledger : [];
+      LedgerState.rows = LedgerState.rows.concat(pageRows);
+      LedgerState.nextCursor = j.next_cursor || null;
+      LedgerState.hasMore = !!j.has_more;
+
+      applyFilters();
+      renderAll();
+    } catch (e) {
+      console.error("Failed to load ledger:", e);
+      _q('#ledgerRows')?.insertAdjacentHTML('beforeend',
+        `<tr><td colspan="6" class="px-4 py-3 text-red-600">{% trans "Failed to load ledger." %}</td></tr>`);
+    } finally {
+      LedgerState.isLoading = false;
+      _q('#ledgerSkeleton')?.classList.add('hidden');
+      if (loadMoreBtn) { loadMoreBtn.disabled = false; loadMoreBtn.textContent = "{% trans 'Load more' %}"; }
+    }
+  }
+
+  // Events
+  document.addEventListener('DOMContentLoaded', () => {
+    // first data page
+    fetchLedgerPage();
+
+    // filters
+    _q('#ledgerSearch')?.addEventListener('input', () => { applyFilters(); renderAll(); });
+    _q('#ledgerType')?.addEventListener('change', () => { applyFilters(); renderAll(); });
+
+    // client pager
+    _q('#ledgerPageSize')?.addEventListener('change', (e) => {
+      LedgerState.perPage = Math.max(1, parseInt(e.target.value, 10) || 25);
+      LedgerState.page = 1;
+      renderAll();
+    });
+
+    _q('#prevPage')?.addEventListener('click', () => {
+      if (LedgerState.page > 1) {
+        LedgerState.page -= 1;
+        renderAll();
+      }
+    });
+
+    _q('#nextPage')?.addEventListener('click', () => {
+      // If next page exceeds current computed max and server has more, fetch then advance
+      const maxPageNow = Math.max(1, Math.ceil(LedgerState.computed.length / LedgerState.perPage));
+      if (LedgerState.page < maxPageNow) {
+        LedgerState.page += 1;
+        renderAll();
+      } else if (LedgerState.hasMore && !LedgerState.isLoading) {
+        // fetch more then move to next page after load completes
+        const prevLen = LedgerState.computed.length;
+        fetchLedgerPage({ cursor: LedgerState.nextCursor }).then(() => {
+          const newMax = Math.ceil(LedgerState.computed.length / LedgerState.perPage);
+          if (LedgerState.computed.length > prevLen && LedgerState.page < newMax) {
+            LedgerState.page += 1;
+            renderAll();
+          }
+        });
+      }
+    });
+
+    // explicit "Load more" (e.g., to prefetch more data)
+    _q('#loadMoreLedger')?.addEventListener('click', () => {
+      if (LedgerState.nextCursor) fetchLedgerPage({ cursor: LedgerState.nextCursor });
+    });
+
+    // --- Customer search (AJAX) ---
+    const custSearch = _q('#custSearch');
+    const custResults = _q('#custResults');
+    const custUserId = _q('#custUserId');
+
+    async function searchCustomers(term){
+      if (!term || term.length < 2) { custResults.classList.add('hidden'); custResults.innerHTML=''; return; }
+      try {
+        const url = new URL('{% url "ledger_search_customers" %}', window.location.origin);
+        url.searchParams.set('q', term);
+        const res = await fetch(url.toString(), { headers: { 'X-Requested-With':'XMLHttpRequest' }, cache: 'no-cache' });
+        const j = await res.json();
+        const arr = j?.results || [];
+        if (!arr.length) { custResults.innerHTML = `<div class="p-2 text-sm text-gray-500">{% trans "No results" %}</div>`; custResults.classList.remove('hidden'); return; }
+        custResults.innerHTML = arr.map(u => `
+          <button type="button" data-user-id="${u.id_user}" class="w-full text-left px-3 py-2 hover:bg-gray-50">
+            <div class="font-medium">${u.name||'—'}</div>
+            <div class="text-xs text-gray-500">${u.email||''}</div>
+          </button>
+        `).join('');
+        custResults.classList.remove('hidden');
+      } catch (e) { /* noop */ }
+    }
+
+    custSearch?.addEventListener('input', (e) => searchCustomers(e.target.value.trim()));
+    custResults?.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-user-id]');
+      if (!btn) return;
+      const uid = btn.getAttribute('data-user-id');
+      const name = btn.querySelector('.font-medium')?.textContent || '';
+      const email = btn.querySelector('.text-xs')?.textContent || '';
+      custUserId.value = uid;
+      custSearch.value = name || email || uid;
+      custResults.classList.add('hidden');
+      // Reset ledger and refetch for this customer
+      LedgerState.rows = []; LedgerState.filtered = []; LedgerState.computed = [];
+      LedgerState.nextCursor = null; LedgerState.hasMore = false; LedgerState.page = 1;
+      fetchLedgerPage();
+    });
+    document.addEventListener('click', (e) => {
+      if (!custResults?.contains(e.target) && e.target !== custSearch) {
+        custResults?.classList.add('hidden');
+      }
+    });
+
+    // --- Export buttons ---
+    function _ymd(val){ return val ? new Date(val).toISOString().slice(0,10) : ''; }
+    function _bool(v){ return v ? '1' : '0'; }
+    function openUrl(u){ window.open(u, '_blank'); }
+
+    function buildLedgerExportUrl(fmt){
+      const base = new URL('{% url "ledger_export" %}', window.location.origin);
+      const uid = (custUserId?.value||'').trim();
+      if (!uid) { alert('{% trans "Please select a customer first." %}'); return null; }
+      base.searchParams.set('user_id', uid);
+      const f = _q('#dateFrom')?.value; const t = _q('#dateTo')?.value;
+      if (f) base.searchParams.set('from', _ymd(f));
+      if (t) base.searchParams.set('to', _ymd(t));
+      const typ = (_q('#ledgerType')?.value||'').trim(); if (typ) base.searchParams.set('type', typ);
+      base.searchParams.set('include_cdf', _bool(_q('#includeCdf')?.checked));
+      base.searchParams.set('format', fmt);
+      return base.toString();
+    }
+
+    function buildStatementExportUrl(fmt){
+      const base = new URL('{% url "ledger_statement" %}', window.location.origin);
+      const uid = (custUserId?.value||'').trim();
+      if (!uid) { alert('{% trans "Please select a customer first." %}'); return null; }
+      base.searchParams.set('user_id', uid);
+      const f = _q('#dateFrom')?.value; const t = _q('#dateTo')?.value;
+      if (f) base.searchParams.set('from', _ymd(f));
+      if (t) base.searchParams.set('to', _ymd(t));
+      base.searchParams.set('include_cdf', _bool(_q('#includeCdf')?.checked));
+      base.searchParams.set('format', fmt);
+      return base.toString();
+    }
+
+    _q('#btnLedgerXlsx')?.addEventListener('click', () => { const u = buildLedgerExportUrl('xlsx'); if(u) openUrl(u); });
+    _q('#btnLedgerPdf')?.addEventListener('click',  () => { const u = buildLedgerExportUrl('pdf');  if(u) openUrl(u); });
+    _q('#btnStmtXlsx')?.addEventListener('click',   () => { const u = buildStatementExportUrl('xlsx'); if(u) openUrl(u); });
+    _q('#btnStmtPdf')?.addEventListener('click',    () => { const u = buildStatementExportUrl('pdf');  if(u) openUrl(u); });
+
+    // ---- Revenue UI wiring ----
+    const revFrom = _q('#revFrom');
+    const revTo = _q('#revTo');
+    const today = new Date();
+    const y = today.getFullYear(); const m = today.getMonth();
+    // default from = first day of current month, to = today
+    if (revFrom && !revFrom.value) { const d1 = new Date(y, m, 1); revFrom.value = d1.toISOString().slice(0,10); }
+    if (revTo && !revTo.value) { revTo.value = today.toISOString().slice(0,10); }
+
+    function _revOnChange(){ RevenueState.page = 1; fetchRevenueSummary(); fetchRevenueTable(); }
+
+    _q('#revRefresh')?.addEventListener('click', _revOnChange);
+    _q('#revPerspective')?.addEventListener('change', _revOnChange);
+    _q('#revGroupBy')?.addEventListener('change', _revOnChange);
+    _q('#revIncludeCdf')?.addEventListener('change', _revOnChange);
+    revFrom?.addEventListener('change', _revOnChange);
+    revTo?.addEventListener('change', _revOnChange);
+
+    _q('#revSize')?.addEventListener('change', () => { RevenueState.page = 1; fetchRevenueTable(); });
+    _q('#revPrev')?.addEventListener('click', () => { if (RevenueState.page > 1) { RevenueState.page -= 1; fetchRevenueTable(); }});
+    _q('#revNext')?.addEventListener('click', () => { RevenueState.page += 1; fetchRevenueTable(); });
+
+    // initial revenue load
+    fetchRevenueSummary();
+    fetchRevenueTable();
+
+  });
+
+   // --- Modal open/close (data-open / data-close) ---
+  document.addEventListener('click', function (e) {
+    const openSel = e.target.closest('[data-open]');
+    const closeSel = e.target.closest('[data-close]');
+    if (openSel) {
+      const tgt = document.querySelector(openSel.getAttribute('data-open'));
+      if (tgt) tgt.classList.remove('hidden');
+    }
+    if (closeSel) {
+      const tgt = document.querySelector(closeSel.getAttribute('data-close'));
+      if (tgt) tgt.classList.add('hidden');
+    }
+  });
+
+  // --- CSRF helper ---
+  function getCookie(name){
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  }
+  const CSRF = getCookie('csrftoken');
+
+  // --- Submit FX rate via AJAX ---
+  const fxForm = document.getElementById('fxRateForm');
+  const fxMsg  = document.getElementById('fxMsg');
+
+  if (fxForm) {
+    // Default date = today if not provided server-side
+    const d = document.getElementById('fx_date');
+    if (d && !d.value) d.value = new Date().toISOString().slice(0,10);
+
+    fxForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      fxMsg.className = 'hidden mt-3 text-sm';
+      fxMsg.textContent = '';
+
+      const payload = new FormData(fxForm);
+      try {
+        const resp = await fetch("{% url 'billing_set_fx_rate' %}", {
+          method: 'POST',
+          headers: { 'X-CSRFToken': CSRF || '' },
+          body: payload
+        });
+        if (!resp.ok) throw new Error('Network error');
+        const data = await resp.json();
+
+        fxMsg.className = 'mt-3 text-sm text-emerald-700';
+        fxMsg.textContent = data.message || "{{ _('Rate saved successfully.') }}";
+        // Optionally close modal after short delay & refresh
+        setTimeout(() => {
+          document.querySelector('#modal-fx-rate')?.classList.add('hidden');
+          window.location.reload();
+        }, 700);
+      } catch (err) {
+        fxMsg.className = 'mt-3 text-sm text-red-700';
+        fxMsg.textContent = "{{ _('Could not save the rate. Please try again.') }}";
+      }
+    });
+  }
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,123 @@
+{% extends 'client/dashboard_page_base.html' %}
+{% load static i18n %}
+
+{% block content %}
+<section class="max-w-3xl mx-auto px-4 py-6">
+    <header class="mb-6">
+        <h1 class="text-2xl font-semibold text-gray-900">
+            {% blocktrans with ref=order.order_reference %}Your feedback for installation {{ ref }}{% endblocktrans %}
+        </h1>
+        {% if edit_until %}
+            <p class="mt-2 text-sm text-gray-600">
+                {% blocktrans with ts=edit_until %}Editable until {{ ts }}.{% endblocktrans %}
+            </p>
+        {% endif %}
+    </header>
+
+    {% if not can_edit %}
+        <div class="mb-6 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-700" role="status">
+            {% trans "This feedback is locked. You can still view it, but editing is no longer allowed." %}
+        </div>
+    {% endif %}
+
+    <form id="feedback-form" action="." method="post" class="space-y-6" novalidate>
+        {% csrf_token %}
+        <input type="hidden" name="job_id" value="{{ installation.id }}">
+        <div>
+            <label for="id_rating" class="block text-sm font-medium text-gray-700">
+                {% trans "Overall rating" %}
+            </label>
+            <div class="mt-2 flex items-center gap-2" role="radiogroup" aria-labelledby="id_rating">
+                {% with current=feedback.rating|default_if_none:0 %}
+                {% for value in rating_options %}
+                    <label class="flex items-center gap-1 text-sm" for="rating-{{ value }}">
+                        <input type="radio"
+                               name="rating"
+                               id="rating-{{ value }}"
+                               value="{{ value }}"
+                               {% if current|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}
+                               {% if not can_edit %}disabled{% endif %}
+                               class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="sr-only">
+                            {% blocktrans with score=value %}{{ score }} star{% endblocktrans %}
+                        </span>
+                        <svg class="h-6 w-6 {% if current|floatformat:"0" >= value %}text-yellow-400{% else %}text-gray-300{% endif %}"
+                             xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/>
+                        </svg>
+                    </label>
+                {% endfor %}
+                {% endwith %}
+            </div>
+            {% if errors.rating %}
+                <p class="mt-2 text-sm text-red-600">{{ errors.rating.0 }}</p>
+            {% endif %}
+        </div>
+
+        <div>
+            <label for="id_comment" class="block text-sm font-medium text-gray-700">
+                {% trans "Detailed feedback" %}
+            </label>
+            <textarea id="id_comment" name="comment" rows="6"
+                      maxlength="2000"
+                      aria-describedby="comment-help"
+                      {% if not can_edit %}readonly class="mt-2 block w-full rounded-md border-gray-200 bg-gray-100 focus:border-gray-200 focus:ring-0"{% else %}class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"{% endif %}>{{ feedback.comment|default_if_none:'' }}</textarea>
+            <div class="mt-1 flex justify-between text-xs text-gray-500">
+                <span id="comment-help">{% trans "Maximum 2000 characters. Light Markdown allowed (bold, italics, lists, links)." %}</span>
+                <span id="comment-counter">0 / 2000</span>
+            </div>
+            {% if errors.comment %}
+                <p class="mt-2 text-sm text-red-600">{{ errors.comment.0 }}</p>
+            {% endif %}
+        </div>
+
+        {% if can_edit %}
+        <div class="flex items-center justify-between">
+            <button type="submit"
+                    class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                {% if feedback %}{% trans "Update feedback" %}{% else %}{% trans "Submit feedback" %}{% endif %}
+            </button>
+            <p class="text-sm text-gray-500" aria-live="polite">
+                {% trans "One submission per installation." %}
+            </p>
+        </div>
+        {% endif %}
+    </form>
+
+    {% if feedback.staff_reply %}
+        <section class="mt-8 rounded-md border border-blue-200 bg-blue-50 px-4 py-3" aria-live="polite">
+            <h2 class="text-sm font-semibold text-blue-800">{% trans "Response from the Nexus team" %}</h2>
+            <div class="mt-2 prose prose-sm text-blue-900">
+                {{ feedback.staff_reply|safe }}
+            </div>
+        </section>
+    {% endif %}
+
+    {% if feedback.audit_logs %}
+        <section class="mt-10">
+            <h2 class="text-sm font-semibold text-gray-700">{% trans "Change history" %}</h2>
+            <ul class="mt-3 space-y-2 text-xs text-gray-600">
+                {% for entry in feedback.audit_logs %}
+                    <li>
+                        <span class="font-medium">{{ entry.created_at }}</span>
+                        &mdash;
+                        <span class="uppercase tracking-wide text-gray-500">{{ entry.action }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+</section>
+
+<script>
+    const textarea = document.getElementById("id_comment");
+    const counter = document.getElementById("comment-counter");
+    if (textarea && counter) {
+        const updateCounter = () => {
+            counter.textContent = `${textarea.value.length} / 2000`;
+        };
+        textarea.addEventListener("input", updateCounter);
+        updateCounter();
+    }
+</script>
+{% endblock %}

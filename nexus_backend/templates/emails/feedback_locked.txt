@@ -1,0 +1,10 @@
+Hello {{ feedback.customer.full_name|default:feedback.customer.email }},
+
+Your feedback for job {{ order.order_reference|default:feedback.installation.id }} is now locked. You can still view it at any time from your client portal.
+
+View your feedback: {{ site_url }}/client/feedbacks/{{ feedback.installation.id }}/
+
+Thank you for sharing your experience with us.
+
+--
+Nexus Telecoms Support

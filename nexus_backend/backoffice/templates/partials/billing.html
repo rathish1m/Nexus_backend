@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create Billing - Customer</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-50 text-gray-800">
+  <div class="max-w-4xl mx-auto py-10 px-4">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+      <h2 class="text-2xl font-bold mb-6">Create Billing for <span id="customerName" class="text-blue-600"></span></h2>
+
+      <form id="billingForm" class="space-y-6">
+        <!-- Hidden Email -->
+        <input type="hidden" id="customerEmail" name="email">
+
+        <!-- Billing Type -->
+        <div>
+          <label for="billingType" class="block text-sm font-medium mb-1">Billing Type</label>
+          <select id="billingType" name="billing_type" class="w-full border rounded-lg px-4 py-2">
+            <option value="">Select Type</option>
+            <option value="subscription">Subscription</option>
+            <option value="hardware">Hardware</option>
+          </select>
+        </div>
+
+        <!-- Dynamic Section -->
+        <div id="billingDetails" class="space-y-4"></div>
+
+        <!-- Tax and Total -->
+        <div id="summarySection" class="bg-gray-100 rounded-lg p-4 hidden">
+          <p><strong>Subtotal:</strong> $<span id="subtotal">0.00</span></p>
+          <p><strong>VAT (16%):</strong> $<span id="vat">0.00</span></p>
+          <p><strong>Excise (10%):</strong> $<span id="excise">0.00</span></p>
+          <p class="text-xl font-semibold mt-2">Total: $<span id="totalAmount">0.00</span></p>
+        </div>
+
+        <!-- Location -->
+        <div id="locationSection" class="hidden">
+          <label class="block text-sm font-medium mb-1">Installation Location</label>
+          <textarea id="locationNote" name="location" rows="3" class="w-full border rounded-lg px-4 py-2"></textarea>
+        </div>
+
+        <!-- Submit -->
+        <div class="text-right">
+          <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+            <i class="fas fa-check-circle mr-1"></i> Submit Order
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const plans = [
+      { id: 1, name: 'Basic Plan', price: 50 },
+      { id: 2, name: 'Pro Plan', price: 80 },
+    ];
+
+    const hardware = [
+      { id: 1, name: 'Starlink Dish Kit', price: 400, stock: 3 },
+      { id: 2, name: 'Wi-Fi Router', price: 60, stock: 0 },
+    ];
+
+    const billingType = document.getElementById('billingType');
+    const billingDetails = document.getElementById('billingDetails');
+    const summary = document.getElementById('summarySection');
+    const subtotalEl = document.getElementById('subtotal');
+    const vatEl = document.getElementById('vat');
+    const exciseEl = document.getElementById('excise');
+    const totalAmountEl = document.getElementById('totalAmount');
+    const locationSection = document.getElementById('locationSection');
+
+    billingType.addEventListener('change', () => {
+      const type = billingType.value;
+      billingDetails.innerHTML = '';
+      summary.classList.add('hidden');
+      locationSection.classList.add('hidden');
+      if (type === 'subscription') {
+        const select = document.createElement('select');
+        select.className = 'w-full border rounded-lg px-4 py-2';
+        select.name = 'plan';
+        plans.forEach(plan => {
+          const option = document.createElement('option');
+          option.value = plan.id;
+          option.text = `${plan.name} - $${plan.price}`;
+          option.dataset.price = plan.price;
+          select.appendChild(option);
+        });
+        billingDetails.appendChild(select);
+        select.addEventListener('change', () => updateSummary(select.selectedOptions[0].dataset.price));
+        updateSummary(select.selectedOptions[0].dataset.price);
+
+      } else if (type === 'hardware') {
+        const select = document.createElement('select');
+        select.className = 'w-full border rounded-lg px-4 py-2';
+        select.name = 'hardware';
+        hardware.forEach(item => {
+          const option = document.createElement('option');
+          option.value = item.id;
+          option.text = `${item.name} - $${item.price}${item.stock === 0 ? ' (Out of stock)' : ''}`;
+          option.dataset.price = item.price;
+          option.disabled = item.stock === 0;
+          select.appendChild(option);
+        });
+        billingDetails.appendChild(select);
+        select.addEventListener('change', () => updateSummary(select.selectedOptions[0].dataset.price));
+        updateSummary(select.selectedOptions[0].dataset.price);
+        locationSection.classList.remove('hidden');
+      }
+    });
+
+    function updateSummary(price) {
+      const base = parseFloat(price || 0);
+      const vat = base * 0.16;
+      const excise = base * 0.10;
+      const total = base + vat + excise;
+      subtotalEl.textContent = base.toFixed(2);
+      vatEl.textContent = vat.toFixed(2);
+      exciseEl.textContent = excise.toFixed(2);
+      totalAmountEl.textContent = total.toFixed(2);
+      summary.classList.remove('hidden');
+    }
+
+    document.getElementById('billingForm').addEventListener('submit', e => {
+      e.preventDefault();
+      alert('Order submitted! (Simulated)');
+      // Add fetch POST logic here
+    });
+
+    // Simulate dynamic user data
+    document.getElementById('customerName').textContent = "John Doe";
+    document.getElementById('customerEmail').value = "john@example.com";
+  </script>
+</body>
+</html>

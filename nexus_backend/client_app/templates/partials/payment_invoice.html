@@ -1,0 +1,209 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sample Invoice - Nexus Telecom</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 40px;
+      background-color: #f9f9f9;
+    }
+    .invoice-box {
+      background: white;
+      max-width: 800px;
+      margin: auto;
+      padding: 0px;
+      border: 1px solid #eee;
+      box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    }
+    .invoice-header {
+      margin-bottom: 0px;
+    }
+    h1 {
+      font-size: 28px;
+      margin: 12px 0;
+    }
+    .invoice-meta, .billing-details, .total, .footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #555;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+    table, th, td {
+      border: 1px solid #ddd;
+    }
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .company-box table {
+      width: 100%;
+    }
+    .company-box td {
+      vertical-align: top;
+    }
+    .company-details {
+      font-size: 12px;
+      text-align: right;
+      line-height: 1.4;
+    }
+    .company-details div {
+      margin: 0;
+      padding: 0;
+    }
+    .logo {
+      max-height: 50px;
+    }
+    .total {
+      font-weight: normal;
+      text-align: right;
+      font-size: 16px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+<div class="invoice-box">
+  <div class="invoice-header">
+  <div class="company-box">
+    <table style="width: 100%; border: none; border-collapse: collapse;">
+      <tr>
+        <!-- Left: Logo -->
+        <td style="width: 50%; text-align: left; border: none;">
+          <img src="{{ logo_uri }}" alt="Nexus Logo" class="logo" style="max-height: 50px;" />
+        </td>
+        <!-- Right: Company details -->
+        <td class="company-details" style="width: 50%; text-align: right; font-size: 14px; border: none; padding: 0;">
+            <div style="margin: 0; font-size: 18px; color: #213f7f;"><strong>Nexus Telecom SA</strong></div>
+          <div style="margin: 0;">RCCM: CD/LSH/RCCM/25-B-00807</div>
+          <div style="margin: 0;">ID.NAT: 05-S9502-N80001D</div>
+          <div style="margin: 0;">NIF: A2527537K</div>
+          <div style="margin: 0;">Email: info@nexus.cd</div>
+          <div style="margin: 0;">8273, Avenue Lukonzolwa, Lubumbashi, DRC</div>
+        </td>
+      </tr>
+    </table>
+  </div>
+</div>
+    <br>
+    <br>
+    <br>
+
+
+    <table style="width: 100%; border: none; border-collapse: collapse;">
+      <tr>
+        <!-- Left: Logo -->
+        <td class="company-details" style="width: 70%; text-align: left; font-size: 14px; border: none; padding: 0;">
+            <div style="font-weight: 600; font-size: 16px; margin-bottom: 4px; color: #213f7f;">Billed To:</div>
+            {% if kyc_type == "business" %}
+          <div style="margin: 0;">Company Name: CD/LSH/RCCM/25-B-00807</div>
+          <div style="margin: 0;">Representative: {{ full_name }}</div>
+          <div style="margin: 0;">RCCM: {{ rccm }}</div>
+          <div style="margin: 0;">ID.NAT: {{ idnat }}</div>
+          <div style="margin: 0;">NIF: {{ nif }}</div>
+            {% else %}
+            <div style="margin: 0;">Full Name: {{ full_name }}</div>
+            <div style="margin: 0;">Address: {{ address }}</div>
+            {% endif %}
+          <div style="margin: 0;">Email: {{ email }}</div>
+          <div style="margin: 0;">Phone: {{ phone }}</div>
+          <div style="margin: 0;"></div>
+        </td>
+        <!-- Right: Company details -->
+        <td class="company-details" style="width: 30%; text-align: left; font-size: 14px; border: none; padding: 0;">
+            <h1 style="margin: 0 0 6px; font-size: 14px; color: #213f7f;">INVOICE</h1>
+          <div style="margin: 0;">Invoice #: {{ order_reference }}</div>
+          <div style="margin: 0;">Invoice Date: {{ order_date }}</div>
+          <div style="margin: 0;">Due Date: </div>
+          <div style="margin: 0;">
+  Status:
+  {% if payment_status|lower == "paid" %}
+    <span style="color: green;"><strong>{{ payment_status|capfirst }}</strong></span>
+  {% else %}
+    <span style="color: red;"><strong>{{ payment_status|capfirst }}</strong></span>
+  {% endif %}
+</div>
+        </td>
+      </tr>
+    </table>
+</div>
+
+
+<table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; margin-top: 30px;">
+  <thead>
+    <tr>
+      <th style="width: 40%; padding: 12px; text-align: left; color:#213f7f;">Description</th>
+      <th style="width: 10%; padding: 12px; text-align: center; color:#213f7f;">Qty</th>
+      <th style="width: 20%; padding: 12px; text-align: right; color:#213f7f;">Unit Price</th>
+      <th style="width: 30%; padding: 12px; text-align: right; color:#213f7f;">Total</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% if kit_name %}
+    <tr style="border-bottom: 1px solid #f0f0f0;">
+      <td style="padding: 14px;">{{ kit_name }}</td>
+      <td style="text-align: center;">1</td>
+      <td style="text-align: right;">${{ kit_price|floatformat:2 }}</td>
+      <td style="text-align: right;">${{ kit_price|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+
+    {% if plan_name %}
+    <tr style="border-bottom: 1px solid #f0f0f0;">
+      <td style="padding: 14px;">{{ plan_name }}</td>
+      <td style="text-align: center;">1</td>
+      <td style="text-align: right;">${{ plan_price|floatformat:2 }}</td>
+      <td style="text-align: right;">${{ plan_price|floatformat:2 }}</td>
+    </tr>
+    {% endif %}
+
+    {% if order.region == "Kolwezi" %}
+    <tr style="border-bottom: 1px solid #f0f0f0;">
+      <td style="padding: 14px;">Installation Fee (Kolwezi Region)</td>
+      <td style="text-align: center;">1</td>
+      <td style="text-align: right;">$60.00</td>
+      <td style="text-align: right;">$60.00</td>
+    </tr>
+    {% endif %}
+
+    {% for tax in taxes %}
+    <tr style="border-bottom: 1px solid #f0f0f0; background-color: #f9f9f9;">
+      <td style="padding: 14px;"> </td>
+      <td style="text-align: center;"> </td>
+      <td style="text-align: right;">{{ tax.name }}: {{ tax.rate|floatformat:"-2" }} %</td>
+      <td style="text-align: right;">${{ tax.amount|floatformat:2 }}</td>
+    </tr>
+    {% endfor %}
+
+    <tr style="border-bottom: 1px solid #f0f0f0; background-color: #f9f9f9;">
+      <td style="padding: 4px;"> </td>
+      <td style="text-align: center;"> </td>
+      <td style="text-align: right; font-size: 14px; color:#213f7f;">Total Amount:</td>
+      <td style="text-align: right; font-size: 14px; color:#213f7f;">${{ total_price }}</td>
+    </tr>
+
+  </tbody>
+</table>
+
+
+
+  <div class="footer">
+    Thank you for your business.<br>
+    Nexus Telecom © 2025 – All rights reserved.
+  </div>
+
+</body>
+</html>

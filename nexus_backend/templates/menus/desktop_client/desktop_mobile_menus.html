@@ -1,0 +1,141 @@
+{% load i18n %}
+{% load role_tags %}
+<aside id="mobileSidebar"
+       class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white p-6 md:hidden hidden shadow-lg">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600 mb-4 text-lg" aria-label="Close menu">
+      <i class="fas fa-times"></i>
+    </button>
+    <nav class="space-y-4 text-sm text-gray-700">
+      {% if user|has_role:"admin" or user|has_role:"manager" or user|has_role:"finance" %}
+            <a href="{% url 'dashboard_bi' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-chart-line"></i> {% trans "Dashboard" %}
+            </a>
+          {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"compliance" %}
+        <a href="{% url 'kyc_management' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-id-card"></i> {% trans "KYC Management" %}
+        </a>
+          {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"sales" or user|has_role:"finance" or user|has_role:"manager" %}
+        <a href="{% url 'sales_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-user-tie"></i> {% trans "Sales" %}
+        </a>
+          {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"finance" or user|has_role:"sales" or user|has_role:"manager"%}
+        <a href="{% url 'order_management' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-box"></i> {% trans "Orders" %}
+        </a>
+      {% endif %}
+
+            {% if user|has_role:"admin" or user|has_role:"dispatcher" or user|has_role:"finance"%}
+        <a href="{% url 'dispatch_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-truck"></i> {% trans "Dispatch" %}
+        </a>
+      {% endif %}
+
+            {% if user|has_role:"admin" or user|has_role:"finance"%}
+        <a href="{% url 'stock_management' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-warehouse"></i> {% trans "Stock" %}
+        </a>
+      {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"manager" or user|has_role:"leadtechnician" or user|has_role:"finance"%}
+        <a href="{% url 'subscription_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-sync-alt"></i> {% trans "Subscriptions" %}
+        </a>
+          {% endif %}
+
+{% if user|has_role:"admin" or user|has_role:"manager" or user|has_role:"finance" %}
+  <a href="{% url 'billing_management' %}"
+     class="flex items-center gap-3 px-3 py-2 rounded-md transition hover:bg-blue-50 hover:text-blue-600">
+    <i class="fa-solid fa-file-invoice-dollar"></i>
+    <span>{% trans "Billing Management" %}</span>
+  </a>
+{% endif %}
+
+      {% if user|has_role:"admin" or user|has_role:"manager" or user|has_role:"finance" %}
+        <a href="{% url 'backoffice_revenue_summary' %}" class="flex items-center gap-3 px-3 py-2 rounded-md transition hover:bg-blue-50 hover:text-blue-600">
+          <i class="fas fa-chart-pie text-emerald-600"></i> {% trans "Revenue reporting" %}
+        </a>
+      {% endif %}
+
+
+        {% if user|has_role:"admin"%}
+          <a href="{% url 'customers:customers_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-users"></i> {% trans "Customers" %}
+        </a>
+        {% endif %}
+
+      {% if user|has_role:"admin" or user|has_role:"technician" or user|has_role:"leadtechnician" %}
+        <!-- Field OPS group -->
+        <div class="space-y-1 pt-2">
+          <div class="flex items-center gap-3 px-3 py-2 text-gray-700 font-medium">
+            <i class="fas fa-network-wired"></i> {% trans "Field Operations" %}
+          </div>
+          <div class="ml-6 space-y-1 text-sm">
+              {% if user|has_role:"admin" or user|has_role:"leadtechnician"%}
+            <a href="{% url 'tech_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-tachometer-alt"></i> {% trans "FE Dispatch" %}
+            </a>
+              {% endif %}
+
+              {% if user|has_role:"admin" or user|has_role:"technician" %}
+            <a href="{% url 'fe_ops_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-tools"></i> {% trans "FE Installations" %}
+            </a>
+          {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"technician" or user|has_role:"leadtechnician" %}
+            <a href="{% url 'site_survey:survey_dashboard' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-clipboard-check"></i> {% trans "Site Survey" %}
+            </a>
+          {% endif %}
+
+          {% if user|has_role:"admin" or user|has_role:"leadtechnician" %}
+            <a href="{% url 'completed_installations' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-check-circle"></i> {% trans "Installation Reports" %}
+            </a>
+          {% endif %}
+          {% if user|has_role:"admin" or user|has_role:"leadtechnician" %}
+            <a href="{% url 'activation_view' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-user-check text-emerald-600"></i> {% trans "Customer Activation" %}
+            </a>
+          {% endif %}
+          </div>
+        </div>
+      {% endif %}
+
+      {% if user|has_role:"admin" or user|has_role:"support" %}
+        <div class="space-y-1 pt-4">
+          <div class="flex items-center gap-3 px-3 py-2 text-gray-700 font-medium">
+            <i class="fas fa-headset"></i> {% trans "Support Tools" %}
+          </div>
+          <div class="ml-6 space-y-1 text-sm">
+            <a href="{% url 'backoffice_feedback_list' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+              <i class="fas fa-comments"></i> {% trans "Customer Feedback" %}
+            </a>
+          </div>
+        </div>
+      {% endif %}
+
+        {% if user|has_role:"admin" %}
+        <a href="{% url 'users_management' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-user-shield"></i> {% trans "Admin Users" %}
+        </a>
+      {% endif %}
+
+        {% if user|has_role:"admin" %}
+        <a href="{% url 'system_settings' %}" class="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-blue-50 hover:text-blue-600 transition">
+          <i class="fas fa-cog"></i> {% trans "Settings" %}
+        </a>
+
+      {% endif %}
+        <!-- Logout -->
+        <a href="{% url 'logout_request' %}" class="flex items-center gap-3 px-3 py-2 mt-4 rounded-md text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+          <i class="fas fa-sign-out-alt"></i> {% trans "Logout" %}
+        </a>
+    </nav>
+  </aside>

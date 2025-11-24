@@ -1,0 +1,867 @@
+{% extends 'user/users_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<!-- Header -->
+<header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+  <div class="flex items-center gap-3">
+    <i class="fas fa-users-cog text-3xl opacity-90"></i>
+    <div>
+      <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Users Management</h2>
+      <p class="text-indigo-100 text-sm mt-1">{% trans "Overview of user activity and totals." %}</p>
+    </div>
+  </div>
+</header>
+
+<!-- Summary Cards -->
+<section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+  <!-- Active Users -->
+  <article class="rounded-2xl p-6 shadow-lg bg-gradient-to-br from-emerald-400 to-emerald-600 text-white transition transform hover:-translate-y-1 hover:shadow-2xl">
+    <div class="flex items-start justify-between">
+      <div>
+        <h3 class="text-sm font-semibold opacity-90">{% trans "Active Users" %}</h3>
+        <p class="mt-2 text-3xl font-extrabold">{{ assigned_order_count }}</p>
+      </div>
+      <span class="inline-flex items-center justify-center rounded-full bg-white/20 p-3">
+        <i class="fas fa-user-check text-xl"></i>
+      </span>
+    </div>
+    <p class="mt-3 text-xs text-emerald-100">{% trans "Currently enabled and active accounts" %}</p>
+  </article>
+
+  <!-- Non Active Users -->
+  <article class="rounded-2xl p-6 shadow-lg bg-gradient-to-br from-amber-400 to-orange-500 text-white transition transform hover:-translate-y-1 hover:shadow-2xl">
+    <div class="flex items-start justify-between">
+      <div>
+        <h3 class="text-sm font-semibold opacity-90">{% trans "Non Active Users" %}</h3>
+        <p class="mt-2 text-3xl font-extrabold">{{ dispatched_order }}</p>
+      </div>
+      <span class="inline-flex items-center justify-center rounded-full bg-white/20 p-3">
+        <i class="fas fa-user-clock text-xl"></i>
+      </span>
+    </div>
+    <p class="mt-3 text-xs text-amber-100">{% trans "Disabled or inactive accounts" %}</p>
+  </article>
+
+  <!-- Total Users -->
+  <article class="rounded-2xl p-6 shadow-lg bg-gradient-to-br from-indigo-500 to-blue-600 text-white transition transform hover:-translate-y-1 hover:shadow-2xl">
+    <div class="flex items-start justify-between">
+      <div>
+        <h3 class="text-sm font-semibold opacity-90">{% trans "Total Users" %}</h3>
+        <p class="mt-2 text-3xl font-extrabold">{{ total_dispatched }}</p>
+      </div>
+      <span class="inline-flex items-center justify-center rounded-full bg-white/20 p-3">
+        <i class="fas fa-users text-xl"></i>
+      </span>
+    </div>
+    <p class="mt-3 text-xs text-indigo-100">{% trans "All registered accounts" %}</p>
+  </article>
+</section>
+
+<!-- Filters (optional UI only) -->
+<div class="flex flex-wrap items-center gap-4 mb-4 mt-10">
+  <input type="text" id="searchInput" placeholder="Search by name or email..." class="flex-1 border px-3 py-2 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-blue-500" />
+  <select id="regionFilter" class="border px-3 py-2 rounded-lg shadow-sm text-sm">
+    <option value="">All Regions</option>
+    {% for region in regions %}
+      <option value="{{ region.name }}">{{ region.name }}</option>
+    {% endfor %}
+  </select>
+  <input type="date" id="startDate" class="border px-3 py-2 rounded-lg text-sm" />
+  <input type="date" id="endDate" class="border px-3 py-2 rounded-lg text-sm" />
+</div>
+
+<!-- User Table Section -->
+<div class="w-full px-6 py-6">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
+    <button onclick="openUserModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
+      + Add Staff
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-lg p-6 w-full border border-gray-200">
+    <div class="overflow-x-auto">
+      <table class="w-full table-auto text-sm text-left">
+        <thead class="bg-gray-100 text-gray-700 uppercase text-xs rounded-t-xl">
+          <tr>
+            <th class="px-4 py-3">#</th>
+            <th class="px-4 py-3">Full Name</th>
+            <th class="px-4 py-3">Email</th>
+            <th class="px-4 py-3">Phone</th>
+            <th class="px-4 py-3">Region</th>
+            <th class="px-4 py-3">Roles</th>
+            <th class="px-4 py-3">Last Login</th>
+            <th class="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody" class="divide-y divide-gray-100">
+          <!-- JS populates -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ADD USER MODAL ============ -->
+<div id="userModal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/50" onclick="closeUserModal()"></div>
+
+  <div class="relative mx-auto my-10 w-[95%] max-w-3xl rounded-2xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-3">
+        <div class="size-10 grid place-items-center rounded-xl bg-blue-50 text-blue-600">
+          <i class="fas fa-user-plus"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Add Staff</h2>
+          <p class="text-xs text-gray-500">Create a staff account and assign roles</p>
+        </div>
+      </div>
+      <button onclick="closeUserModal()" class="p-2 rounded-lg hover:bg-gray-100">
+        <i class="fas fa-times text-gray-500"></i>
+      </button>
+    </div>
+
+    <form id="userForm" class="px-6 pb-6 pt-4">
+      {% csrf_token %}
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <input type="text" name="full_name" required placeholder="Enter full name"
+                 class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" name="email" required placeholder="example@company.com"
+                 class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <!-- Phone (local, no +243) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <div class="flex rounded-xl shadow-sm border overflow-hidden">
+            <span class="inline-flex items-center px-3 bg-gray-50 text-gray-600 select-none">+243</span>
+            <input
+              type="text"
+              name="phone_local"
+              id="phoneLocal"
+              inputmode="numeric"
+              pattern="\d*"
+              placeholder="e.g. 821234567"
+              class="w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Enter digits only. The +243 prefix is added automatically.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+          <select name="region_id" required
+                  class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">Select Region</option>
+            {% for region in regions %}
+              <option value="{{ region.id }}">{{ region.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Roles -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Assign Roles</label>
+
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200"
+                    onclick="rolesSelectAll('#roleChipWrap')">Select all</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200"
+                    onclick="rolesClear('#roleChipWrap')">Clear</button>
+            <span class="text-xs text-gray-400">/</span>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    onclick="rolesPreset('#roleChipWrap','ops')">Ops</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-purple-50 text-purple-700 hover:bg-purple-100"
+                    onclick="rolesPreset('#roleChipWrap','support')">Support</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    onclick="rolesPreset('#roleChipWrap','sales')">Sales</button>
+          </div>
+
+          <div id="roleChipWrap" class="flex flex-wrap gap-2">
+            {% for role in roles %}
+              <label class="role-chip">
+                <input type="checkbox" class="peer hidden" name="roles" value="{{ role.id }}">
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm
+                             text-gray-700 bg-white hover:bg-gray-50
+                             peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600">
+                  <i class="fas fa-check hidden peer-checked:inline"></i>
+                  <span class="capitalize">{{ role.name }}</span>
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+          <style>.role-chip { cursor: pointer; }</style>
+          <p class="text-xs text-gray-500 mt-2">Pick as many as needed.</p>
+        </div>
+
+        <!-- Passwords -->
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <div class="flex gap-3 flex-col md:flex-row">
+            <div class="relative flex-1">
+              <input type="password" name="password" id="passwordField" required placeholder="Create password"
+                     class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 pr-12">
+              <button type="button" onclick="togglePassword('passwordField')" title="Show/Hide"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
+            <div class="relative flex-1">
+              <input type="password" name="confirm_password" id="confirmPasswordField" required placeholder="Repeat password"
+                     class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 pr-12">
+              <button type="button" onclick="togglePassword('confirmPasswordField')" title="Show/Hide"
+                      class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700">
+                <i class="far fa-eye"></i>
+              </button>
+            </div>
+          </div>
+          <div class="mt-2 flex items-center justify-between">
+            <div id="pwStrength" class="text-xs text-gray-500">Strength: —</div>
+            <div class="flex gap-3">
+              <button type="button" onclick="generatePassword()" class="text-sm text-blue-600 hover:underline">
+                Generate strong password
+              </button>
+              <button type="button" onclick="copyPassword()" class="text-sm text-gray-600 hover:underline">
+                Copy
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="userFormError" class="hidden mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+
+      <div class="flex justify-end gap-3 mt-8 border-t pt-4">
+        <button type="button" onclick="closeUserModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">
+          Cancel
+        </button>
+        <button type="submit" class="px-6 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+          Create User
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ EDIT USER MODAL ============ -->
+<div id="editUserModal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/50" onclick="closeEditUserModal()"></div>
+
+  <div class="relative mx-auto my-10 w-[95%] max-w-3xl rounded-2xl bg-white shadow-2xl">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <div class="flex items-center gap-3">
+        <div class="size-10 grid place-items-center rounded-xl bg-yellow-50 text-yellow-600">
+          <i class="fas fa-user-edit"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold text-gray-900">Edit User</h2>
+          <p class="text-xs text-gray-500">Update details and roles</p>
+        </div>
+      </div>
+      <button onclick="closeEditUserModal()" class="p-2 rounded-lg hover:bg-gray-100">
+        <i class="fas fa-times text-gray-500"></i>
+      </button>
+    </div>
+
+    <form id="editUserForm" class="px-6 pb-6 pt-4">
+      {% csrf_token %}
+      <input type="hidden" name="email" id="editUserEmail">
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <input type="text" name="full_name" id="editFullName" required
+                 class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" id="editEmail" readonly
+                 class="w-full border px-4 py-2.5 rounded-xl shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed">
+        </div>
+
+        <!-- Phone (local, no +243) -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <div class="flex rounded-xl shadow-sm border overflow-hidden">
+            <span class="inline-flex items-center px-3 bg-gray-50 text-gray-600 select-none">+243</span>
+            <input
+              type="text"
+              name="phone_local"
+              id="editPhoneLocal"
+              inputmode="numeric"
+              pattern="\d*"
+              class="w-full px-4 py-2.5 focus:ring-2 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <p class="text-xs text-gray-500 mt-1">Enter digits only. The +243 prefix is added automatically.</p>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+          <select name="region_id" id="editRegion"
+                  class="w-full border px-4 py-2.5 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">Select Region</option>
+            {% for region in regions %}
+              <option value="{{ region.id }}">{{ region.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Assign Roles</label>
+
+          <div class="flex flex-wrap gap-2 mb-3">
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200"
+                    onclick="rolesSelectAll('#editRoleChipWrap')">Select all</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-gray-100 hover:bg-gray-200"
+                    onclick="rolesClear('#editRoleChipWrap')">Clear</button>
+            <span class="text-xs text-gray-400">/</span>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-blue-50 text-blue-700 hover:bg-blue-100"
+                    onclick="rolesPreset('#editRoleChipWrap','ops')">Ops</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-purple-50 text-purple-700 hover:bg-purple-100"
+                    onclick="rolesPreset('#editRoleChipWrap','support')">Support</button>
+            <button type="button" class="px-3 py-1.5 rounded-full text-xs bg-amber-50 text-amber-700 hover:bg-amber-100"
+                    onclick="rolesPreset('#editRoleChipWrap','sales')">Sales</button>
+          </div>
+
+          <div id="editRoleChipWrap" class="flex flex-wrap gap-2">
+            {% for role in roles %}
+              <label class="role-chip">
+                <input type="checkbox" class="peer hidden" name="roles" value="{{ role.id }}">
+                <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm
+                             text-gray-700 bg-white hover:bg-gray-50
+                             peer-checked:bg-blue-600 peer-checked:text-white peer-checked:border-blue-600">
+                  <i class="fas fa-check hidden peer-checked:inline"></i>
+                  <span class="capitalize">{{ role.name }}</span>
+                </span>
+              </label>
+            {% endfor %}
+          </div>
+          <style>.role-chip { cursor: pointer; }</style>
+        </div>
+      </div>
+
+      <div id="editUserFormError" class="hidden mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"></div>
+
+      <div class="flex justify-end gap-3 mt-8 border-t pt-4">
+        <button type="button" onclick="closeEditUserModal()" class="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200">
+          Cancel
+        </button>
+        <button type="submit" class="px-6 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700">
+          Update User
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ============ RESET PASSWORD MODAL ============ -->
+<div id="resetPasswordModal" class="hidden fixed inset-0 z-50">
+  <div class="absolute inset-0 bg-black/50" onclick="closeResetPasswordModal()"></div>
+
+  <div class="relative mx-auto my-10 w-[95%] max-w-md rounded-2xl bg-white shadow-2xl p-6">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Reset Password</h2>
+
+    <div id="resetPasswordContent">
+      <div class="mb-6">
+        <p class="text-gray-600 mb-4">Are you sure you want to reset the password for
+          <span id="resetUserEmail" class="font-semibold text-gray-800"></span>?</p>
+        <p class="text-sm text-gray-500">A new random password will be generated and sent to the user's phone number.</p>
+      </div>
+
+      <div class="flex justify-end gap-3">
+        <button type="button" onclick="closeResetPasswordModal()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Cancel</button>
+        <button type="button" onclick="confirmResetPassword()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Reset Password</button>
+      </div>
+    </div>
+
+    <div id="resetPasswordResult" class="hidden">
+      <div class="mb-6">
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <i class="fas fa-check-circle text-green-400"></i>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-green-800">Password Reset Successful</h3>
+              <div class="mt-2 text-sm text-green-700">
+                <p>The new password has been sent to the user's phone number.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex">
+            <div class="flex-shrink-0">
+              <i class="fas fa-key text-blue-400"></i>
+            </div>
+            <div class="ml-3">
+              <h3 class="text-sm font-medium text-blue-800">New Password</h3>
+              <div class="mt-2 text-sm text-blue-700">
+                <p class="font-mono font-bold text-lg" id="newPasswordDisplay"></p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end">
+        <button type="button" onclick="closeResetPasswordModal()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ JS ============ -->
+<script>
+{% comment %} <<<<<<<<<<<<<<<<<< HEAD {% endcomment %}
+/* ---------- Phone helpers (DRC) ---------- */
+function onlyDigits(s){ return (s||"").replace(/\D+/g,""); }
+function toLocalFromE164(phone){
+  const d = onlyDigits(phone);
+  if (d.startsWith("243")) return d.slice(3);
+  return d;
+}
+function toE164FromLocal(local){
+  const d = onlyDigits(local).replace(/^0+/, "");
+  return d ? `+243${d}` : "";
+}
+
+/* ---------- Table loading ---------- */
+{% comment %} =================== {% endcomment %}
+{% comment %} // Pass Django LANGUAGE_CODE to JavaScript
+const LANGUAGE_CODE = '{{ LANGUAGE_CODE|escapejs }}' || 'en';
+
+function closeUserModal() {
+  document.getElementById("userModal").classList.add("hidden");
+}
+
+function generatePassword(length = 12) {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#&*!";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    password += charset[randomIndex];
+  }
+
+  document.querySelector('input[name="password"]').value = password;
+  document.querySelector('input[name="confirm_password"]').value = password;
+
+  alert("Password generated and filled.");
+}
+
+async function openUserModal() {
+  document.getElementById("userModal").classList.remove("hidden");
+
+  const roleSelect = document.querySelector('select[name="roles"]');
+  const regionSelect = document.querySelector('select[name="region_id"]');
+
+  roleSelect.innerHTML = "";
+  regionSelect.innerHTML = '<option value="">Select Region</option>';
+
+  try {
+  const response = await fetch(`{% url 'get_roles_region' %}`);
+    const data = await response.json();
+
+    data.roles.forEach(role => {
+      const option = document.createElement("option");
+      option.value = role.value;
+      option.textContent = role.label;
+      roleSelect.appendChild(option);
+    });
+
+    data.regions.forEach(region => {
+      const option = document.createElement("option");
+      option.value = region.value;
+      option.textContent = region.label;
+      regionSelect.appendChild(option);
+    });
+
+  } catch (error) {
+    alert("Failed to load roles and regions.");
+  }
+}
+
+document.getElementById("userForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const password = form.password.value;
+  const confirmPassword = form.confirm_password.value;
+
+  if (password !== confirmPassword) {
+    alert("Passwords do not match.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("full_name", form.full_name.value);
+  formData.append("email", form.email.value);
+  formData.append("phone", form.phone.value);
+  formData.append("region_id", form.region_id.value);
+  formData.append("password", password);
+  formData.append("confirm_password", confirmPassword);
+
+  const selectedRoles = Array.from(form.roles.selectedOptions).map(opt => opt.value);
+  selectedRoles.forEach(role => formData.append("roles", role));
+
+  const response = await fetch(`{% url 'staff_creation' %}`, {
+    method: "POST",
+    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+    body: formData
+  });
+
+  const result = await response.json();
+  if (result.success) {
+    alert("User created successfully.");
+    closeUserModal();
+    location.reload();
+  } else {
+    alert(result.error || "Failed to create user.");
+  }
+}); {% endcomment %}
+
+{% comment %} >>>>>>> 40e049b (Fix ReferenceError: LANGUAGE_CODE is not defined in users_management by injecting LANGUAGE_CODE into template context) {% endcomment %}
+async function loadUsers() {
+  const tbody = document.getElementById("usersTableBody");
+  tbody.innerHTML = "";
+  try {
+    const res = await fetch("{% url 'get_users_data' %}");
+    if (!res.ok) throw new Error("Failed to load users");
+    const data = await res.json();
+
+    const q = (document.getElementById('searchInput').value || '').toLowerCase();
+    const regionF = document.getElementById('regionFilter').value;
+
+    const users = (data.users || []).filter(u => {
+      const matchText = [u.full_name, u.email].join(" ").toLowerCase().includes(q);
+      const matchRegion = !regionF || (u.region || '') === regionF || (u.region && u.region.name === regionF);
+      return matchText && matchRegion;
+    });
+
+    users.forEach((user, index) => {
+      const rolesDisplay = Array.isArray(user.roles) ? user.roles.join(', ') : (user.roles || '');
+      const regionDisplay = (user.region && user.region.name) ? user.region.name : (user.region || '');
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-4 py-2">${index + 1}</td>
+        <td class="px-4 py-2">${user.full_name || ''}</td>
+        <td class="px-4 py-2">${user.email || ''}</td>
+        <td class="px-4 py-2">${user.phone || ''}</td>
+        <td class="px-4 py-2">${regionDisplay}</td>
+        <td class="px-4 py-2">${rolesDisplay}</td>
+        <td class="px-4 py-2">${user.last_login || ''}</td>
+        <td class="px-4 py-2 space-x-2">
+          <button onclick="openEditUserModal('${user.email}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs">Edit</button>
+          <button onclick="resetPassword('${user.email}')" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">Reset Password</button>
+          <button onclick="toggleUserStatus('${user.email}', ${user.is_active})" class="${user.is_active ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'} text-white px-2 py-1 rounded text-xs">${user.is_active ? 'Deactivate' : 'Activate'}</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  } catch (err) {
+    console.error(err);
+    alert("Failed to load users");
+  }
+}
+window.addEventListener("DOMContentLoaded", () => {
+  loadUsers();
+  document.getElementById('searchInput').addEventListener('input', loadUsers);
+  document.getElementById('regionFilter').addEventListener('change', loadUsers);
+});
+
+/* ---------- Toggle active ---------- */
+function toggleUserStatus(email, isActive) {
+  const action = isActive ? "deactivate" : "activate";
+  if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+  fetch(`/api/users/${encodeURIComponent(email)}/toggle-status/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": "{{ csrf_token }}"
+    },
+    body: JSON.stringify({ email })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`User ${action}d successfully.`);
+        loadUsers();
+      } else {
+        alert("Error: " + (data.error || "Unknown error"));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Something went wrong.");
+    });
+}
+
+/* ---------- Add User Modal ---------- */
+function openUserModal() {
+  document.getElementById("userModal").classList.remove("hidden");
+  const err = document.getElementById("userFormError");
+  err.classList.add("hidden"); err.textContent = "";
+}
+function closeUserModal() {
+  document.getElementById("userModal").classList.add("hidden");
+}
+function togglePassword(id) {
+  const el = document.getElementById(id);
+  el.type = (el.type === "password") ? "text" : "password";
+}
+function generatePassword(length = 12) {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#&*!";
+  let pw = ""; for (let i=0; i<length; i++) pw += charset[Math.floor(Math.random()*charset.length)];
+  document.getElementById('passwordField').value = pw;
+  document.getElementById('confirmPasswordField').value = pw;
+  updateStrength(pw);
+}
+function copyPassword() {
+  const pw = document.getElementById('passwordField').value;
+  if (!pw) return; navigator.clipboard.writeText(pw);
+}
+function updateStrength(pw) {
+  const el = document.getElementById('pwStrength');
+  let score = 0;
+  if (pw.length >= 12) score++;
+  if (/[A-Z]/.test(pw)) score++;
+  if (/[a-z]/.test(pw)) score++;
+  if (/\d/.test(pw)) score++;
+  if (/[@#&*!]/.test(pw)) score++;
+  const labels = ["Very weak", "Weak", "Fair", "Good", "Strong", "Excellent"];
+  el.textContent = `Strength: ${labels[Math.min(score, labels.length-1)]}`;
+}
+document.getElementById('passwordField').addEventListener('input', (e)=>updateStrength(e.target.value));
+
+/* roles helpers */
+function rolesSelectAll(scope) {
+  document.querySelectorAll(`${scope} input[name="roles"]`).forEach(cb => cb.checked = true);
+}
+function rolesClear(scope) {
+  document.querySelectorAll(`${scope} input[name="roles"]`).forEach(cb => cb.checked = false);
+}
+function rolesPreset(scope, kind) {
+  rolesClear(scope);
+  const sets = {
+    ops: ['dispatcher','leadtechnician','technician'],
+    support: ['support','compliance'],
+    sales: ['sales']
+  };
+  (sets[kind] || []).forEach(v => {
+    const cb = document.querySelector(`${scope} input[name="roles"][value="${v}"]`);
+    if (cb) cb.checked = true;
+  });
+}
+
+/* submit add */
+document.getElementById("userForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const form = e.target;
+  const errorBox = document.getElementById("userFormError");
+  const showError = (msg) => { errorBox.textContent = msg; errorBox.classList.remove("hidden"); };
+
+  const email = form.email.value.trim();
+  const pw = form.password.value;
+  const cpw = form.confirm_password.value;
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showError("Please enter a valid email address."); return; }
+  if (pw !== cpw) { showError("Passwords do not match."); return; }
+
+  // Build +243 E.164 from local
+  const phoneLocal = form.phone_local.value.trim();
+  const phoneE164 = toE164FromLocal(phoneLocal);
+  if (!phoneE164) { showError("Please enter a valid phone number (digits only)."); return; }
+
+  const fd = new FormData();
+  fd.append("full_name", form.full_name.value.trim());
+  fd.append("email", email);
+  fd.append("phone", phoneE164);
+  fd.append("region_id", form.region_id.value);
+  fd.append("password", pw);
+  fd.append("confirm_password", cpw);
+
+  document.querySelectorAll('#roleChipWrap input[name="roles"]:checked')
+    .forEach(cb => fd.append("roles", cb.value));
+
+  try {
+    const resp = await fetch("{% url 'staff_creation' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": "{{ csrf_token }}" },
+      body: fd
+    });
+    const result = await resp.json();
+    if (result.success) {
+      closeUserModal();
+      alert("User created successfully.");
+      loadUsers();
+    } else {
+      showError(result.error || result.message || "Failed to create user.");
+    }
+  } catch (err) {
+    showError("Network/server error. Please try again.");
+    console.error(err);
+  }
+});
+
+/* ---------- Edit User Modal ---------- */
+function closeEditUserModal() {
+  document.getElementById("editUserModal").classList.add("hidden");
+}
+async function openEditUserModal(email) {
+  const err = document.getElementById("editUserFormError");
+  err.classList.add("hidden"); err.textContent = "";
+
+  try {
+//          <<<<<<< HEAD
+    const userResponse = await fetch(`{% url 'get_user_details' %}?email=${encodeURIComponent(email)}`);
+//            =======
+    // First, load roles and regions for the edit modal
+  //const rolesRegionResponse = await fetch(`{% url 'get_roles_region' %}`);
+    //const rolesRegionData = await rolesRegionResponse.json();
+
+    // Populate roles options
+    //const editRoleSelect = document.getElementById("editRoles");
+    //editRoleSelect.innerHTML = "";
+    //rolesRegionData.roles.forEach(role => {
+      //const option = document.createElement("option");
+      //option.value = role.value;
+      //option.textContent = role.label;
+      //editRoleSelect.appendChild(option);
+    //});
+
+    // Populate regions options
+    //const editRegionSelect = document.getElementById("editRegion");
+    //editRegionSelect.innerHTML = '<option value="">Select Region</option>';
+    //rolesRegionData.regions.forEach(region => {
+      //const option = document.createElement("option");
+      //option.value = region.value;
+      //option.textContent = region.label;
+      //editRegionSelect.appendChild(option);
+    //});
+
+    // Now fetch user details
+  //const userResponse = await fetch(`{% url 'get_user_details' %}?email=${encodeURIComponent(email)}`);
+//        >>>>>>> 40e049b (Fix ReferenceError: LANGUAGE_CODE is not defined in users_management by injecting LANGUAGE_CODE into template context)
+    const userData = await userResponse.json();
+    if (!userData.success) { alert("Failed to load user details."); return; }
+
+    const user = userData.user;
+    document.getElementById("editUserEmail").value = user.email || "";
+    document.getElementById("editFullName").value = user.full_name || "";
+    document.getElementById("editEmail").value = user.email || "";
+
+    // Show local digits without +243
+    document.getElementById("editPhoneLocal").value = toLocalFromE164(user.phone || "");
+
+    const regionSel = document.getElementById("editRegion");
+    regionSel.value = (user.region && user.region.id) ? user.region.id : "";
+
+    document.querySelectorAll('#editRoleChipWrap input[name="roles"]').forEach(cb => cb.checked = false);
+    if (Array.isArray(user.roles)) {
+      user.roles.forEach(r => {
+        const cb = document.querySelector(`#editRoleChipWrap input[name="roles"][value="${r}"]`);
+        if (cb) cb.checked = true;
+      });
+    }
+
+    document.getElementById("editUserModal").classList.remove("hidden");
+  } catch (error) {
+    console.error("Error loading user details:", error);
+    alert("Failed to load user details.");
+  }
+}
+
+/* submit edit */
+document.getElementById("editUserForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+  const form = e.target;
+  const errorBox = document.getElementById("editUserFormError");
+  const showError = (msg) => { errorBox.textContent = msg; errorBox.classList.remove("hidden"); };
+
+  // Convert local -> E.164
+  const editLocal = form.phone_local.value.trim();
+  const editE164 = toE164FromLocal(editLocal);
+  if (!editE164) { showError("Please enter a valid phone number (digits only)."); return; }
+
+  const fd = new FormData();
+  fd.append("email", form.email.value);
+  fd.append("full_name", form.full_name.value);
+  fd.append("phone", editE164);
+  fd.append("region_id", form.region_id.value);
+
+  document.querySelectorAll('#editRoleChipWrap input[name="roles"]:checked')
+    .forEach(cb => fd.append("roles", cb.value));
+
+  try {
+    const resp = await fetch("{% url 'edit_user' %}", {
+      method: "POST",
+      headers: { "X-CSRFToken": "{{ csrf_token }}" },
+      body: fd
+    });
+    const result = await resp.json();
+    if (result.success) {
+      alert("User updated successfully.");
+      closeEditUserModal();
+      loadUsers();
+    } else {
+      showError(result.error || "Failed to update user.");
+    }
+  } catch (error) {
+    console.error("Error updating user:", error);
+    showError("Failed to update user.");
+  }
+});
+
+/* ---------- Reset Password Modal ---------- */
+let currentResetEmail = null;
+function resetPassword(email) {
+  currentResetEmail = email;
+  document.getElementById("resetUserEmail").textContent = email;
+  document.getElementById("resetPasswordModal").classList.remove("hidden");
+}
+function closeResetPasswordModal() {
+  document.getElementById("resetPasswordModal").classList.add("hidden");
+  document.getElementById("resetPasswordContent").classList.remove("hidden");
+  document.getElementById("resetPasswordResult").classList.add("hidden");
+  currentResetEmail = null;
+}
+async function confirmResetPassword() {
+  if (!currentResetEmail) return;
+  try {
+    const response = await fetch("{% url 'reset_user_password' %}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": "{{ csrf_token }}" },
+      body: JSON.stringify({ email: currentResetEmail })
+    });
+    const data = await response.json();
+    if (data.success) {
+      document.getElementById("resetPasswordContent").classList.add("hidden");
+      document.getElementById("resetPasswordResult").classList.remove("hidden");
+      document.getElementById("newPasswordDisplay").textContent = data.new_password;
+    } else {
+      alert("Failed: " + (data.error || "Unknown error"));
+      closeResetPasswordModal();
+    }
+  } catch (error) {
+    console.error("Error resetting password:", error);
+    alert("Something went wrong.");
+    closeResetPasswordModal();
+  }
+}
+</script>
+
+{% endblock %}

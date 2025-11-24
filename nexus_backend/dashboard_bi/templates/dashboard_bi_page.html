@@ -1,0 +1,506 @@
+{% extends 'dashboard_bi/dashboard_bi_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% block content %}
+
+<style>
+  :root{ --ring: 0 0% 100% / 0; }
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .5s ease-out both; }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.12) }
+  }
+  .btn { @apply inline-flex items-center gap-2 px-3 py-2 rounded-lg font-medium shadow-sm; }
+  .btn-primary { @apply bg-indigo-600 text-white hover:bg-indigo-700; }
+  .btn-quiet   { @apply bg-white border border-gray-300 text-gray-700 hover:bg-gray-50; }
+  .chip { @apply text-xs px-2 py-1 rounded-full border bg-white; }
+  .kbd  { @apply text-[10px] px-1.5 py-0.5 rounded border bg-gray-50 text-gray-600; }
+  .field { @apply px-3 py-2 border rounded-lg w-full focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500; }
+  .sr-only { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0; }
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<main class="w-full">
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6 sm:space-y-8">
+
+    <!-- Page Header -->
+    <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white animate-fade-in">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+            <i class="fas fa-chart-line text-3xl opacity-90"></i>
+            {% trans "Business Dashboard" %}
+          </h1>
+          <p class="mt-1 text-sm text-indigo-100">
+            {% trans "Track performance, export reports, and review recent activity." %}
+          </p>
+        </div>
+        <div class="flex items-center gap-2">
+        </div>
+      </div>
+    </header>
+
+    <!-- REPORT CENTER -->
+    <section class="animate-fade-in" aria-labelledby="report-center-title">
+      <h2 id="report-center-title" class="sr-only">{% trans "Report Center" %}</h2>
+
+      <div class="rounded-2xl bg-white border border-gray-200 shadow-sm">
+        <!-- Toolbar -->
+        <div class="p-4 sm:p-5 border-b border-gray-200">
+          <div class="flex flex-col xl:flex-row xl:items-end gap-4">
+            <!-- Report type -->
+            <div class="w-full sm:w-auto">
+              <label for="repType" class="block text-xs text-gray-600 mb-1">{% trans "Report Type" %}</label>
+              <select id="repType" class="field">
+                <option value="customers">{% trans "Customers" %}</option>
+                <option value="orders" selected>{% trans "Orders" %}</option>
+                <option value="subscriptions">{% trans "Subscriptions" %}</option>
+                <option value="revenue">{% trans "Revenue (Monthly)" %}</option>
+                <option value="tickets">{% trans "Tickets" %}</option>
+                <option value="inventory">{% trans "Inventory" %}</option>
+                <option value="gl">{% trans "General Ledger" %}</option>
+                <option value="trial_balance">{% trans "Trial Balance" %}</option>
+              </select>
+            </div>
+
+            <!-- Search / Query -->
+            <div class="w-full sm:max-w-xs" data-for="customers gl trial_balance" data-slot="conditional">
+              <label for="repQuery" class="block text-xs text-gray-600 mb-1">
+                {% trans "Search (name, email, phone)" %}
+              </label>
+              <input id="repQuery" type="text" class="field" placeholder="{% trans 'Type to search…' %}">
+              <p class="mt-1 text-[11px] text-gray-500">
+                {% trans 'Applies to Customers, General Ledger and Trial Balance.' %}
+              </p>
+            </div>
+
+            <!-- Status filter -->
+            <div class="w-full sm:w-48" data-for="customers" data-slot="conditional">
+              <label for="statusCustomers" class="block text-xs text-gray-600 mb-1">{% trans "Customer Status" %}</label>
+              <select id="statusCustomers" class="field">
+                <option value="">{% trans "Any" %}</option>
+                <option>Active</option>
+                <option>Inactive</option>
+              </select>
+            </div>
+
+            <div class="w-full sm:w-48 hidden" data-for="subscriptions" data-slot="conditional">
+              <label for="statusSubs" class="block text-xs text-gray-600 mb-1">{% trans "Subscription Status" %}</label>
+              <select id="statusSubs" class="field">
+                <option value="">{% trans "Any" %}</option>
+                <option value="active">{% trans "Active" %}</option>
+                <option value="suspended">{% trans "Suspended" %}</option>
+                <option value="cancelled">{% trans "Cancelled" %}</option>
+              </select>
+            </div>
+
+            <div class="w-full sm:w-48 hidden" data-for="tickets" data-slot="conditional">
+              <label for="statusTickets" class="block text-xs text-gray-600 mb-1">{% trans "Ticket Status" %}</label>
+              <select id="statusTickets" class="field">
+                <option value="">{% trans "Any" %}</option>
+                <option value="open">{% trans "Open" %}</option>
+                <option value="pending">{% trans "Pending" %}</option>
+                <option value="closed">{% trans "Closed" %}</option>
+              </select>
+            </div>
+
+            <!-- GL: Entry Type -->
+            <div class="w-full sm:w-48 hidden" data-for="gl" data-slot="conditional">
+              <label for="glEntryType" class="block text-xs text-gray-600 mb-1">{% trans "GL Entry Type" %}</label>
+              <select id="glEntryType" class="field">
+                <option value="">{% trans "Any" %}</option>
+                <option value="invoice">{% trans "Invoice" %}</option>
+                <option value="payment">{% trans "Payment" %}</option>
+                <option value="credit_note">{% trans "Credit Note" %}</option>
+                <option value="adjustment">{% trans "Adjustment" %}</option>
+                <option value="tax">{% trans "Tax" %}</option>
+              </select>
+            </div>
+
+            <!-- GL: Account ID -->
+            <div class="w-full sm:w-48 hidden" data-for="gl" data-slot="conditional">
+              <label for="glAccountId" class="block text-xs text-gray-600 mb-1">{% trans "Account ID (BillingAccount)" %}</label>
+              <input id="glAccountId" type="number" class="field" placeholder="{% trans 'e.g. 123' %}">
+            </div>
+
+            <!-- GL: Include Wallet -->
+            <div class="w-full sm:w-48 hidden" data-for="gl" data-slot="conditional">
+              <label class="block text-xs text-gray-600 mb-1">{% trans "Options" %}</label>
+              <label class="inline-flex items-center gap-2 text-sm text-gray-700">
+                <input id="glIncludeWallet" type="checkbox" class="rounded border-gray-300">
+                <span>{% trans "Include Wallet Transactions" %}</span>
+              </label>
+            </div>
+
+            <!-- Date Range (orders, subscriptions, revenue, tickets, gl, trial_balance) -->
+            <div class="w-full sm:w-44 hidden" data-date-range data-for="orders subscriptions revenue tickets gl trial_balance" data-slot="conditional">
+              <label class="block text-xs text-gray-600 mb-1">{% trans "Start" %}</label>
+              <input id="repStart" type="date" class="field">
+            </div>
+            <div class="w-full sm:w-44 hidden" data-date-range data-for="orders subscriptions revenue tickets gl trial_balance" data-slot="conditional">
+              <label class="block text-xs text-gray-600 mb-1">{% trans "End" %}</label>
+              <input id="repEnd" type="date" class="field">
+            </div>
+
+            <!-- Presets -->
+            <div class="flex flex-wrap gap-2 hidden" data-date-range data-for="orders subscriptions revenue tickets gl trial_balance" data-slot="conditional">
+              <button type="button" class="btn btn-quiet" data-preset="this-month">{% trans "This month" %}</button>
+              <button type="button" class="btn btn-quiet" data-preset="last-month">{% trans "Last month" %}</button>
+              <button type="button" class="btn btn-quiet" data-preset="ytd">{% trans "YTD" %}</button>
+              <button type="button" class="btn btn-quiet" data-preset="clear">{% trans "Clear" %}</button>
+            </div>
+
+            <!-- Export Buttons -->
+            <div class="flex flex-wrap gap-2 ml-auto">
+              <button id="btnPreviewUrl" class="btn btn-quiet" type="button" title="{% trans 'Copy export URL' %}">
+                <i class="fas fa-link"></i> {% trans "Copy link" %}
+                <kbd class="kbd hidden sm:inline">URL</kbd>
+              </button>
+              <button id="btnExport" class="btn btn-primary" type="button">
+                <i class="fas fa-file-export"></i> {% trans "Export XLSX" %}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Helper footer -->
+        <div class="px-4 sm:px-5 py-3 bg-gray-50 rounded-b-2xl text-[12px] text-gray-600 flex flex-wrap items-center gap-3">
+          <span class="flex items-center gap-1">
+            <i class="fas fa-circle-info"></i>
+            {% trans "Filters are applied to the selected report only." %}
+          </span>
+          <span class="hidden md:inline text-gray-400">•</span>
+          <span class="flex items-center gap-1">
+            <i class="fas fa-shield-check"></i>
+            {% trans "Staff-only export endpoints." %}
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- KPI CARDS -->
+    <section class="animate-fade-in">
+      <div class="grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 xl:grid-cols-4" aria-live="polite">
+        <article class="rounded-xl bg-gradient-to-r from-emerald-400 to-emerald-600 p-5 sm:p-6 card-hover shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/90">{% trans "Active Subscriptions" %}</span>
+            <i class="fas fa-check-circle text-white/80"></i>
+          </div>
+          <div class="mt-3 text-3xl font-semibold text-white" id="activeSubsValue">—</div>
+        </article>
+
+        <article class="rounded-xl bg-gradient-to-r from-indigo-500 to-blue-600 p-5 sm:p-6 card-hover shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/90">{% trans "Monthly Revenue" %}</span>
+            <i class="fas fa-dollar-sign text-white/80"></i>
+          </div>
+          <div class="mt-3 text-3xl font-semibold text-white" id="monthlyRevenueValue">—</div>
+        </article>
+
+        <article class="rounded-xl bg-gradient-to-r from-fuchsia-500 to-pink-500 p-5 sm:p-6 card-hover shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/90">{% trans "ARPU" %}</span>
+            <i class="fas fa-chart-line text-white/80"></i>
+          </div>
+          <div class="mt-3 text-3xl font-semibold text-white" id="arpuValue">—</div>
+        </article>
+
+        <article class="rounded-xl bg-gradient-to-r from-orange-500 to-red-500 p-5 sm:p-6 card-hover shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-sm text-white/90">{% trans "Churn Rate" %}</span>
+            <i class="fas fa-user-minus text-white/80"></i>
+          </div>
+          <div class="mt-3 text-3xl font-semibold text-white" id="churnRateValue">—</div>
+        </article>
+      </div>
+    </section>
+
+    <!-- ANNUAL OVERVIEW -->
+    <section class="animate-fade-in">
+      <div class="rounded-2xl bg-white border border-gray-200 p-5 sm:p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg sm:text-xl font-semibold text-indigo-700">
+            {% trans "Annual Overview" %} <span id="annualYearBadge" class="ml-2 text-sky-600"></span>
+          </h2>
+          <div class="text-xs text-gray-500">{% trans "Revenue & Subscriptions per month" %}</div>
+        </div>
+        <div class="w-full overflow-x-auto">
+          <div class="min-w-[600px]">
+            <canvas id="annualChart" height="120" aria-label="{% trans 'Annual chart' %}" role="img"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ALERTS -->
+    <section class="animate-fade-in">
+      <div class="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2">
+        <article class="rounded-xl bg-gradient-to-r from-sky-400 to-blue-600 p-5 sm:p-6 card-hover shadow-lg text-white">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-medium">{% trans "Pending KYCs" %}</h3>
+              <p class="mt-2 text-3xl sm:text-4xl font-semibold" id="kycCountValue">{{ kyc_count }}</p>
+            </div>
+            <div class="shrink-0 rounded-full bg-white/20 p-3">
+              <i class="fas fa-id-card text-xl" aria-hidden="true"></i>
+            </div>
+          </div>
+          <a href="{% url 'kyc_management' %}" class="mt-4 btn bg-white text-blue-700 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-blue-500">
+            {% trans "Review now" %}
+          </a>
+        </article>
+
+        <article class="rounded-2xl bg-gradient-to-r from-rose-400 to-red-600 p-5 sm:p-6 card-hover shadow-lg text-white">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-sm font-medium">{% trans "Open Support Tickets" %}</h3>
+              <p class="mt-2 text-3xl sm:text-4xl font-semibold" id="openTicketsValue">{{ open_tickets|default:0 }}</p>
+            </div>
+            <div class="shrink-0 rounded-full bg-white/20 p-3">
+              <i class="fas fa-headset text-xl" aria-hidden="true"></i>
+            </div>
+          </div>
+          <a href="" class="mt-4 btn bg-white text-rose-700 hover:bg-gray-100 focus-visible:ring-2 focus-visible:ring-rose-500">
+            {% trans "View tickets" %}
+          </a>
+        </article>
+      </div>
+    </section>
+
+    <!-- RECENT ACTIVITY -->
+    <section class="animate-fade-in" aria-labelledby="activity-title">
+      <div class="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
+        <h2 id="activity-title" class="text-lg sm:text-xl font-semibold text-indigo-700">{% trans "Recent Activity" %}</h2>
+        <ul class="mt-4 divide-y divide-gray-200">
+          {% for activity in recent_activities %}
+            <li class="flex items-center gap-3 py-3">
+              <span class="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-700">{{ activity.icon }}</span>
+              <span class="text-sm sm:text-base text-gray-700">{{ activity.text }}</span>
+              <time class="ml-auto text-xs sm:text-sm text-gray-500">{{ activity.timestamp }}</time>
+            </li>
+          {% empty %}
+            <li class="py-4 text-sm text-gray-500">{% trans "No recent activity." %}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<script>
+  // -------- Endpoints --------
+  const KPI_ENDPOINT    = `{% url 'kpis_monthly' %}`;
+  const ANNUAL_ENDPOINT = `{% url 'kpis_annual' %}`;
+  const REFRESH_MS      = 60_000;
+
+  // -------- Helpers --------
+  const $  = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const setText = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+  const formatUSD = (val) => val == null || val === "—" ? "—" : new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(val)||0);
+
+  // -------- KPIs --------
+  async function loadKPIs() {
+    try {
+      const res = await fetch(KPI_ENDPOINT, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+      setText("activeSubsValue", data.active_subscriptions ?? "0");
+      setText("monthlyRevenueValue", formatUSD(data.monthly_revenue ?? "0.00"));
+      setText("arpuValue", formatUSD(data.arpu ?? "0.00"));
+      setText("churnRateValue", data.churn_rate ?? "0%");
+    } catch {
+      setText("activeSubsValue", "—");
+      setText("monthlyRevenueValue", "—");
+      setText("arpuValue", "—");
+      setText("churnRateValue", "—");
+    }
+  }
+
+  // -------- Annual Chart --------
+  let annualChartInstance = null;
+  function makeGradient(ctx, from, to) {
+    const g = ctx.createLinearGradient(0, 0, 0, 200);
+    g.addColorStop(0, from); g.addColorStop(1, to); return g;
+  }
+  async function loadAnnualChart() {
+    try {
+      const res = await fetch(ANNUAL_ENDPOINT, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+
+      const { year, months, revenue_by_month, subs_started_by_month } = data;
+      const ctx = document.getElementById("annualChart").getContext("2d");
+      const revFill  = makeGradient(ctx, "rgba(99,102,241,0.35)", "rgba(99,102,241,0.05)");
+      const revLine  = "rgba(79,70,229,1)";
+      const subsFill = makeGradient(ctx, "rgba(16,185,129,0.25)", "rgba(16,185,129,0.05)");
+      const subsLine = "rgba(5,150,105,1)";
+
+      if (annualChartInstance) annualChartInstance.destroy();
+      annualChartInstance = new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: months,
+          datasets: [
+            { type: "bar",  label: "{{ _('Revenue') }}",       data: revenue_by_month,       backgroundColor: revFill,  borderColor: revLine,  borderWidth: 2, yAxisID:"y1", borderRadius: 6, barThickness: 22 },
+            { type: "line", label: "{{ _('Subscriptions') }}", data: subs_started_by_month,  backgroundColor: subsFill, borderColor: subsLine, borderWidth: 2, pointRadius: 3, tension: .35, yAxisID:"y2" }
+          ],
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: { display: true, labels: { color: "#374151" } },
+            tooltip: {
+              callbacks: { label: (ctx) => ctx.datasetIndex===0
+                ? `${ctx.dataset.label}: ${new Intl.NumberFormat(undefined,{style:'currency',currency:'USD'}).format(Number(ctx.parsed.y||0))}`
+                : `${ctx.dataset.label}: ${ctx.parsed.y}` }
+            }
+          },
+          scales: {
+            x: { ticks:{ color:"#6B7280" }, grid:{ display:false } },
+            y1:{ type:"linear", position:"left", beginAtZero:true, ticks:{ color:"#6B7280", callback:(v)=>new Intl.NumberFormat(undefined,{style:'currency',currency:'USD',maximumFractionDigits:0}).format(v)}, grid:{ color:"rgba(0,0,0,0.06)" } },
+            y2:{ type:"linear", position:"right", beginAtZero:true, ticks:{ color:"#6B7280" }, grid:{ drawOnChartArea:false } },
+          }
+        }
+      });
+      const badge = document.getElementById("annualYearBadge");
+      if (badge) badge.textContent = `(${year})`;
+    } catch (e) { console.error(e); }
+  }
+
+  // -------- Report Center logic --------
+  const urlsByType = {
+    customers: "{% url 'export_customers_csv' %}",
+    orders: "{% url 'export_orders_csv' %}",
+    subscriptions: "{% url 'export_subscriptions_csv' %}",
+    revenue: "{% url 'export_revenue_monthly_csv' %}",
+    tickets: "{% url 'export_tickets_csv' %}",
+    inventory: "{% url 'export_inventory_csv' %}",
+    gl: "{% url 'export_general_ledger_csv' %}",
+    trial_balance: "{% url 'export_trial_balance_csv' %}",
+  };
+
+  function visibleFor(type) {
+    $$('[data-slot="conditional"]').forEach(el => {
+      const targets = (el.getAttribute('data-for') || '').split(' ').filter(Boolean);
+      el.classList.toggle('hidden', !targets.includes(type));
+    });
+    $$('[data-date-range]').forEach(el => {
+      const targets = (el.getAttribute('data-for') || '').split(' ').filter(Boolean);
+      el.classList.toggle('hidden', !targets.includes(type));
+    });
+  }
+
+  function setPreset(range) {
+    const start = document.getElementById("repStart");
+    const end   = document.getElementById("repEnd");
+    const today = new Date();
+    const fmt = (d)=> d.toISOString().slice(0,10);
+    const firstOfMonth = (d)=> new Date(d.getFullYear(), d.getMonth(), 1);
+    const lastOfMonth  = (d)=> new Date(d.getFullYear(), d.getMonth()+1, 1);
+    const firstOfYear  = (d)=> new Date(d.getFullYear(), 0, 1);
+    if (!start || !end) return;
+    if (range === "this-month"){ start.value = fmt(firstOfMonth(today)); end.value = fmt(lastOfMonth(today)); }
+    else if (range === "last-month"){ const last = new Date(today.getFullYear(), today.getMonth()-1, 1); start.value = fmt(firstOfMonth(last)); end.value = fmt(lastOfMonth(last)); }
+    else if (range === "ytd"){ start.value = fmt(firstOfYear(today)); end.value = fmt(lastOfMonth(today)); }
+    else if (range === "clear"){ start.value=""; end.value=""; }
+  }
+
+  function buildUrl() {
+    const type = document.getElementById("repType").value;
+    const base = urlsByType[type];
+    const u = new URL(base, window.location.origin);
+
+    // Shared query box (customers, gl, trial_balance)
+    if (["customers","gl","trial_balance"].includes(type)) {
+      const q = (document.getElementById("repQuery")?.value || "").trim();
+      if (q) u.searchParams.set("q", q);
+    }
+
+    // Customers status
+    if (type === "customers") {
+      const st = (document.getElementById("statusCustomers")?.value || "").trim();
+      if (st) u.searchParams.set("status", st);
+    }
+
+    // Subs status
+    if (type === "subscriptions") {
+      const st = (document.getElementById("statusSubs")?.value || "").trim();
+      if (st) u.searchParams.set("status", st);
+    }
+
+    // Ticket status
+    if (type === "tickets") {
+      const st = (document.getElementById("statusTickets")?.value || "").trim();
+      if (st) u.searchParams.set("status", st);
+    }
+
+    // Date ranges for periodized reports
+    if (["orders","subscriptions","revenue","tickets","gl","trial_balance"].includes(type)) {
+      const s = document.getElementById("repStart")?.value?.trim();
+      const e = document.getElementById("repEnd")?.value?.trim();
+      if (s) u.searchParams.set("start", s);
+      if (e) u.searchParams.set("end", e);
+    }
+
+    // GL specific filters
+    if (type === "gl") {
+      const entryType = (document.getElementById("glEntryType")?.value || "").trim();
+      const accountId = (document.getElementById("glAccountId")?.value || "").trim();
+      const includeWallet = document.getElementById("glIncludeWallet")?.checked;
+      if (entryType) u.searchParams.set("entry_type", entryType);
+      if (accountId) u.searchParams.set("account_id", accountId);
+      if (includeWallet) u.searchParams.set("include_wallet", "1");
+    }
+
+    return u.toString();
+  }
+
+  function copyToClipboard(text){
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } finally { document.body.removeChild(ta); }
+      return Promise.resolve();
+    }
+  }
+
+  function wireReportCenter(){
+    const typeSel = document.getElementById("repType");
+    visibleFor(typeSel.value);
+    typeSel.addEventListener("change", () => visibleFor(typeSel.value));
+
+    $$('[data-preset]').forEach(btn => {
+      btn.addEventListener('click', () => setPreset(btn.getAttribute('data-preset')));
+    });
+
+    document.getElementById("btnExport").addEventListener("click", () => {
+      window.location.href = buildUrl();
+    });
+
+    document.getElementById("btnPreviewUrl").addEventListener("click", async () => {
+      const link = buildUrl();
+      await copyToClipboard(link);
+      const t = document.createElement('div');
+      t.textContent = "{{ _('Export URL copied') }}";
+      t.className = "fixed bottom-5 left-1/2 -translate-x-1/2 px-3 py-2 rounded-lg bg-black/80 text-white text-sm shadow-lg";
+      document.body.appendChild(t);
+      setTimeout(()=> t.remove(), 1400);
+    });
+  }
+
+  // -------- Init --------
+  document.addEventListener("DOMContentLoaded", () => {
+    wireReportCenter();
+    loadKPIs();
+    loadAnnualChart();
+    setInterval(loadKPIs, REFRESH_MS);
+  });
+</script>
+
+{% endblock %}

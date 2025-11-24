@@ -1,0 +1,220 @@
+{% extends 'site_survey/fe_dashboard_main.html' %}
+{% load static i18n %}
+
+{% block content %}
+    <div class="w-full">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Conduct Site Survey</h1>
+            <p class="text-gray-600">Survey for Order {{ survey.order.order_reference }}</p>
+        </div>
+
+        <form method="post" class="space-y-6">
+            {% csrf_token %}
+
+            <!-- Location Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-map-marker-alt mr-2 text-blue-500"></i>
+                    {% trans "Survey Location" %}
+                </h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div class="md:col-span-1">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Address" %}</label>
+                        <input type="text" id="address" name="address" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Enter address' %}" required>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Latitude" %}</label>
+                        <input type="number" step="any" id="latitude" name="latitude" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50" placeholder="{% trans 'Latitude' %}" readonly>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Longitude" %}</label>
+                        <input type="number" step="any" id="longitude" name="longitude" class="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50" placeholder="{% trans 'Longitude' %}" readonly>
+                    </div>
+                </div>
+
+                <button type="button" id="getLocationBtn" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition flex items-center">
+                    <i class="fas fa-crosshairs mr-2"></i>
+                    {% trans "Get Current Location" %}
+                </button>
+
+                <div class="mt-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Location Notes" %}</label>
+                    <textarea id="location_notes" name="location_notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Additional location notes...' %}"></textarea>
+                </div>
+            </div>
+
+            <!-- Checklist Items -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-6">{% trans "Survey Checklist" %}</h3>
+
+                {% for item in checklist_items %}
+                <div class="border border-gray-200 rounded-lg p-4 mb-4">
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h5 class="font-medium text-gray-900">{{ item.question }}</h5>
+                            <p class="text-sm text-gray-500">{{ item.get_category_display }}</p>
+                        </div>
+                    </div>
+
+                    {% if item.question_type == 'yes_no' %}
+                    <div class="space-y-2">
+                        <div class="flex items-center">
+                            <input type="radio" name="response_{{ item.id }}" id="yes_{{ item.id }}" value="Yes" class="mr-2">
+                            <label for="yes_{{ item.id }}" class="text-sm">{% trans "Yes" %}</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="radio" name="response_{{ item.id }}" id="no_{{ item.id }}" value="No" class="mr-2">
+                            <label for="no_{{ item.id }}" class="text-sm">{% trans "No" %}</label>
+                        </div>
+                    </div>
+
+                    {% elif item.question_type == 'text' %}
+                    <textarea name="response_{{ item.id }}" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Enter your response...' %}"></textarea>
+
+                    {% elif item.question_type == 'rating' %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Rating (1-5):" %}</label>
+                        <select name="rating_{{ item.id }}" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">{% trans "Select rating" %}</option>
+                            <option value="1">1 - {% trans "Poor" %}</option>
+                            <option value="2">2 - {% trans "Below Average" %}</option>
+                            <option value="3">3 - {% trans "Average" %}</option>
+                            <option value="4">4 - {% trans "Good" %}</option>
+                            <option value="5">5 - {% trans "Excellent" %}</option>
+                        </select>
+                    </div>
+
+                    {% elif item.question_type == 'multiple_choice' %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Choose:" %}</label>
+                        <div class="space-y-2">
+                            {% for choice in item.choices %}
+                            <div class="flex items-center">
+                                <input type="radio" name="choice_{{ item.id }}" id="choice_{{ item.id }}_{{ forloop.counter }}" value="{{ choice }}" class="mr-2">
+                                <label for="choice_{{ item.id }}_{{ forloop.counter }}" class="text-sm">{{ choice }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Additional Notes:" %}</label>
+                        <textarea name="notes_{{ item.id }}" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Optional notes...' %}"></textarea>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Overall Assessment -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Overall Assessment" %}</h3>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Overall Assessment" %}</label>
+                        <textarea id="overall_assessment" name="overall_assessment" rows="4" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Overall assessment of the site for Starlink installation...' %}" required></textarea>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Recommended Mounting Type" %}</label>
+                            <select id="recommended_mounting" name="recommended_mounting" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">{% trans "Select mounting type" %}</option>
+                                <option value="roof">{% trans "Roof Mounting" %}</option>
+                                <option value="wall">{% trans "Wall Mounting" %}</option>
+                                <option value="pole">{% trans "Pole Mounting" %}</option>
+                                <option value="ground">{% trans "Ground Mounting" %}</option>
+                                <option value="chimney">{% trans "Chimney Mounting" %}</option>
+                                <option value="other">{% trans "Other" %}</option>
+                            </select>
+                        </div>
+
+                        <div class="flex items-center">
+                            <input type="checkbox" id="installation_feasible" name="installation_feasible" class="mr-2 rounded">
+                            <label for="installation_feasible" class="text-sm text-gray-700">
+                                {% trans "Installation is feasible at this location" %}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <div class="flex justify-end">
+                <button type="submit" class="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 transition flex items-center">
+                    <i class="fas fa-check mr-2"></i>
+                    {% trans "Complete Survey" %}
+                </button>
+            </div>
+        </form>
+
+        <!-- Photo Upload Section -->
+        <div class="mt-8 bg-white rounded-lg shadow p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Survey Photos" %}</h3>
+
+            <form id="photoUploadForm" enctype="multipart/form-data" class="mb-4">
+                {% csrf_token %}
+                <div class="flex items-center space-x-4">
+                    <input type="file" id="survey_photos" name="photos" multiple accept="image/*"
+                           class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+                        {% trans "Upload Photos" %}
+                    </button>
+                </div>
+            </form>
+
+            <div id="photoPreview" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for photo in survey.photos.all %}
+                <div class="relative">
+                    <img src="{{ photo.photo.url }}" class="w-full h-32 object-cover rounded-lg" alt="{{ photo.description }}">
+                    <div class="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-2 rounded-b-lg">
+                        {{ photo.get_photo_type_display }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Geolocation functionality
+        document.getElementById('getLocationBtn').addEventListener('click', function() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    document.getElementById('latitude').value = position.coords.latitude;
+                    document.getElementById('longitude').value = position.coords.longitude;
+                }, function(error) {
+                    alert('{% trans "Error getting location:" %}' + error.message);
+                });
+            } else {
+                alert('{% trans "Geolocation is not supported by this browser." %}');
+            }
+        });
+
+        // Photo upload functionality
+        document.getElementById('photoUploadForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+
+            fetch('{% url "site_survey:upload_survey_photos" survey.id %}', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('{% trans "Error uploading photos:" %}' + data.message);
+                }
+            });
+        });
+    </script>
+{% endblock %}

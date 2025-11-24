@@ -1,0 +1,130 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 40px;
+      background: #f9f9f9;
+      color: #333;
+    }
+
+    .invoice-container {
+      background: #fff;
+      padding: 40px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.06);
+      max-width: 800px;
+      margin: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #e5e7eb;
+      padding-bottom: 20px;
+    }
+
+    .header img {
+      height: 60px;
+    }
+
+    .header h2 {
+      font-size: 28px;
+      color: #374151;
+    }
+
+    .info {
+      margin-top: 30px;
+    }
+
+    .info p {
+      margin: 4px 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      text-align: left;
+    }
+
+    th {
+      background-color: #f3f4f6;
+      color: #111827;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f9fafb;
+    }
+
+    .total {
+      margin-top: 30px;
+      text-align: right;
+      font-size: 18px;
+      font-weight: bold;
+      color: #111827;
+    }
+
+    .footer {
+      margin-top: 40px;
+      text-align: center;
+      font-size: 12px;
+      color: #9ca3af;
+    }
+  </style>
+</head>
+<body>
+
+<div class="invoice-container">
+  <div class="header">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Company Logo">
+    <h2>INVOICE</h2>
+  </div>
+
+  <div class="info">
+    <p><strong>Date:</strong> {{ order_date }}</p>
+    <p><strong>Reference:</strong> {{ order.order_reference }}</p>
+    <p><strong>Client:</strong> {{ client_name }}</p>
+    <p><strong>Email:</strong> {{ email }}</p>
+    <p><strong>Status:</strong> {{ status }}</p>
+    <p><strong>Payment Method:</strong> {{ payment_method }}</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Type</th>
+        <th style="text-align:right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr>
+        <td>{{ item.label }}</td>
+        <td>{{ item.type }}</td>
+        <td style="text-align:right;">${{ item.amount|floatformat:2 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="total">Total: ${{ total_price|floatformat:2 }}</p>
+
+  <div class="footer">
+    Thank you for your business.
+  </div>
+</div>
+
+</body>
+</html>

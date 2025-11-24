@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+{% with MAX_ROWS=18 %}
+<head>
+  <meta charset="UTF-8" />
+  <title>Invoice – {{ company.trade_name|default:company.legal_name|default:"Company" }}</title>
+  <style>
+    /* === One-page A4 layout optimized for xhtml2pdf === */
+    @page {
+      size: A4;
+      margin: 10pt 12pt 20pt 12pt;
+    }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: #1e293b;
+      font-family: "Inter","Segoe UI",Arial,Helvetica,sans-serif;
+      font-size: 9.5px;
+      line-height: 1.3;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+      position: relative;
+    }
+
+    .wrap {
+      width: 100%;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* === HEADER === */
+    .hdr {
+      border-bottom: 2px solid #2563eb;
+      padding: 6pt 0 5pt 0;
+      margin-bottom: 6pt;
+      background: #f8fafc;
+    }
+    .hdrtbl { width: 100%; border-spacing: 0; }
+    .hdrtbl td { vertical-align: top; }
+    .logo {
+      margin-bottom: 3pt;
+      overflow: hidden;
+    }
+    .logo img {
+      height: 40px !important;
+      width: auto !important;
+      display: block !important;
+      object-fit: contain;
+    }
+    .co h1 {
+      margin: 0 0 2pt 0;
+      font-size: 12px;
+      color: #0f172a;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+    .co p  { margin: 0 0 1pt 0; color: #64748b; font-size: 8.5px; line-height: 1.4; }
+    .ribbon { text-align: right; }
+    .ribbon .title {
+      font-size: 18px;
+      margin: 0 0 2pt 0;
+      color: #1e40af;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .ribbon .meta  { color: #64748b; font-size: 8px; margin-top: 2pt; font-weight: 500; }
+
+    /* === INFO TABLES === */
+    .infotbl { width:100%; border-spacing:0; margin: 5pt 0 5pt 0; }
+    .card {
+      border: 1px solid #e2e8f0;
+      padding: 5pt 6pt;
+      border-radius: 3pt;
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+    }
+    .card h3 {
+      margin: 0 0 3pt 0;
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #1e40af;
+      font-weight: 700;
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 2pt;
+    }
+    .card p  { margin: 1pt 0; font-size: 9px; line-height: 1.4; }
+    .card p strong { color: #0f172a; font-weight: 600; }
+    .muted { color: #64748b; font-size: 8.5px; }
+
+    /* === ITEMS TABLE === */
+    .tblwrap { margin: 5pt 0; }
+    table { width:100%; border-spacing:0; }
+    thead th {
+      background: #2563eb;
+      color: #fff;
+      font-size: 8.5px;
+      padding: 4pt 3pt;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 700;
+      border-bottom: 2px solid #1e3a8a;
+    }
+    tbody td {
+      border-bottom: 1px solid #e2e8f0;
+      padding: 3pt 3pt;
+      vertical-align: top;
+      font-size: 9px;
+      background: #ffffff;
+    }
+    tbody tr:nth-child(even) td {
+      background: #f8fafc;
+    }
+    .ta-r { text-align: right; }
+
+    .col-desc { width: auto; }
+    .col-qty  { width: 35pt; text-align: center; }
+    .col-up   { width: 60pt; text-align: right; }
+    .col-tot  { width: 65pt; text-align: right; font-weight: 600; }
+    .desc { max-height: 3.6em; overflow: hidden; }
+    .desc strong { color: #0f172a; }
+
+    /* === ORDER GROUPING === */
+    .order-group {
+      margin-bottom: 5pt;
+      border: 1px solid #e2e8f0;
+      border-radius: 3pt;
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+    }
+    .order-header {
+      background: #e2e8f0;
+      border-left: 3px solid #2563eb;
+      padding: 3pt 5pt;
+      margin-bottom: 0;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: #0f172a;
+    }
+    .order-header .order-ref {
+      color: #1e40af;
+      font-weight: 800;
+      font-size: 10px;
+    }
+    .order-header .muted {
+      color: #64748b;
+      font-weight: 500;
+      font-size: 8.5px;
+    }
+    .order-totals {
+      background: #f8fafc;
+      border-top: 2px solid #e2e8f0;
+      padding: 4pt 6pt;
+      margin-top: 0;
+      font-size: 9px;
+    }
+    .order-totals table { width: 100%; border-spacing: 0; }
+    .order-totals td { padding: 1pt 0; }
+    .order-totals .label { color: #64748b; font-weight: 500; }
+    .order-totals .order-ttc {
+      font-weight: 800;
+      font-size: 10px;
+      color: #1e40af;
+      border-top: 2px solid #cbd5e1;
+      padding-top: 3pt;
+      margin-top: 2pt;
+    }
+
+    /* === NOTES + TOTALS === */
+    .bottomtbl { width: 100%; border-spacing: 0; margin-top: 5pt; }
+    .note { font-size: 8.5px; color: #64748b; line-height: 1.5; }
+    .summary {
+      border: 2px solid #e2e8f0;
+      border-radius: 4pt;
+      background: #ffffff;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+    .summary h3 {
+      margin: 0;
+      padding: 4pt 6pt;
+      font-size: 9.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      background: #2563eb;
+      font-weight: 800;
+      border-bottom: 2px solid #1e3a8a;
+    }
+    .summary table { width: 100%; border-spacing: 0; }
+    .summary td {
+      padding: 3pt 6pt;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 9.5px;
+    }
+    .summary tr:last-child td { border-bottom: none; }
+    .summary .label { color: #64748b; font-weight: 500; }
+    .summary .grand {
+      font-weight: 800;
+      font-size: 12px;
+      color: #1e40af;
+      background: #f8fafc;
+      padding: 5pt !important;
+    }
+
+    /* === SIGNATURES & FOOTER === */
+    .sigrow { margin-top: 4pt; }
+    .sig {
+      border-top: 1px solid #e2e8f0;
+      text-align: center;
+      padding-top: 3pt;
+      color: #64748b;
+      font-size: 8.5px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .signblock {
+      margin-top: 2pt;
+      text-align: center;
+      position: relative;
+      padding: 4pt;
+      border: 1px dashed #cbd5e1;
+      border-radius: 3pt;
+      background: #fafbfc;
+      min-height: 45pt;
+    }
+    .signblock img {
+      max-height: 45px;
+      max-width: 140px;
+      width: auto;
+      height: auto;
+      display: block;
+      margin: 0 auto 2pt auto;
+      object-fit: contain;
+      background: white;
+      padding: 1pt;
+      border: 1px solid #e2e8f0;
+      border-radius: 2pt;
+    }
+    .signlabel {
+      font-size: 8.5px;
+      color: #0f172a;
+      margin: 1pt 0;
+      font-weight: 600;
+    }
+    .stamp-overlay {
+      position: absolute;
+      top: 5%;
+      right: 8%;
+      max-height: 55px;
+      max-width: 55px;
+      opacity: 0.9;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 50%;
+      padding: 1pt;
+    }
+
+    .ftr {
+      border-top: 1px solid #e2e8f0;
+      margin-top: 5pt;
+      color: #64748b;
+      font-size: 8px;
+      line-height: 1.4;
+      background: #f8fafc;
+      padding: 5pt;
+      border-radius: 3pt;
+    }
+    .ftr small { font-size: 7.5px; color: #94a3b8; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <div class="hdr">
+      <table class="hdrtbl">
+        <tr>
+          <td style="width:45%;">
+            <!-- Company Logo: Always display - use uploaded logo if available, otherwise fallback to static default -->
+            <div class="logo">
+              {% if company.logo %}
+                <img src="{{ company.logo.url }}" alt="{{ company.trade_name|default:company.legal_name|default:'Company' }}">
+              {% else %}
+                {# Static fallback logo ensures branding is always present on invoices #}
+                <img src="{% static 'images/logo/logo.png' %}" alt="{{ company.trade_name|default:company.legal_name|default:'Company' }}">
+              {% endif %}
+            </div>
+            <div class="co">
+              <h1>{{ company.trade_name|default:company.legal_name|default:"COMPANY" }}</h1>
+              <p>{{ company.street_address }}{% if company.city %}, {{ company.city }}{% endif %}{% if company.province %}, {{ company.province }}{% endif %}{% if company.country %}, {{ company.country }}{% endif %}</p>
+              <p>
+                {% if company.rccm %}RCCM: {{ company.rccm }}{% endif %}
+                {% if company.id_nat %} · Id.Nat: {{ company.id_nat }}{% endif %}
+              </p>
+              <p>
+                {% if company.nif %}NIF: {{ company.nif }}{% endif %}
+                {% if company.arptc_license %}{% if company.nif %} · {% endif %}Lic. ARPTC: {{ company.arptc_license }}{% endif %}
+              </p>
+              <p>
+                {% if company.email %}Email: {{ company.email }}{% endif %}
+                {% if company.phone %} · Tel: {{ company.phone }}{% endif %}
+                {% if company.website %} · {{ company.website }}{% endif %}
+              </p>
+            </div>
+          </td>
+          <td class="ribbon" style="width:55%;">
+            <div class="title">INVOICE · FACTURE</div>
+            <div class="meta">Tax Invoice · Facture fiscale · Currency/Devise: {{ invoice.currency|default:company.currency }}</div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- INFO ROW -->
+    <table class="infotbl">
+      <tr>
+        <td style="width:55%; padding-right:4pt;">
+          <div class="card">
+            <h3>Bill To · Facturer à</h3>
+            <p><strong>{{ invoice.bill_to_name|default:"—" }}</strong></p>
+            {% if invoice.bill_to_email %}
+              <p>{{ invoice.bill_to_email }}</p>
+            {% endif %}
+            {% if invoice.bill_to_phone %}<p>{{ invoice.bill_to_phone }}</p>{% endif %}
+            {% if invoice.bill_to_address %}<p>{{ invoice.bill_to_address }}</p>{% endif %}
+            {% if invoice.customer_tin %}<p>Tax/VAT: {{ invoice.customer_tin }}</p>{% endif %}
+          </div>
+        </td>
+        <td style="width:45%;">
+          <div class="card">
+            <h3>Invoice Details</h3>
+            <p><strong>No:</strong> {{ invoice.number }}</p>
+            <p><strong>Issue:</strong> {{ invoice.issued_at }}</p>
+            <p><strong>Due:</strong> {{ invoice.due_at }}</p>
+            {% if invoice.po_ref %}<p><strong>PO/Ref:</strong> {{ invoice.po_ref }}</p>{% endif %}
+            <p class="muted">Terms: {{ company.payment_terms_days }} days</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- ITEMS -->
+    <div class="tblwrap">
+      {% if order_groups %}
+        {# Display grouped by order #}
+        {% for group in order_groups %}
+          {% if forloop.counter0 < MAX_ROWS %}
+          <div class="order-group">
+            <div class="order-header">
+              <span class="order-ref">📦 Order {{ group.order_ref }}</span>
+              <span class="muted"> · 📅 {{ group.order_date|date:"d M Y" }}</span>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th class="col-desc">Description</th>
+                  <th class="col-qty">Qty</th>
+                  <th class="col-up">Unit Price ({{ invoice.currency }})</th>
+                  <th class="col-tot ta-r">Line Total ({{ invoice.currency }})</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for line in group.lines %}
+                <tr>
+                  <td class="col-desc"><div class="desc"><strong>{{ line.description }}</strong></div></td>
+                  <td class="col-qty">{{ line.quantity }}</td>
+                  <td class="col-up">{{ line.unit_price|floatformat:2 }}</td>
+                  <td class="col-tot ta-r">{{ line.line_total|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+
+            <div class="order-totals">
+              <table>
+                <tr>
+                  <td class="label">💵 Subtotal:</td>
+                  <td class="ta-r">{{ group.subtotal|floatformat:2 }}</td>
+                </tr>
+                {% if group.excise_amount > 0 %}
+                <tr>
+                  <td class="label">📊 Excise{% if invoice.excise_rate_percent %} ({{ invoice.excise_rate_percent|floatformat:0 }}%){% endif %}:</td>
+                  <td class="ta-r">{{ group.excise_amount|floatformat:2 }}</td>
+                </tr>
+                {% endif %}
+                <tr>
+                  <td class="label">🏛️ VAT{% if invoice.vat_rate_percent %} ({{ invoice.vat_rate_percent|floatformat:0 }}%){% endif %}:</td>
+                  <td class="ta-r">{{ group.vat_amount|floatformat:2 }}</td>
+                </tr>
+                <tr class="order-ttc">
+                  <td><strong>✅ Total TTC:</strong></td>
+                  <td class="ta-r"><strong>{{ group.total_ttc|floatformat:2 }}</strong></td>
+                </tr>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+        {% endfor %}
+
+        {% if order_groups|length > MAX_ROWS %}
+        <p style="color:#666; font-size:9.5px; margin-top:4pt;">
+          Showing first {{ MAX_ROWS }} order groups (additional orders omitted to fit one page).
+        </p>
+        {% endif %}
+      {% else %}
+        {# Fallback: traditional item display #}
+        <table>
+          <thead>
+            <tr>
+              <th class="col-desc">Description</th>
+              <th class="col-qty">Qty</th>
+              <th class="col-up">Unit Price ({{ invoice.currency }})</th>
+              <th class="col-tot ta-r">Line Total ({{ invoice.currency }})</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in invoice.items %}
+              {% if forloop.counter0 < MAX_ROWS %}
+              <tr>
+                <td class="col-desc"><div class="desc"><strong>{{ item.description }}</strong></div></td>
+                <td class="col-qty">{{ item.quantity }}</td>
+                <td class="col-up">{{ item.unit_price }}</td>
+                <td class="col-tot ta-r">{{ item.line_total }}</td>
+              </tr>
+              {% endif %}
+            {% endfor %}
+            {% if invoice.items|length == 0 %}
+            <tr><td colspan="4" class="muted">No items to display</td></tr>
+            {% endif %}
+            {% if invoice.items|length > MAX_ROWS %}
+            <tr>
+              <td colspan="4" style="color:#666; font-size:9.5px;">
+                Showing first {{ MAX_ROWS }} items (additional lines omitted to fit one page).
+              </td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      {% endif %}
+    </div>
+
+    <!-- NOTES + TOTALS -->
+    <table class="bottomtbl">
+      <tr>
+        <td style="width:55%; padding-right:4pt;">
+          {% if notes %}
+          <div class="card">
+            <h3>Notes</h3>
+            {% for n in notes %}
+              {% if forloop.counter0 < 4 %}
+                <p class="note">{{ n }}</p>
+              {% endif %}
+            {% endfor %}
+            {% if notes|length > 4 %}
+              <p class="note">(+ {{ notes|length|add:"-4" }} more)</p>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+        <td style="width:45%;">
+          <div class="summary">
+            {% if order_groups %}
+              {# Option B: When using order grouping, show simplified summary #}
+              <h3>📋 Invoice Summary</h3>
+              <table>
+                <tr><td class="grand">💰 Total Due ({{ invoice.currency }})</td><td class="grand ta-r">{{ grouped_grand_total }}</td></tr>
+                {% if invoice.cdf_amount %}
+                <tr><td class="label">🇨🇩 Equivalent (CDF)</td><td class="ta-r">{{ invoice.cdf_amount }}</td></tr>
+                {% endif %}
+              </table>
+            {% else %}
+              {# Fallback: Traditional detailed breakdown #}
+              <h3>📋 Invoice Summary</h3>
+              <table>
+                <tr><td class="label">💵 Subtotal ({{ invoice.currency }})</td><td class="ta-r">{{ invoice.subtotal }}</td></tr>
+                <tr><td class="label">📊 Excise{% if invoice.excise_rate_percent %} ({{ invoice.excise_rate_percent|floatformat:0 }}%){% endif %}</td><td class="ta-r">{{ invoice.excise }}</td></tr>
+                <tr><td class="label">🏛️ VAT{% if invoice.vat_rate_percent %} ({{ invoice.vat_rate_percent|floatformat:0 }}%){% endif %}</td><td class="ta-r">{{ invoice.vat }}</td></tr>
+                <tr><td class="grand">💰 Total Due ({{ invoice.currency }})</td><td class="grand ta-r">{{ invoice.grand_total }}</td></tr>
+                {% if invoice.cdf_amount %}
+                <tr><td class="label">🇨🇩 Equivalent (CDF)</td><td class="ta-r">{{ invoice.cdf_amount }}</td></tr>
+                {% endif %}
+              </table>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- SIGNATURES -->
+    <table class="bottomtbl sigrow">
+      <tr>
+        <td style="width:50%; padding-right:3pt;">
+          <div class="sig">✍️ Authorized by ({{ company.trade_name|default:'Company' }})</div>
+          <div class="signblock">
+            {% if company.signature %}
+              <img src="{{ company.signature.url }}" alt="Signature" width="140" height="45">
+            {% endif %}
+            {% if company.signatory_name %}
+              <div class="signlabel">{{ company.signatory_name }}{% if company.signatory_title %}, {{ company.signatory_title }}{% endif %}</div>
+            {% else %}
+              <div class="signlabel">___________________</div>
+            {% endif %}
+            {% if company.stamp %}
+              <img src="{{ company.stamp.url }}" alt="Company Stamp" class="stamp-overlay" width="55" height="55">
+            {% endif %}
+          </div>
+        </td>
+        <td style="width:50%;">
+          <div class="sig">✅ Received by (Client)</div>
+          <div class="signblock">
+            <div class="signlabel">Name &amp; Signature</div>
+            <div class="signlabel">___________________</div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="ftr">
+      <div style="text-align:right; font-size:7px; color:#94a3b8; margin-bottom:2pt;">
+        📄 Page <pdf:pagenumber> / <pdf:pagecount>
+      </div>
+      <strong style="color:#1e40af;">{{ company.trade_name|default:company.legal_name|default:"COMPANY" }}</strong>
+      {% if company.arptc_license %} • 📡 ARPTC: {{ company.arptc_license }}{% endif %}
+      {% if company.tax_office_name %} • 🏛️ Tax: {{ company.tax_office_name }}{% endif %}
+      <br>
+      {% if company.website %}🌐 {{ company.website }}{% endif %}
+      {% if company.email %} • ✉️ {{ company.email }}{% endif %}
+      {% if company.phone %} • ☎️ {{ company.phone }}{% endif %}
+      {% if company.footer_text_fr and company.footer_text_en %}
+        <br><em>{{ company.footer_text_fr }} / {{ company.footer_text_en }}</em>
+      {% elif company.footer_text_fr %}
+        <br><em>{{ company.footer_text_fr }}</em>
+      {% elif company.footer_text_en %}
+        <br><em>{{ company.footer_text_en }}</em>
+      {% endif %}
+      {% if company.legal_notes %}
+        <br><small>⚖️ {{ company.legal_notes }}</small>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>
+{% endwith %}

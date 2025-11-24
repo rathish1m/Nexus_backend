@@ -1,0 +1,54 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+
+repos:
+  # --- Hooks standards et génériques ---
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-yaml
+        # Vérifie la syntaxe des fichiers YAML. Crucial pour la CI, etc.
+      - id: check-json
+        # Vérifie la syntaxe des fichiers JSON.
+      - id: end-of-file-fixer
+        # S'assure que les fichiers se terminent par une nouvelle ligne.
+      - id: trailing-whitespace
+        # Supprime les espaces en fin de ligne.
+      - id: detect-private-key
+        # Empêche de commiter des clés privées.
+
+  # --- Formattage et Linting Python (Haute Performance) ---
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.4
+    hooks:
+      - id: ruff
+        name: "Ruff Linter"
+        args: [--fix, --exit-non-zero-on-fix]
+        # Remplace flake8, isort, pyupgrade et des dizaines d'autres plugins. Extrêmement rapide.
+      - id: ruff-format
+        name: "Ruff Formatter"
+        # Remplace Black. Formattage cohérent et rapide.
+
+  # --- Analyse Statique de Types ---
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.10.0
+  #   hooks:
+  #     - id: mypy
+  #       name: "Mypy Type Checker"
+  #       # Vérifie la cohérence des types. Nécessite une configuration dans pyproject.toml ou mypy.ini
+  #       # Excluez les fichiers non typés pour commencer.
+  #       exclude: ^(nexus_backend/manage.py|nexus_backend/nexus_backend/wsgi.py|nexus_backend/nexus_backend/asgi.py|nexus_backend/conftest.py)
+  #       additional_dependencies:
+  #         - "django-stubs[compatible-mypy]"
+  #         - "djangorestframework-stubs[compatible-mypy]"
+
+  # --- Tests Unitaires & Intégration (local, manuel ou pre-push) ---
+  - repo: local
+    hooks:
+      - id: pytest-django
+        name: "Pytest (Backend Tests)"
+        entry: pytest
+        language: system
+        types: [python]
+        stages: [pre-push] # IMPORTANT: S'exécute uniquement sur 'git push'
+        pass_filenames: false # Exécute toute la suite, pas juste les fichiers modifiés

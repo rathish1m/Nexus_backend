@@ -1,0 +1,118 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans "Settings – Nexus Dashboard" %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f0f4ff;
+  --sidebar-text: #374151;
+  --sidebar-active: #2563eb;
+}
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+<!-- Mobile Topbar -->
+<div class="md:hidden bg-white shadow px-4 py-3 flex justify-between items-center">
+  <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="h-8">
+  <button onclick="toggleMobileSidebar()" class="text-gray-600">
+    <i class="fas fa-bars fa-lg"></i>
+  </button>
+</div>
+
+<div class="flex w-full min-h-screen">
+  <!-- Sidebar -->
+  <aside class="bg-white shadow-lg w-64 hidden md:flex flex-col">
+  <div class="p-6 border-b border-gray-200">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+  </div>
+  <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-gauge w-5 mr-3 text-blue-500"></i> {% trans "Dashboard" %}
+    </a>
+{#    <a href="{% url 'billing' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">#}
+{#      <i class="fas fa-file-invoice-dollar w-5 mr-3 text-blue-500"></i> {% trans "Billing" %}#}
+{#    </a>#}
+    <a href="{% url 'settings' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i> {% trans "Settings" %}
+    </a>
+    <a href="{% url 'logout_request' %}" class="flex items-center px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+      <i class="fas fa-sign-out-alt w-5 mr-3"></i> {% trans "Logout" %}
+    </a>
+  </nav>
+</aside>
+
+  <!-- Mobile Sidebar -->
+  <div class="fixed inset-0 z-40 bg-black bg-opacity-50 hidden md:hidden" id="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+  <aside id="mobileSidebar" class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden">
+  <div class="flex justify-end mb-4">
+    <button onclick="toggleMobileSidebar()" class="text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times fa-lg"></i>
+    </button>
+  </div>
+  <nav class="space-y-3 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Dashboard" %}</a>
+{#    <a href="{% url 'billing' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Billing" %}</a>#}
+    <a href="{% url 'settings' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Settings" %}</a>
+    <a href="{% url 'logout_request' %}" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 hover:text-red-700 transition">{% trans "Logout" %}</a>
+  </nav>
+</aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold mb-6">{% trans "Account Settings" %}</h1>
+
+    <div class="bg-white rounded shadow p-6 border max-w-2xl">
+      <form method="post" action="">
+        {% csrf_token %}
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium">{% trans "Full Name" %}</label>
+            <input type="text" name="full_name" value="{{ request.user.full_name }}" class="w-full border px-3 py-2 rounded text-sm">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium">{% trans "Email" %}</label>
+            <input type="email" name="email" value="{{ request.user.email }}" class="w-full border px-3 py-2 rounded text-sm" disabled>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium">{% trans "Phone Number" %}</label>
+            <input type="text" name="phone_number" value="{{ request.user.phone_number }}" class="w-full border px-3 py-2 rounded text-sm">
+          </div>
+
+          <div class="pt-4">
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">{% trans "Save Changes" %}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+  <div class="max-w-7xl mx-auto px-4">
+    <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+  </div>
+</footer>
+
+<script>
+  function toggleMobileSidebar() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('hidden');
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,63 @@
+{% load role_tags %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% trans "Nexus Backoffice Dashboard" %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .sidebar-slide { transform: translateX(100%); transition: transform .3s ease-in-out; }
+    .sidebar-slide.open { transform: translateX(0); }
+  </style>
+</head>
+
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+  <!-- Mobile Topbar -->
+  <div class="bg-white px-4 py-3 flex justify-between items-center shadow md:hidden">
+    <img src="{% static 'images/logo/logo.png' %}" class="h-8" alt="Logo">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600" aria-label="Open menu">
+      <i class="fas fa-bars fa-lg"></i>
+    </button>
+  </div>
+
+  <!-- Main Wrapper (fills available height) -->
+  <div class="flex flex-1 w-full">
+
+    {% include 'menus/desktop_client/desktop_menus.html' %}
+
+    <!-- Content Area -->
+    <main class="flex-1 min-w-0">
+      {% block content %}{% endblock %}
+    </main>
+  </div> <!-- /Main Wrapper -->
+
+  <!-- Footer (sticks to bottom thanks to mt-auto + flex layout) -->
+  <footer class="bg-white border-t text-center py-4 text-sm text-gray-500 mt-auto">
+    <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+  </footer>
+
+  <!-- Mobile Overlay & Sidebar (off-canvas) -->
+  <div id="mobile-overlay"
+       class="fixed inset-0 bg-black/50 hidden z-40 md:hidden"
+       onclick="toggleMobileSidebar()"></div>
+
+  {% include 'menus/desktop_client/desktop_mobile_menus.html' %}
+
+  <script>
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('mobileSidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      sidebar.classList.toggle('hidden');
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('hidden');
+    }
+  </script>
+
+</body>
+</html>

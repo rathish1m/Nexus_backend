@@ -1,0 +1,178 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Billing & Payments – Nexus Dashboard" %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+                :root {
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f0f4ff;
+  --sidebar-text: #374151;
+  --sidebar-active: #2563eb;
+}
+
+        .sidebar-slide {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-slide.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+
+<!-- Header -->
+<header class="bg-white shadow px-6 py-4 flex justify-between items-center md:hidden">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Logo" class="h-10">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600 focus:outline-none">
+        <i class="fas fa-bars fa-lg"></i>
+    </button>
+</header>
+
+<div class="flex flex-1 flex-col md:flex-row w-full">
+
+    <!-- Sidebar (Desktop) -->
+    <aside class="bg-white shadow-lg w-64 hidden md:flex flex-col">
+  <div class="p-6 border-b border-gray-200">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+  </div>
+  <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-gauge w-5 mr-3 text-blue-500"></i> {% trans "Dashboard" %}
+    </a>
+    <a href="{% url 'billing' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-file-invoice-dollar w-5 mr-3 text-blue-500"></i> {% trans "Billing" %}
+    </a>
+    <a href="{% url 'settings' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i> {% trans "Settings" %}
+    </a>
+    <a href="{% url 'logout_request' %}" class="flex items-center px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+      <i class="fas fa-sign-out-alt w-5 mr-3"></i> {% trans "Logout" %}
+    </a>
+  </nav>
+</aside>
+
+    <!-- Sidebar (Mobile) -->
+    <div class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden hidden" id="mobile-overlay"
+         onclick="toggleMobileSidebar()"></div>
+    <aside id="mobileSidebar" class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden">
+  <div class="flex justify-end mb-4">
+    <button onclick="toggleMobileSidebar()" class="text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times fa-lg"></i>
+    </button>
+  </div>
+  <nav class="space-y-3 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Dashboard" %}</a>
+    <a href="{% url 'billing' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Billing" %}</a>
+    <a href="{% url 'settings' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Settings" %}</a>
+    <a href="{% url 'logout_request' %}" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 hover:text-red-700 transition">{% trans "Logout" %}</a>
+  </nav>
+</aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-6 py-8">
+        <div class="mb-8 text-center">
+            <h1 class="text-2xl font-bold">{% trans "Billing & Payments" %}</h1>
+            <p class="text-sm text-gray-500">{% trans "Review your billing history." %}</p>
+        </div>
+
+{#        <!-- Current Plan -->#}
+{#        <div class="bg-white rounded shadow p-6 mb-6 border">#}
+{#            <h2 class="text-lg font-semibold mb-4 text-gray-700">{% trans "Current Subscription Plan" %}</h2>#}
+{#            <div class="flex justify-between items-center flex-wrap gap-4">#}
+{#                <div>#}
+{#                    <p class="text-sm text-gray-500">{% trans "Plan" %}</p>#}
+{#                    <p class="text-lg font-bold">Starlink Residential</p>#}
+{#                    <p class="text-sm text-gray-500">$110 / month</p>#}
+{#                </div>#}
+{#                <div>#}
+{#                    <p class="text-sm text-gray-500">{% trans "Next Payment" %}</p>#}
+{#                    <p class="text-lg font-semibold text-green-600">15 Aug 2025</p>#}
+{#                </div>#}
+{#                <div>#}
+{#                    <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">{% trans "Manage Plan" %}</button>#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
+
+{#        <!-- Payment Method -->#}
+{#        <div class="bg-white rounded shadow p-6 mb-6 border">#}
+{#            <h2 class="text-lg font-semibold mb-4 text-gray-700">{% trans "Payment Method" %}</h2>#}
+{#            <div class="flex justify-between items-center">#}
+{#                <div class="text-sm">#}
+{#                    <p class="font-medium">Visa ending in 1234</p>#}
+{#                    <p class="text-gray-500">Expires 08/26</p>#}
+{#                </div>#}
+{#                <button class="text-sm text-blue-600 hover:underline">{% trans "Update Payment Method" %}</button>#}
+{#            </div>#}
+{#        </div>#}
+
+        <!-- Billing History -->
+        <div class="bg-white rounded shadow p-6 border">
+            <h2 class="text-lg font-semibold mb-4 text-gray-700">{% trans "Billing History" %}</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                    <tr class="bg-gray-100 text-left">
+                        <th class="py-2 px-4">{% trans "Date" %}</th>
+                        <th class="py-2 px-4">{% trans "Invoice" %}</th>
+                        <th class="py-2 px-4">{% trans "Amount" %}</th>
+                        <th class="py-2 px-4">{% trans "Status" %}</th>
+                        <th class="py-2 px-4">{% trans "Actions" %}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr class="border-t">
+                        <td class="py-2 px-4">2025-07-15</td>
+                        <td class="py-2 px-4">INV-001245</td>
+                        <td class="py-2 px-4">$110</td>
+                        <td class="py-2 px-4 text-green-600 font-medium">{% trans "Paid" %}</td>
+                        <td class="py-2 px-4"><a href="#"
+                                                 class="text-blue-600 hover:underline">{% trans "Download" %}</a></td>
+                    </tr>
+                    <tr class="border-t">
+                        <td class="py-2 px-4">2025-06-15</td>
+                        <td class="py-2 px-4">INV-001244</td>
+                        <td class="py-2 px-4">$110</td>
+                        <td class="py-2 px-4 text-green-600 font-medium">{% trans "Paid" %}</td>
+                        <td class="py-2 px-4"><a href="#"
+                                                 class="text-blue-600 hover:underline">{% trans "Download" %}</a></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4">
+        <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+        <p class="mt-1">
+            <a href="#" class="hover:text-blue-600">{% trans "Terms" %}</a> ·
+            <a href="#" class="hover:text-blue-600">{% trans "Privacy" %}</a> ·
+            <a href="#" class="hover:text-blue-600">{% trans "Contact" %}</a>
+        </p>
+    </div>
+</footer>
+
+<!-- Script -->
+<script>
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+    }
+</script>
+
+</body>
+</html>

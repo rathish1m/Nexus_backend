@@ -1,0 +1,150 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+
+
+<!-- Status & CTA grid -->
+        <!-- <div class="grid grid-cols-1 lg:grid-cols-2 gap-6"> -->
+
+          <!-- Account Status -->
+          <!-- <section class="p-5 rounded-xl shadow border animate-fade-in
+            {% if kyc_status == 'approved' %}
+              bg-gradient-to-r from-green-50 via-green-100 to-green-50 border-green-300
+            {% else %}
+              bg-gradient-to-r from-red-50 via-red-100 to-red-50 border-red-300
+            {% endif %}">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="text-xs font-semibold tracking-wide text-gray-600 uppercase">{% trans "Account Status" %}</p>
+                <p class="text-2xl font-bold mt-1
+                  {% if kyc_status == 'approved' %}text-green-700{% else %}text-red-600{% endif %}">
+                  {% if kyc_status == 'approved' %}{% trans "Active" %}{% else %}{% trans "Not Active" %}{% endif %}
+                </p>
+              </div>
+              <div class="flex items-center justify-center w-12 h-12 rounded-full shadow
+                {% if kyc_status == 'approved' %}bg-green-200 text-green-700{% else %}bg-red-200 text-red-700{% endif %}">
+                <i class="fas fa-user-check text-xl"></i>
+              </div>
+            </div>
+          </section>
+
+          <!-- CTA -->
+          <!-- <section class="p-5 rounded-xl shadow border bg-white animate-fade-in flex items-center justify-between">
+            <div class="max-w-[70%]">
+              <p class="text-sm text-gray-600">{% trans "Get connected with Starlink" %}</p>
+              <h3 class="text-lg font-semibold text-gray-900">{% trans "Order a Kit & Subscribe" %}</h3>
+            </div>
+            {% if kyc_status == 'approved' %}
+              <button onclick="openOrderModal()"
+                class="whitespace-nowrap bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white px-6 py-3 rounded-lg shadow-lg hover:shadow-xl transition animate-pulse scale-110 ring-4 ring-green-300 hover:ring-green-400">
+                <i class="fas fa-rocket mr-2"></i>{% trans "Start Your Order" %}
+              </button>
+            {% else %}
+              <button disabled
+                class="whitespace-nowrap bg-gray-200 text-gray-500 px-4 py-2 rounded-lg shadow cursor-not-allowed">
+                <i class="fas fa-lock mr-2"></i>{% trans "Complete KYC first" %}
+              </button>
+            {% endif %}
+          </section>
+        </div> -->
+
+        {% if kyc_status != 'approved' %}
+        <!-- KYC Status -->
+        <section class="p-5 rounded-xl shadow border
+          {% if kyc_status == 'approved' %}bg-gradient-to-r from-green-50 to-green-100 border-green-300
+          {% elif kyc_status == 'rejected' %}bg-gradient-to-r from-red-50 to-red-100 border-red-300
+          {% else %}bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300{% endif %}">
+          <div class="flex items-center justify-between gap-4">
+            <div class="flex items-center gap-4">
+              <div class="text-3xl">
+                {% if kyc_status == 'approved' %}😊{% elif kyc_status == 'rejected' %}⚠️{% else %}⌛{% endif %}
+              </div>
+              <div>
+                <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">{% trans "KYC Status" %}</h2>
+                <p class="text-lg font-bold capitalize
+                  {% if kyc_status == 'approved' %}text-green-700{% elif kyc_status == 'rejected' %}text-red-700{% else %}text-yellow-700{% endif %}">
+                  {{ kyc_status }}
+                </p>
+                <div class="text-sm mt-1
+                  {% if kyc_status == 'approved' %}text-green-600{% elif kyc_status == 'rejected' %}text-red-600{% else %}text-yellow-600{% endif %}">
+                  {% if kyc_status == 'approved' %}
+                    ✅ {% trans "You can now access services and place your order!" %}
+                  {% elif kyc_status == 'rejected' %}
+                    <div class="space-y-1">
+                      <p>❌ {% trans "Your KYC application was rejected." %}</p>
+                      {% if kyc_rejection_reason %}
+                        <p class="text-xs font-medium">
+                          <strong>{% trans "Reason" %}:</strong> {{ kyc_rejection_reason }}
+                        </p>
+                      {% endif %}
+                      {% if kyc_rejection_details %}
+                        <p class="text-xs italic">
+                          {{ kyc_rejection_details }}
+                        </p>
+                      {% endif %}
+                      <p class="text-xs mt-2">
+                        {% trans "Please review and resubmit your documents." %}
+                      </p>
+                    </div>
+                  {% elif kyc_status == 'pending' %}
+                    ⏳ {% trans "Your KYC is under review." %}
+                  {% else %}
+                    ⚡ 📝 Submit your KYC now to get started quickly! Our team reviews applications promptly so you can access services right away.
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+
+            <div>
+              {% if kyc_status == 'approved' %}
+                <button disabled class="px-4 py-2 bg-green-600/90 text-white rounded-lg shadow cursor-not-allowed">✅ {% trans "Verified" %}</button>
+              {% elif kyc_status == 'rejected' %}
+                <button onclick="openKycModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg shadow hover:bg-red-700">
+                  {% trans "Re-submit KYC" %}
+                </button>
+              {% elif kyc_status == 'pending' %}
+                <button onclick="openKycModal()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg shadow hover:bg-yellow-600">
+                  {% trans "Start KYC Process" %}
+                </button>
+              {% else %}
+                <button onclick="openKycModal()" class="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg shadow-lg hover:shadow-xl transition animate-pulse scale-110 ring-4 ring-blue-300 hover:ring-blue-400">
+                  📝 {% trans "Submit KYC Now" %}
+                </button>
+              {% endif %}
+            </div>
+          </div>
+        </section>
+        {% endif %}
+
+
+        <!-- Your Subscription -->
+            <!-- {% if has_subscriptions %} -->
+            <!-- <a href="{% url 'subscription_list' %}"
+               class="group block p-5 rounded-xl shadow-lg border border-yellow-300 bg-gradient-to-r from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 transition-all duration-300 transform hover:-translate-y-1 hover:shadow-xl"> -->
+            <!-- {% else %} -->
+            <!-- <div class="group block p-5 rounded-xl shadow-lg border border-gray-300 bg-gradient-to-r from-gray-50 to-gray-100 opacity-50 cursor-not-allowed"> -->
+            <!-- {% endif %} -->
+
+              <!-- <div class="flex items-center justify-between gap-4"> -->
+                <!-- Left content -->
+                <!-- <div class="flex items-center gap-4">
+                  <div class="p-3 bg-gradient-to-br from-yellow-400 to-amber-500 text-white rounded-full shadow-md group-hover:scale-110 transform transition">
+                    <i class="fas fa-satellite-dish text-lg"></i>
+                  </div>
+                  <div>
+                    <h2 class="text-sm font-semibold text-gray-600 uppercase tracking-wide">{% trans "Your Subscription" %}</h2>
+                    <p class="text-lg font-bold text-yellow-700 group-hover:text-yellow-800">{% trans "View & Manage" %}</p>
+                  </div>
+                </div> -->
+
+                <!-- Right arrow -->
+                <!-- <div class="text-yellow-600 group-hover:text-yellow-800 transition">
+                  <i class="fas fa-chevron-right"></i>
+                </div>
+              </div> -->
+            <!-- {% if has_subscriptions %}</a>{% else %}</div>{% endif %} -->
+
+
+<script>
+
+</script>

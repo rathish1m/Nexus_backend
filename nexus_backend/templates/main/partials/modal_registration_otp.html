@@ -1,0 +1,535 @@
+<script>
+// Utilisation : formatDateByLang(dateString, lang)
+function formatDateByLang(dateString, lang) {
+  if (!dateString) return '';
+  const d = new Date(dateString);
+  if (isNaN(d)) return dateString;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const year = d.getFullYear();
+  if (lang === 'fr') {
+    return `${day}/${month}/${year}`;
+  } else {
+    return `${month}/${day}/${year}`;
+  }
+}
+</script>
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- Modal: Registration + OTP (Professional Redesign, CD (+243) only) -->
+<div id="modal"
+     class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm
+            flex items-center justify-center px-3 sm:px-4 py-8 overflow-y-auto">
+
+  <!-- Dialog -->
+  <div id="modal-dialog"
+       class="relative w-full max-w-lg sm:max-w-2xl bg-white rounded-2xl shadow-2xl
+              ring-1 ring-black/5 overflow-hidden">
+
+    <!-- Header with Stepper -->
+    <header class="relative">
+      <div class="h-1.5 w-full bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500"></div>
+
+      <div class="px-5 sm:px-8 py-5">
+        <div class="flex items-start gap-4">
+          <div class="hidden sm:flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600">
+            <i class="fas fa-satellite-dish text-xl"></i>
+          </div>
+          <div class="min-w-0">
+            <h2 class="text-xl sm:text-2xl font-bold text-gray-900">{% trans "Create your Nexus account" %}</h2>
+            <p class="text-gray-500 text-sm">{% trans "Register, then verify with a one-time code." %}</p>
+          </div>
+        </div>
+
+        <!-- Stepper -->
+        <ol class="mt-4 grid grid-cols-2 gap-3 text-sm">
+          <li id="stepper-1"
+              class="flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700 font-medium">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white text-xs">1</span>
+            {% trans "Account details" %}
+          </li>
+          <li id="stepper-2"
+              class="flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500">
+            <span class="inline-flex h-6 w-6 items-center justify-center rounded-full bg-gray-300 text-gray-800 text-xs">2</span>
+            {% trans "Verify OTP" %}
+          </li>
+        </ol>
+
+        <!-- Close -->
+        <button id="close-modal" type="button" aria-label="{% trans 'Close' %}"
+                class="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full
+                       bg-white text-gray-700 hover:bg-gray-50 focus:outline-none focus-visible:ring-2
+                       focus-visible:ring-blue-500 shadow border border-gray-200 transition">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="px-5 sm:px-8 pb-7">
+      <!-- Inline error -->
+      <div id="form-error" class="hidden mb-4 text-sm rounded-xl bg-red-50 text-red-700 px-3 py-2"></div>
+      <!-- Inline success/notice -->
+      <div id="form-notice" class="hidden mb-4 text-sm rounded-xl bg-emerald-50 text-emerald-700 px-3 py-2"></div>
+
+      <!-- ============= STEP 1: Registration ============= -->
+      <form id="registration-form" method="post" action="{% url 'register' %}" class="space-y-5" novalidate>
+        {% csrf_token %}
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Full Name -->
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium text-gray-800">{% trans "Full Name" %}</label>
+            <input type="text" name="full_name" required autocomplete="name"
+                   class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm
+                          placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">{% trans "Email Address" %}</label>
+            <input type="email" name="email" required autocomplete="email"
+                   class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm
+                          placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <!-- Phone (DRC only +243) -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">{% trans "Phone Number (DRC +243 only)" %}</label>
+            <input id="phone" name="phone_display" type="tel" inputmode="tel" autocomplete="tel" required
+                   class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm
+                          placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+            <p class="text-[11px] text-gray-500 mt-1">{% trans "Only DR Congo numbers are accepted. The +243 code is fixed." %}</p>
+            <input type="hidden" id="phone_full" name="phone">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <!-- Password -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">{% trans "Password" %}</label>
+            <div class="relative">
+              <input id="password" name="password" type="password" minlength="8" required autocomplete="new-password"
+                     class="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-10 text-sm
+                            placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+              <button type="button" class="absolute inset-y-0 right-0 px-3 text-gray-500"
+                      onclick="window.togglePassword?.('password')"><i class="fa-regular fa-eye"></i></button>
+            </div>
+          </div>
+
+          <!-- Confirm -->
+          <div>
+            <label class="block text-sm font-medium text-gray-800">{% trans "Repeat Password" %}</label>
+            <div class="relative">
+              <input id="confirm-password" name="confirm_password" type="password" minlength="8" required autocomplete="new-password"
+                     class="w-full rounded-xl border border-gray-300 px-3 py-2.5 pr-10 text-sm
+                            placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500">
+              <button type="button" class="absolute inset-y-0 right-0 px-3 text-gray-500"
+                      onclick="window.togglePassword?.('confirm-password')"><i class="fa-regular fa-eye"></i></button>
+            </div>
+          </div>
+        </div>
+
+        <p id="password-match-msg" class="text-xs sm:text-sm font-medium"></p>
+
+        <div class="flex items-start gap-2">
+          <input id="tos" type="checkbox" required class="mt-1 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+          <label class="text-xs text-gray-600">
+            {% blocktrans with terms_link='<a href="#" class="text-blue-600 underline" onclick="openTermsModal(event)">'|safe privacy_link='<a href="#" class="text-blue-600 underline" onclick="openPrivacyModal(event)">'|safe %}I agree to the {{ terms_link }}Terms and Conditions</a> and {{ privacy_link }}Privacy Policy</a>.{% endblocktrans %}
+          </label>
+<!-- Terms Modal -->
+<div id="termsModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-2">
+  <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+    <h3 class="text-xl font-bold mb-4">{% trans "Terms and Conditions" %}</h3>
+    <div class="text-gray-700 text-sm mb-6">
+      {% trans "By creating an account and submitting KYC, you consent to the processing of your data for verification and compliance purposes." %}
+      <!-- Add full terms text here as needed -->
+    </div>
+    <button type="button" title="Close Terms" onclick="closeTermsModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i><span class="sr-only">Close</span></button>
+  </div>
+</div>
+
+<!-- Privacy Policy Modal -->
+<div id="privacyModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-2">
+  <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 relative">
+    <h3 class="text-xl font-bold mb-4">{% trans "Privacy Policy" %}</h3>
+    <div class="text-gray-700 text-sm mb-6">
+      {% trans "Your personal data is handled securely and in accordance with our privacy policy. We do not share your information except as required for compliance." %}
+      <!-- Add full privacy policy text here as needed -->
+    </div>
+    <button type="button" title="Close Privacy Policy" onclick="closePrivacyModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-800"><i class="fa-solid fa-xmark text-2xl" aria-hidden="true"></i><span class="sr-only">Close</span></button>
+  </div>
+</div>
+
+          </label>
+        </div>
+
+        <button id="register-submit" type="submit"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl
+                       bg-gradient-to-r from-blue-600 via-cyan-500 to-emerald-500 text-white font-semibold px-4 py-3
+                       shadow hover:opacity-95 transition">
+          <i class="fa-solid fa-user-plus text-sm"></i>
+          {% trans "Create account" %}
+        </button>
+
+               <p class="text-[11px] text-gray-500 text-center">
+          {% trans "We'll send a 6-digit code to your email or phone to verify your account." %}
+        </p>
+      </form>
+<div class="already_have_account flex items-center justify-center gap-2 text-sm mt-2">
+  Already have an account?
+  <button
+    class="login_button underline"
+    type="button"
+    onclick="document.getElementById('modal').classList.add('hidden'); document.getElementById('loginModal')?.classList.remove('hidden');">
+    Login
+  </button>
+</div>
+      <!-- ============= STEP 2: OTP ============= -->
+      <form id="otp-form" method="post" action="{% url 'verify_otp' %}" class="hidden space-y-5 mt-2" novalidate>
+        {% csrf_token %}
+        <div class="text-center">
+          <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Verify One-Time Code" %}</h3>
+          <p class="text-sm text-gray-600">
+            {% trans "Enter the 6-digit code we sent." %} <span id="otp-target" class="font-medium"></span>
+          </p>
+        </div>
+
+        <!-- OTP Boxes -->
+        <div class="grid grid-cols-6 gap-2 sm:gap-3 justify-center mx-auto max-w-sm">
+          {% for i in "123456" %}
+          <input inputmode="numeric" maxlength="1" pattern="[0-9]" required
+                 class="otp-digit text-center text-lg sm:text-xl font-semibold h-12 sm:h-14 rounded-xl border border-gray-300
+                        focus:border-blue-500 focus:ring-2 focus:ring-blue-500" />
+          {% endfor %}
+        </div>
+        <input id="otp" name="otp" type="hidden"/>
+
+        <div class="flex items-center justify-between text-sm">
+          <button type="button" id="back-to-details"
+                  class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900">
+            <i class="fa-solid fa-arrow-left"></i> {% trans "Back" %}
+          </button>
+
+          <!-- Hidden anchor holds the actual resend URL -->
+          <a id="resend-otp-link" href="{% url 'resend_otp' %}" class="hidden" aria-hidden="true"></a>
+
+          <div class="flex items-center gap-2">
+            <button type="button" id="resend-otp" class="text-blue-600 hover:underline">
+              {% trans "Resend code" %}
+            </button>
+            <span id="resend-countdown" class="hidden text-gray-400"></span>
+          </div>
+        </div>
+
+        <button type="submit"
+                class="w-full inline-flex items-center justify-center gap-2 rounded-xl
+                       bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-4 py-3 shadow transition">
+          <i class="fa-solid fa-check text-sm"></i>
+          {% trans "Verify & Complete" %}
+        </button>
+      </form>
+
+    </div>
+  </div>
+</div>
+
+<!-- Intl-Tel-Input (kept, but locked to +243/CD only) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@17.0.19/build/css/intlTelInput.min.css"/>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@17.0.19/build/js/intlTelInput.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/intl-tel-input@17.0.19/build/js/utils.js"></script>
+
+<script>
+(() => {
+  // Eye toggle
+  window.togglePassword = function (id) {
+    const el = document.getElementById(id);
+    if (el) el.type = el.type === 'password' ? 'text' : 'password';
+  };
+
+  // Cookie
+  function getCookie(name) {
+    const parts = document.cookie ? document.cookie.split('; ') : [];
+    for (const p of parts) {
+      const [k, v] = p.split('=');
+      if (k === name) return decodeURIComponent(v || '');
+    }
+    return '';
+  }
+
+  let busy = false;
+  async function withBusy(btn, fn) {
+    if (busy) return;
+    busy = true;
+    const old = btn.innerHTML;
+    btn.disabled = true;
+    btn.classList.add('opacity-70','cursor-not-allowed');
+    btn.innerHTML = '<span class="animate-pulse">…</span>';
+    try { await fn(); }
+    finally {
+      busy = false;
+      btn.disabled = false;
+      btn.classList.remove('opacity-70','cursor-not-allowed');
+      btn.innerHTML = old;
+    }
+  }
+
+  async function safeJson(resp) {
+    const text = await resp.text();
+    try { return JSON.parse(text); } catch { return { success:false, message:'Unexpected server response', raw:text }; }
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('form-error');
+    if (!box) { alert(msg); return; }
+    box.textContent = msg;
+    box.classList.remove('hidden');
+  }
+  function clearError() {
+    document.getElementById('form-error')?.classList.add('hidden');
+    document.getElementById('form-notice')?.classList.add('hidden');
+  }
+  function showNotice(msg) {
+    const box = document.getElementById('form-notice');
+    if (!box) return;
+    box.textContent = msg;
+    box.classList.remove('hidden');
+  }
+
+  function setStep(step) {
+    const reg = document.getElementById('registration-form');
+    const otp = document.getElementById('otp-form');
+    const s1  = document.getElementById('stepper-1');
+    const s2  = document.getElementById('stepper-2');
+
+    if (step === 1) {
+      reg.classList.remove('hidden');
+      otp.classList.add('hidden');
+      s1.className = "flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-blue-700 font-medium";
+      s2.className = "flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500";
+    } else {
+      reg.classList.add('hidden');
+      otp.classList.remove('hidden');
+      s1.className = "flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-gray-500";
+      s2.className = "flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 font-medium";
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const modal        = document.getElementById('modal');
+    const dialog       = document.getElementById('modal-dialog');
+    const closeBtn     = document.getElementById('close-modal');
+
+    const regForm      = document.getElementById('registration-form');
+    const otpForm      = document.getElementById('otp-form');
+    const otpTarget    = document.getElementById('otp-target');
+
+    const phoneInput   = document.getElementById('phone');
+    const phoneHidden  = document.getElementById('phone_full');
+
+    const password     = document.getElementById('password');
+    const confirmPwd   = document.getElementById('confirm-password');
+    const matchMsg     = document.getElementById('password-match-msg');
+    const submitBtn    = document.getElementById('register-submit');
+
+    const backBtn      = document.getElementById('back-to-details');
+    const resendBtn    = document.getElementById('resend-otp');
+    const resendLink   = document.getElementById('resend-otp-link');
+    const countdownEl  = document.getElementById('resend-countdown');
+
+    // Public helpers for parent page
+    window.openModal = function () {
+      clearError();
+      setStep(1);
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+      setTimeout(() => dialog?.classList.add('scale-100'), 0);
+    };
+    function closeModal() {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+    closeBtn?.addEventListener('click', closeModal);
+    modal?.addEventListener('click', (e) => {
+      if (!dialog.contains(e.target)) { e.stopPropagation(); e.preventDefault(); }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+    });
+
+    // Phone input: lock to +243
+    let iti = null;
+    if (phoneInput) {
+      iti = window.intlTelInput(phoneInput, {
+        initialCountry: "cd",
+        onlyCountries: ["cd"],
+        allowDropdown: false,
+        separateDialCode: true,
+        nationalMode: false,
+        utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-io@17.0.19/build/js/utils.js"
+      });
+    }
+
+    // Password checks
+    const strong = (pw) => pw.length >= 8 && /[A-Z]/.test(pw) && /[a-z]/.test(pw) && /[0-9]/.test(pw) && /[^A-Za-z0-9]/.test(pw);
+    const clearMsg = () => { matchMsg.textContent = ''; matchMsg.className = 'text-xs sm:text-sm'; };
+    password?.addEventListener('input', clearMsg);
+    confirmPwd?.addEventListener('input', clearMsg);
+
+    // Registration submit
+    regForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearError();
+
+      if (!regForm.checkValidity()) { regForm.reportValidity(); return; }
+      if (password.value !== confirmPwd.value) {
+        matchMsg.textContent = "❌ {% trans 'Passwords do not match' %}";
+        matchMsg.className   = "text-red-600 text-xs sm:text-sm";
+        return;
+      }
+      if (!strong(password.value)) {
+        matchMsg.textContent = "❌ {% trans 'Password must include uppercase, lowercase, number, and special character.' %}";
+        matchMsg.className   = "text-red-600 text-xs sm:text-sm";
+        return;
+      }
+      matchMsg.textContent = "✅ {% trans 'Password is strong and matches' %}";
+      matchMsg.className   = "text-green-600 text-xs sm:text-sm";
+
+      // E.164 (+243…)
+      let e164Phone = '';
+      if (iti) {
+        if (!iti.isValidNumber()) { showError(window.registrationTranslations.validPhoneError); return; }
+        e164Phone = iti.getNumber();
+      } else {
+        const raw = (phoneInput.value || '').replace(/\D+/g, '');
+        if (!/^\d{8,15}$/.test(raw)) { showError(window.registrationTranslations.validPhoneError); return; }
+        e164Phone = '+243' + raw;
+      }
+      if (!e164Phone.startsWith('+243')) { showError(window.registrationTranslations.only243Error); return; }
+      phoneHidden.value = e164Phone;
+
+      const formData = new FormData(regForm);
+      const csrf     = getCookie('csrftoken');
+
+      withBusy(submitBtn, async () => {
+        try {
+          const resp = await fetch(regForm.action, { method:'POST', headers:{ 'X-CSRFToken': csrf, 'Accept':'application/json' }, body: formData });
+          const data = await safeJson(resp);
+          if (data.success) {
+            otpTarget.textContent = data.target ? `(${data.target})` : '';
+            setStep(2);
+            document.querySelector('.otp-digit')?.focus();
+            // start cooldown immediately after first send (optional)
+            startResendCooldown(30);
+          } else {
+            if (data.message && data.message.includes('phone number is already registered')) {
+              showError(window.registrationTranslations.phoneRegisteredError);
+            } else {
+              showError(data.message || window.registrationTranslations.registrationFailed);
+            }
+          }
+        } catch (err) {
+          console.error(err);
+          showError(window.registrationTranslations.serverError);
+        }
+      });
+    });
+
+    // OTP boxes
+    const otpInputs = Array.from(document.querySelectorAll('.otp-digit'));
+    otpInputs.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        e.target.value = e.target.value.replace(/\D/g,'').slice(0,1);
+        if (e.target.value && idx < otpInputs.length - 1) otpInputs[idx + 1].focus();
+      });
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) otpInputs[idx - 1].focus();
+      });
+    });
+
+    // OTP submit
+    otpForm?.addEventListener('submit', (e) => {
+      e.preventDefault();
+      clearError();
+
+      const code = otpInputs.map(i => i.value).join('');
+      if (code.length !== 6) { showError(window.registrationTranslations.enter6DigitError); return; }
+      document.getElementById('otp').value = code;
+
+      const csrf     = getCookie('csrftoken');
+      const formData = new FormData(otpForm);
+      const btn      = otpForm.querySelector('button[type="submit"]');
+
+      withBusy(btn, async () => {
+        try {
+          const resp = await fetch(otpForm.action, { method:'POST', headers:{ 'X-CSRFToken': csrf, 'Accept':'application/json' }, body: formData });
+          const data = await safeJson(resp);
+          if (data.success) {
+            window.location.href = data.redirect || '/dashboard/';
+          } else {
+            showError(data.message || window.registrationTranslations.invalidOTPError);
+          }
+        } catch (err) {
+          console.error(err);
+          showError(window.registrationTranslations.serverError);
+        }
+      });
+    });
+
+    // Back
+    backBtn?.addEventListener('click', () => setStep(1));
+
+    // Resend (uses the hidden anchor with Django URL)
+    resendBtn?.addEventListener('click', async () => {
+      clearError();
+      const csrf = getCookie('csrftoken');
+      const url  = resendLink?.getAttribute('href');
+      if (!url) { showError(window.registrationTranslations.resendNotConfigured); return; }
+
+      // Prevent spamming if already cooling down
+      if (resendBtn.disabled) return;
+
+      try {
+        resendBtn.disabled = true;
+        const r = await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrf, 'Accept':'application/json' } });
+        const d = await safeJson(r);
+        if (d.success) {
+          showNotice("{% trans 'A new code was sent.' %}");
+          startResendCooldown(30); // seconds
+        } else {
+          resendBtn.disabled = false;
+          showError(d.message || window.registrationTranslations.unableToResend);
+        }
+      } catch {
+        resendBtn.disabled = false;
+        showError(window.registrationTranslations.networkError);
+      }
+    });
+
+    function startResendCooldown(seconds) {
+      let remain = seconds;
+      resendBtn.classList.add('pointer-events-none','opacity-60');
+      countdownEl.classList.remove('hidden');
+      countdownEl.textContent = `(${remain}s)`;
+      const timer = setInterval(() => {
+        remain -= 1;
+        countdownEl.textContent = `(${remain}s)`;
+        if (remain <= 0) {
+          clearInterval(timer);
+          countdownEl.classList.add('hidden');
+          resendBtn.classList.remove('pointer-events-none','opacity-60');
+          resendBtn.disabled = false;
+        }
+      }, 1000);
+    }
+  });
+})();
+
+  // Modal open/close functions for Terms and Privacy Policy
+  window.openTermsModal = function(e){ e.preventDefault(); document.getElementById('termsModal').classList.remove('hidden'); };
+  window.closeTermsModal = function(){ document.getElementById('termsModal').classList.add('hidden'); };
+  window.openPrivacyModal = function(e){ e.preventDefault(); document.getElementById('privacyModal').classList.remove('hidden'); };
+  window.closePrivacyModal = function(){ document.getElementById('privacyModal').classList.add('hidden'); };
+
+</script>

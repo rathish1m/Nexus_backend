@@ -1,0 +1,193 @@
+{% extends 'site_survey/fe_dashboard_main.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "Activation Details – Nexus" %}{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-8">
+  {% if error %}
+    <div class="bg-red-50 border border-red-200 text-red-800 p-4 rounded">{{ error }}</div>
+  {% else %}
+    <div class="mb-8">
+      <div class="mb-4">
+        <a href="{% url 'site_survey:survey_dashboard' %}"
+           class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">
+          <i class="fas fa-arrow-left mr-2"></i>
+          {% trans "Back to Dashboard" %}
+        </a>
+      </div>
+
+      <h1 class="text-3xl font-bold text-gray-900 mb-2">{% trans "Activation Details" %}</h1>
+      <p class="text-gray-600">{% trans "Activation for Order" %} {{ activation.order_ref }}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+          {% trans "Activation Information" %}
+        </h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Order" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.order_ref }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Activation ID" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.id }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Plan" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.plan_name }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Billing cycle" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.billing_cycle|default:"" }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Subscription status" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.subscription_status|default:activation.status }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Status" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.status }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Started at" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.started_at }}</dd>
+          </div>
+        </dl>
+
+        <hr class="my-4" />
+
+        <h3 class="font-semibold mb-2">{% trans "Client" %}</h3>
+        <dl class="space-y-2 text-sm">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Name" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.client_name }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Email" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.user_email|default:"" }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Phone" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.client_phone }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Address" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.client_address }}</dd>
+          </div>
+        </dl>
+
+        <hr class="my-4" />
+
+        <h3 class="font-semibold mb-2">{% trans "Kit" %}</h3>
+  <p class="text-sm">{% trans "Serial" %}: {{ activation.kit_serial }}</p>
+  <p class="text-sm">{% trans "Model" %}: {{ activation.kit_model|default:"" }}</p>
+  <p class="text-sm">{% trans "IMEI" %}: {{ activation.kit_imei|default:"" }}</p>
+  <p class="text-sm">{% trans "Stock status" %}: {{ activation.kit_stock_status|default:"" }}</p>
+
+        <hr class="my-4" />
+
+        <h3 class="font-semibold mb-2">{% trans "Activation request" %}</h3>
+        <dl class="space-y-2 text-sm">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Request ID" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.id }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Requested by" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.requested_by }}</dd>
+          </div>
+          {% if activation.requested_by_id %}
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Requested by (id)" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.requested_by_id }}</dd>
+          </div>
+          {% endif %}
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Requested at" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.requested_at }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Reason" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.reason }}</dd>
+          </div>
+        </dl>
+
+        <div class="mt-4">
+          <a href="#" onclick="window.print();return false;" class="inline-flex items-center px-4 py-2 rounded bg-gray-800 text-white text-sm">{% trans "Print / Export" %}</a>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-lg shadow p-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <i class="fas fa-map-marker-alt mr-2 text-green-500"></i>
+          {% trans "Location" %}
+        </h3>
+        <dl class="space-y-3">
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Address" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.client_address|default:_("Not specified") }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Coordinates" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.latitude }}, {{ activation.longitude }}</dd>
+          </div>
+          <div>
+            <dt class="text-sm font-medium text-gray-500">{% trans "Plus code" %}</dt>
+            <dd class="text-sm text-gray-900">{{ activation.plus_code }}</dd>
+          </div>
+        </dl>
+
+        <div class="mt-4">
+          <label for="map-provider" class="text-xs text-gray-500">{% trans "Map provider" %}</label>
+          <select id="map-provider" aria-label="{% trans "Map provider" %}" class="w-full mt-1 form-select">
+            {% for p in map_providers %}
+              <option value="{{ p.id }}" data-url="{{ p.url }}" data-attribution="{{ p.attribution }}">{{ p.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div id="activation-map" class="rounded h-72 mt-4"></div>
+
+        <script>
+          (function(){
+            try{
+              var lat = parseFloat('{{ activation.latitude|default:"" }}');
+              var lng = parseFloat('{{ activation.longitude|default:"" }}');
+              if (!isFinite(lat) || !isFinite(lng)) return;
+              var map = L.map('activation-map').setView([lat,lng], 14);
+              var defaultUrl = document.querySelector('#map-provider option:checked').dataset.url || 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+              var defaultAttr = document.querySelector('#map-provider option:checked').dataset.attribution || '';
+              var tileLayer = L.tileLayer(defaultUrl, { maxZoom: 19, attribution: defaultAttr }).addTo(map);
+              var marker = L.marker([lat,lng]).addTo(map).bindPopup('{{ activation.client_name|escapejs }}').openPopup();
+              document.getElementById('map-provider').addEventListener('change', function(e){
+                var opt = e.target.selectedOptions[0];
+                var url = opt.dataset.url;
+                var attr = opt.dataset.attribution || '';
+                try{ map.removeLayer(tileLayer); }catch(err){}
+                tileLayer = L.tileLayer(url, { maxZoom: 19, attribution: attr }).addTo(map);
+              });
+            }catch(e){console.error('map',e)}
+          })();
+        </script>
+
+        {% if activities %}
+        <hr class="my-4" />
+        <h3 class="font-semibold mb-2">{% trans "Installation timeline" %}</h3>
+        <div class="grid grid-cols-1 gap-4">
+          {% for a in activities %}
+            <div class="border border-gray-200 rounded-lg p-3">
+              <div class="text-xs text-gray-500">{% trans "Planned" %}: {{ a.planned_at }}{% if a.technician %} • {{ a.technician }}{% endif %}</div>
+              <div class="text-sm">{% trans "Started" %}: {{ a.started_at }} • {% trans "Completed" %}: {{ a.completed_at }}</div>
+              {% if a.notes %}<div class="text-sm text-gray-700 mt-2">{{ a.notes }}</div>{% endif %}
+            </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}

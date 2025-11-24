@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Confirmed</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .email-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #10b981;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #1f2937;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .success-badge {
+            background-color: #d1fae5;
+            color: #065f46;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            display: inline-block;
+            margin: 20px 0;
+        }
+        .content-section {
+            margin-bottom: 25px;
+        }
+        .info-box {
+            background-color: #f3f4f6;
+            border-left: 4px solid #10b981;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .payment-details {
+            background-color: #d1fae5;
+            border: 1px solid #10b981;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .payment-header {
+            color: #065f46;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #a7f3d0;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 500;
+            color: #065f46;
+        }
+        .detail-value {
+            color: #1f2937;
+        }
+        .amount-highlight {
+            font-size: 18px;
+            font-weight: bold;
+            color: #059669;
+        }
+        .timeline {
+            background-color: #f9fafb;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .timeline-item:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .timeline-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-size: 14px;
+        }
+        .timeline-icon.completed {
+            background-color: #10b981;
+            color: white;
+        }
+        .timeline-icon.current {
+            background-color: #3b82f6;
+            color: white;
+        }
+        .timeline-icon.pending {
+            background-color: #e5e7eb;
+            color: #6b7280;
+        }
+        .timeline-content h4 {
+            margin: 0 0 5px 0;
+            color: #1f2937;
+        }
+        .timeline-content p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .support-info {
+            background-color: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .support-title {
+            color: #1e40af;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">📡 NEXUS TELECOM</div>
+            <div class="title">Payment Confirmed!</div>
+            <div class="subtitle">Additional Equipment Payment Processed</div>
+            <div class="success-badge">✅ Payment Successful</div>
+        </div>
+
+        <!-- Greeting -->
+        <div class="content-section">
+            <p>Dear {{ customer_name }},</p>
+
+            <p>Great news! We have successfully received your payment for the additional equipment required for your Starlink installation. Your order is now ready to proceed to the installation phase.</p>
+        </div>
+
+        <!-- Order Information -->
+        <div class="info-box">
+            <strong>📋 Order Reference:</strong> {{ order_reference }}<br>
+            <strong>📅 Payment Date:</strong> {{ payment_date }}<br>
+            <strong>🔗 Billing Reference:</strong> {{ billing_reference }}
+        </div>
+
+        <!-- Payment Details -->
+        <div class="payment-details">
+            <div class="payment-header">💳 Payment Summary</div>
+
+            <div class="detail-row">
+                <span class="detail-label">Billing Reference:</span>
+                <span class="detail-value">{{ billing_reference }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Order Reference:</span>
+                <span class="detail-value">{{ order_reference }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Amount Paid:</span>
+                <span class="detail-value amount-highlight">${{ amount_paid|floatformat:2 }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Payment Status:</span>
+                <span class="detail-value">
+                    <span style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        ✅ Confirmed
+                    </span>
+                </span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Payment Date:</span>
+                <span class="detail-value">{{ payment_date }}</span>
+            </div>
+        </div>
+
+        <!-- Installation Timeline -->
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">📅 Installation Timeline</h3>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="timeline-icon completed">✓</div>
+                    <div class="timeline-content">
+                        <h4>Site Survey Completed</h4>
+                        <p>Our team assessed your installation site and identified required equipment</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon completed">✓</div>
+                    <div class="timeline-content">
+                        <h4>Additional Equipment Approved</h4>
+                        <p>You approved the additional equipment requirements</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon completed">✓</div>
+                    <div class="timeline-content">
+                        <h4>Payment Confirmed</h4>
+                        <p>Payment for additional equipment has been successfully processed</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon current">📋</div>
+                    <div class="timeline-content">
+                        <h4>Installation Scheduling</h4>
+                        <p>Our team will contact you within 24-48 hours to schedule your installation</p>
+                    </div>
+                </div>
+
+                <div class="timeline-item">
+                    <div class="timeline-icon pending">📡</div>
+                    <div class="timeline-content">
+                        <h4>Installation & Setup</h4>
+                        <p>Professional installation of your Starlink equipment</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">📝 What Happens Next?</h3>
+            <div style="background-color: #f0f9ff; border: 1px solid #0ea5e9; border-radius: 8px; padding: 15px;">
+                <ol style="color: #374151; margin-left: 20px; margin-bottom: 0;">
+                    <li><strong>Installation Scheduling:</strong> Our installation team will contact you within 24-48 hours to schedule your installation appointment</li>
+                    <li><strong>Equipment Preparation:</strong> We'll prepare all the additional equipment identified during the site survey</li>
+                    <li><strong>Professional Installation:</strong> Our certified technicians will install your Starlink system with all additional equipment</li>
+                    <li><strong>Testing & Activation:</strong> We'll test the system and activate your service</li>
+                    <li><strong>Training:</strong> We'll provide you with basic training on using your new Starlink system</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Receipt Information -->
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">🧾 Receipt Information</h3>
+            <p style="background-color: #fef3c7; border: 1px solid #f59e0b; border-radius: 6px; padding: 12px; margin: 10px 0;">
+                <strong>📧 Receipt:</strong> A detailed receipt has been sent to your email address for your records.
+            </p>
+            <p style="color: #6b7280; font-size: 14px;">
+                Please keep this email and your receipt for warranty and support purposes.
+            </p>
+        </div>
+
+        <!-- Support Information -->
+        <div class="support-info">
+            <div class="support-title">🆘 Need Assistance?</div>
+            <p style="margin: 5px 0; font-size: 14px;">
+                If you have any questions about your installation or need to make changes to your appointment, please contact us:
+            </p>
+            <p style="margin: 5px 0; font-size: 14px;">
+                📧 Email: <a href="mailto:{{ support_email }}" style="color: #1e40af;">{{ support_email }}</a><br>
+                📞 Phone: {{ support_phone }}
+            </p>
+        </div>
+
+        <!-- Thank You -->
+        <div class="content-section" style="text-align: center; margin-top: 30px;">
+            <h3 style="color: #10b981; margin-bottom: 10px;">🎉 Thank You!</h3>
+            <p style="color: #374151;">
+                Thank you for choosing Nexus Telecom for your Starlink installation. We're excited to get you connected with high-speed satellite internet!
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>This confirmation was sent on {{ current_date }} for your Starlink installation order.</p>
+            <p>© 2025 Nexus Telecom. All rights reserved.</p>
+            <p style="margin-top: 10px;">
+                This is an automated confirmation. Please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

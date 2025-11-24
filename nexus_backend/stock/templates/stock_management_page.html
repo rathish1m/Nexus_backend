@@ -1,0 +1,792 @@
+{% extends 'stock/stock_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .5s ease-out both; }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.12) }
+  }
+</style>
+
+<header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+  <div class="flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <i class="fas fa-warehouse text-3xl opacity-90"></i>
+      <div>
+        <h1 class="text-2xl sm:text-3xl font-bold">{% trans "Stock Management" %}</h1>
+        <p class="mt-1 text-sm text-indigo-100">
+          {% trans "Track inventory levels per location and manage movements." %}
+        </p>
+      </div>
+    </div>
+
+    <label class="hidden sm:flex items-center gap-2 bg-white/10 px-3 py-2 rounded-xl">
+      <i class="fas fa-location-dot"></i>
+      <select id="locationFilter" class="bg-transparent text-white/90 focus:outline-none">
+        <option value="">{% trans "All Locations" %}</option>
+      </select>
+    </label>
+  </div>
+</header>
+
+<section class="mb-6 animate-fade-in">
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <article class="card-hover bg-gradient-to-br from-indigo-400 to-indigo-600 text-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold uppercase tracking-wide text-white/90">{% trans "Total Item Types" %}</span>
+        <i class="fas fa-boxes text-white/90 text-xl"></i>
+      </div>
+      <div class="text-4xl font-extrabold" id="totalItemTypes">--</div>
+    </article>
+
+    <article class="card-hover bg-gradient-to-br from-emerald-400 to-green-600 text-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold uppercase tracking-wide text-white/90">{% trans "Items In Stock" %}</span>
+        <i class="fas fa-check-circle text-white/90 text-xl"></i>
+      </div>
+      <div class="text-4xl font-extrabold" id="itemsInStock">--</div>
+    </article>
+
+    <article class="card-hover bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold uppercase tracking-wide text-white/90">{% trans "Low Stock Items" %}</span>
+        <i class="fas fa-exclamation-triangle text-white/90 text-xl"></i>
+      </div>
+      <div class="text-4xl font-extrabold" id="lowStockItems">--</div>
+    </article>
+
+    <article class="card-hover bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-2xl shadow-lg p-6">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-semibold uppercase tracking-wide text-white/90">{% trans "Out of Stock" %}</span>
+        <i class="fas fa-times-circle text-white/90 text-xl"></i>
+      </div>
+      <div class="text-4xl font-extrabold" id="outOfStockItems">--</div>
+    </article>
+  </div>
+</section>
+
+<!-- Per-row Add Stock Modal -->
+<div id="stockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+    <div class="bg-gradient-to-r from-indigo-500 to-sky-500 p-5 text-white">
+      <h2 class="text-xl font-semibold">
+        {% trans "Add Stock Quantity for Item" %} #<span id="stockItemId"></span>
+      </h2>
+    </div>
+    <div class="p-6">
+      <form id="stockForm">
+        <input type="hidden" id="stockItemInput" name="item_id">
+
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-gray-700">{% trans "Location" %}</label>
+            <button type="button" onclick="openCreateLocationModal()" class="text-xs text-indigo-600 hover:underline">{% trans "New location" %}</button>
+          </div>
+          <select id="stockLocationSelect" name="location_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a location" %}</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Quantity" %}</label>
+          <input type="number" name="quantity" required min="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeStockModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">{% trans "Cancel" %}</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">{% trans "Submit" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Stock (loose) Modal -->
+<div id="looseStockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+    <div class="bg-gradient-to-r from-indigo-500 to-sky-500 p-5 text-white">
+      <h2 class="text-xl font-semibold">{% trans "Add Stock" %} — {% trans "Choose Kit & Location" %}</h2>
+    </div>
+    <div class="p-6">
+      <form id="looseStockForm">
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Kit" %}</label>
+          <select id="looseKitSelect" name="item_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a kit" %}</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-gray-700">{% trans "Location" %}</label>
+            <button type="button" onclick="openCreateLocationModal('looseLocationSelect')" class="text-xs text-indigo-600 hover:underline">{% trans "New location" %}</button>
+          </div>
+          <select id="looseLocationSelect" name="location_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a location" %}</option>
+          </select>
+        </div>
+
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Quantity" %}</label>
+          <input type="number" name="quantity" min="1" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeLooseStockModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">{% trans "Cancel" %}</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">{% trans "Submit" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create Location Modal -->
+<div id="createLocationModal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+    <div class="bg-gradient-to-r from-indigo-500 to-sky-500 p-5 text-white">
+      <h2 class="text-xl font-semibold">{% trans "Create Stock Location" %}</h2>
+    </div>
+    <div class="p-6">
+      <form id="createLocationForm">
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Code" %}</label>
+          <input type="text" name="code" required placeholder="kin-main, van-john, rma..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Name" %}</label>
+          <input type="text" name="name" required placeholder="{% trans 'Warehouse Kinshasa' %}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Address (optional)" %}</label>
+          <input type="text" name="address" placeholder="Avenue... quartier..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-5">
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-sm font-medium text-gray-700">{% trans "Region (optional)" %}</label>
+            <button type="button" onclick="openCreateRegionModal()" class="text-xs text-indigo-600 hover:underline">{% trans "New region" %}</button>
+          </div>
+          <select id="regionSelect" name="region_id" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "No region" %}</option>
+          </select>
+        </div>
+
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeCreateLocationModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">{% trans "Cancel" %}</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">{% trans "Create" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Create Region Modal -->
+<div id="createRegionModal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-in">
+    <div class="bg-gradient-to-r from-indigo-500 to-sky-500 p-5 text-white">
+      <h2 class="text-xl font-semibold">{% trans "Create Region" %}</h2>
+    </div>
+    <div class="p-6">
+      <form id="createRegionForm">
+        <div class="mb-3">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Name" %}</label>
+          <input type="text" name="name" required placeholder="{% trans 'West Province' %}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Code (optional)" %}</label>
+          <input type="text" name="code" placeholder="west, kin, east..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeCreateRegionModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">{% trans "Cancel" %}</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">{% trans "Create" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Move Stock Modal (optional feature) -->
+<div id="moveStockModal" class="fixed inset-0 bg-black/60 flex items-center justify-center hidden z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-in">
+    <div class="bg-gradient-to-r from-indigo-500 to-sky-500 p-5 text-white">
+      <h2 class="text-xl font-semibold">{% trans "Move Stock Between Regions" %}</h2>
+    </div>
+    <div class="p-6">
+      <form id="moveStockForm" class="grid sm:grid-cols-2 gap-4">
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Kit" %}</label>
+          <select id="moveKitSelect" name="item_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a kit" %}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "From Region" %}</label>
+          <select id="fromRegionSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "All" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "From Location" %}</label>
+          <select id="fromLocationSelect" name="from_location_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a location" %}</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "To Region" %}</label>
+          <select id="toRegionSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "All" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "To Location" %}</label>
+          <select id="toLocationSelect" name="to_location_id" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="">{% trans "Select a location" %}</option>
+          </select>
+        </div>
+
+        <div class="sm:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Quantity" %}</label>
+          <input type="number" name="quantity" min="1" required class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+
+        <div class="sm:col-span-2 flex justify-end gap-3 mt-2">
+          <button type="button" onclick="closeMoveStockModal()" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded-lg transition">{% trans "Cancel" %}</button>
+          <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition">{% trans "Move" %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<section class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl border border-gray-200 p-6 w-full animate-fade-in">
+  <div class="flex justify-between items-center mb-6">
+    <h2 class="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center gap-2">
+      <i class="fas fa-layer-group text-indigo-600"></i>
+      {% trans "Stock Management" %}
+    </h2>
+    <div class="flex flex-wrap items-center gap-2">
+{#      <button onclick="openCreateRegionModal()" class="bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg shadow-sm transition text-sm">#}
+{#        <i class="fas fa-globe mr-2"></i>{% trans "New Region" %}#}
+{#      </button>#}
+      <button onclick="openCreateLocationModal()" class="bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 px-3 py-2 rounded-lg shadow-sm transition text-sm">
+        <i class="fas fa-location-dot mr-2"></i>{% trans "New Location" %}
+      </button>
+      <button onclick="openAddLooseStock()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow transition text-sm">
+        <i class="fas fa-plus mr-2"></i>{% trans "Add Stock" %}
+      </button>
+      <button onclick="openMoveStockModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg shadow transition text-sm">
+        <i class="fas fa-arrows-left-right mr-2"></i>{% trans "Transfer Between Regions" %}
+      </button>
+    </div>
+  </div>
+
+  <div class="flex flex-wrap items-center gap-3 mb-4">
+    <label class="flex items-center gap-2">
+      <span class="text-sm text-gray-600">{% trans "Region:" %}</span>
+      <select id="regionFilterInline" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <option value="">{% trans "All" %}</option>
+      </select>
+    </label>
+    <label class="flex items-center gap-2">
+      <span class="text-sm text-gray-600">{% trans "Location:" %}</span>
+      <select id="locationFilterInline" class="border border-gray-300 rounded-lg px-3 py-2 text-sm">
+        <option value="">{% trans "All" %}</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    <table class="min-w-full text-sm">
+      <thead class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white uppercase text-xs">
+        <tr>
+          <th class="py-3 px-4 text-left">{% trans "Kit" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "Model" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "Description" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "Location" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "On Hand" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "Status" %}</th>
+          <th class="py-3 px-4 text-left">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="stockTableBody" class="divide-y divide-gray-100 text-gray-700 bg-white">
+        <tr>
+          <td colspan="7" class="text-center py-6 text-gray-400">{% trans "Loading stock..." %}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      let cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + "=") {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/* ---------- Regions ---------- */
+async function loadConfiguredRegionInto(selectEl) {
+  try {
+    const res = await fetch("{% url 'get_configured_region' %}", { headers: { "X-Requested-With": "XMLHttpRequest" }});
+    const data = await res.json();
+    if (data && data.success && data.region && data.region.id) {
+      selectEl.innerHTML = "";
+      const opt = document.createElement("option");
+      opt.value = data.region.id;
+      opt.textContent = data.region.name;
+      opt.selected = true;
+      selectEl.appendChild(opt);
+      selectEl.setAttribute("data-locked", "true");
+      selectEl.disabled = true;
+      return true;
+    }
+  } catch (_) {}
+  return false;
+}
+
+async function loadRegionsInto(selectEl, {includeAll=true, allLabel="{% trans 'All' %}"} = {}) {
+  try {
+    const res = await fetch("{% url 'get_regions' %}");
+    const data = await res.json();
+    selectEl.innerHTML = "";
+    if (includeAll) {
+      const first = document.createElement("option");
+      first.value = "";
+      first.textContent = allLabel;
+      selectEl.appendChild(first);
+    }
+    if (data.success) {
+      (data.regions || []).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id; opt.textContent = r.name;
+        selectEl.appendChild(opt);
+      });
+    }
+  } catch (e) {}
+}
+
+/* ---------- Locations ---------- */
+async function loadLocationsInto(selectEl, {allOptionLabel="{% trans 'All Locations' %}", required=false, regionId=""} = {}) {
+  const url = new URL("{% url 'get_stock_locations' %}", window.location.origin);
+  if (regionId) url.searchParams.set('region_id', regionId);
+
+  const res = await fetch(url);
+  const data = await res.json();
+  selectEl.innerHTML = "";
+  const firstOpt = document.createElement("option");
+  firstOpt.value = "";
+  firstOpt.textContent = required ? "{% trans 'Select a location' %}" : allOptionLabel;
+  selectEl.appendChild(firstOpt);
+
+  if (data.success) {
+    (data.locations || []).forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l.id; opt.textContent = l.name;
+      selectEl.appendChild(opt);
+    });
+  }
+}
+
+async function loadLocationsForAllPickers() {
+  const regionId = document.getElementById('regionFilterInline').value || "";
+  await loadLocationsInto(document.getElementById('locationFilter'), {});
+  await loadLocationsInto(document.getElementById('locationFilterInline'), {allOptionLabel:"{% trans 'All' %}", regionId});
+  await loadLocationsInto(document.getElementById('stockLocationSelect'), {required:true});
+  await loadLocationsInto(document.getElementById('looseLocationSelect'), {required:true});
+  await loadLocationsInto(document.getElementById('fromLocationSelect'), {required:true});
+  await loadLocationsInto(document.getElementById('toLocationSelect'), {required:true});
+}
+
+/* ---------- Kits (StarlinkKit) ---------- */
+async function loadKitsInto(selectEl, { q="", kit_type="", is_active="1", limit=100 } = {}) {
+  // show loading
+  selectEl.innerHTML = `<option value="">{% trans "Loading..." %}</option>`;
+  selectEl.disabled = true;
+
+  const url = new URL("{% url 'get_kits_for_inventory' %}", window.location.origin);
+  if (q) url.searchParams.set("q", q);
+  if (kit_type) url.searchParams.set("kit_type", kit_type);
+  if (is_active !== "") url.searchParams.set("is_active", is_active);
+  if (limit) url.searchParams.set("limit", String(limit));
+
+  try {
+    const res = await fetch(url.toString(), { headers: { "X-Requested-With": "XMLHttpRequest" } });
+    const data = await res.json();
+
+    selectEl.innerHTML = "";
+    const first = document.createElement("option");
+    first.value = "";
+    first.textContent = "{% trans 'Select a kit' %}";
+    selectEl.appendChild(first);
+
+    if (data?.success && Array.isArray(data.kits)) {
+      data.kits.forEach(k => {
+        const opt = document.createElement("option");
+        opt.value = k.id;
+        opt.textContent = k.model ? `${k.name} – ${k.model}` : k.name;
+        opt.setAttribute("data-kit-type", k.kit_type);
+        selectEl.appendChild(opt);
+      });
+    } else {
+      const err = document.createElement("option");
+      err.value = "";
+      err.textContent = "{% trans 'No kits found' %}";
+      selectEl.appendChild(err);
+    }
+  } catch (e) {
+    selectEl.innerHTML = "";
+    const err = document.createElement("option");
+    err.value = "";
+    err.textContent = "{% trans 'Failed to load kits' %}";
+    selectEl.appendChild(err);
+  } finally {
+    selectEl.disabled = false;
+  }
+}
+
+/* ---------- Inventory list ---------- */
+function currentLocationId() {
+  return document.getElementById('locationFilterInline').value || document.getElementById('locationFilter').value || '';
+}
+function currentRegionId() {
+  return document.getElementById('regionFilterInline').value || '';
+}
+
+function fetchStockInventory() {
+  const locId = currentLocationId();
+  const regId = currentRegionId();
+  const url = new URL("{% url 'stock_with_quantity' %}", window.location.origin);
+  if (regId) url.searchParams.set('region_id', regId);
+  if (locId) url.searchParams.set('location_id', locId);
+
+  fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    .then(response => response.json())
+    .then(data => {
+      const tbody = document.getElementById("stockTableBody");
+      tbody.innerHTML = "";
+
+      if (data.success) {
+        const totalItemTypes = data.stocks.length;
+        const itemsInStock = data.stocks.reduce((sum, s) => sum + (s.quantity > 0 ? s.quantity : 0), 0);
+        const lowStockItems = data.stocks.filter(s => s.quantity > 0 && s.quantity < 50).length;
+        const outOfStockItems = data.stocks.filter(s => s.quantity === 0).length;
+
+        document.getElementById("totalItemTypes").textContent = totalItemTypes;
+        document.getElementById("itemsInStock").textContent = itemsInStock;
+        document.getElementById("lowStockItems").textContent = lowStockItems;
+        document.getElementById("outOfStockItems").textContent = outOfStockItems;
+      }
+
+      if (data.success && data.stocks.length > 0) {
+        data.stocks.forEach(stock => {
+          let quantityDisplay = `${stock.quantity}`;
+          let rowClass = "";
+          let purchaseOrderButton = "";
+
+          if (stock.quantity < 50 && stock.quantity > 0) {
+            quantityDisplay += ` <span class="ml-2 px-2 py-1 bg-amber-100 text-amber-700 text-xs font-semibold rounded-full">{% trans "Low Stock" %}</span>`;
+            rowClass = "hover:bg-amber-50";
+            purchaseOrderButton = `
+              <button onclick="submitPurchaseOrder(${stock.id})"
+                class="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-orange-600 text-white px-3 py-1 rounded-full shadow hover:shadow-lg text-xs transition">
+                <i class="fas fa-shopping-cart"></i> {% trans "Purchase Order" %}
+              </button>
+            `;
+          } else if (stock.quantity === 0) {
+            rowClass = "hover:bg-rose-50";
+          } else {
+            rowClass = "hover:bg-indigo-50";
+          }
+
+          const statusBadge = stock.quantity > 0
+            ? '<span class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">{% trans "In Stock" %}</span>'
+            : '<span class="inline-block px-2 py-1 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">{% trans "Out of Stock" %}</span>';
+
+          const actionButtons = `
+            <div class="flex flex-wrap gap-2">
+              <button onclick="addStock(${stock.id})"
+                class="inline-flex items-center gap-1 bg-gradient-to-r from-emerald-500 to-green-600 text-white px-3 py-1 rounded-full shadow hover:shadow-lg text-xs transition">
+                <i class="fas fa-plus-circle"></i> {% trans "Add" %}
+              </button>
+              {#<button onclick="viewMovements(${stock.id})"#}
+              {#  class="inline-flex items-center gap-1 bg-gradient-to-r from-indigo-500 to-blue-600 text-white px-3 py-1 rounded-full shadow hover:shadow-lg text-xs transition">#}
+              {#  <i class="fas fa-history"></i> {% trans "Movements" %}#}
+              {#</button>#}
+              {#${purchaseOrderButton}#}
+            </div>
+          `;
+
+          const row = document.createElement("tr");
+          row.className = `${rowClass} transition`;
+          row.innerHTML = `
+            <td class="py-3 px-4 font-medium text-gray-900">${stock.kit}</td>
+            <td class="py-3 px-4">${stock.model}</td>
+            <td class="py-3 px-4">${stock.description || "—"}</td>
+            <td class="py-3 px-4">${stock.location || "—"}</td>
+            <td class="py-3 px-4">${quantityDisplay}</td>
+            <td class="py-3 px-4">${statusBadge}</td>
+            <td class="py-3 px-4">${actionButtons}</td>
+          `;
+          tbody.appendChild(row);
+        });
+      } else {
+        document.getElementById("stockTableBody").innerHTML = `
+          <tr>
+            <td colspan="7" class="text-center py-6 text-gray-400">
+              {% trans "No stock entries found." %}
+            </td>
+          </tr>
+        `;
+      }
+    })
+    .catch(err => {
+      console.error("Error loading stock:", err);
+      document.getElementById("stockTableBody").innerHTML = `
+        <tr>
+          <td colspan="7" class="text-center py-6 text-rose-600">
+            {% trans "Failed to load stock." %}
+          </td>
+        </tr>
+      `;
+    });
+}
+
+/* ---------- Actions ---------- */
+function submitPurchaseOrder(itemId) {
+  alert(`📦 {% trans "Submitting purchase order for item" %} #${itemId}`);
+}
+function viewMovements(id) {
+  window.location.href = `/backoffice/stock/${id}/movements/`;
+}
+function addStock(id) {
+  document.getElementById("stockItemId").textContent = id;
+  document.getElementById("stockItemInput").value = id;
+  loadLocationsInto(document.getElementById('stockLocationSelect'), {required:true});
+  document.getElementById("stockModal").classList.remove("hidden");
+}
+function closeStockModal() {
+  document.getElementById("stockModal").classList.add("hidden");
+}
+
+document.getElementById("stockForm").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const itemId = document.getElementById("stockItemInput").value;
+  const quantity = this.quantity.value;
+  const locationId = document.getElementById("stockLocationSelect").value;
+  if (!locationId) { alert("{% trans 'Please select a location.' %}"); return; }
+
+  fetch(`{% url 'stock_add' %}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+    body: JSON.stringify({ item_id: itemId, quantity: quantity, location_id: locationId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message || "✅ {% trans 'Stock updated.' %}");
+    fetchStockInventory();
+    closeStockModal();
+  })
+  .catch(() => {
+    alert("❌ {% trans 'Error updating stock.' %}");
+    fetchStockInventory();
+    closeStockModal();
+  });
+});
+
+/* ---------- Loose Add flow ---------- */
+async function openAddLooseStock() {
+  await loadKitsInto(document.getElementById('looseKitSelect'), { is_active: "1", limit: 200 });
+  await loadLocationsInto(document.getElementById('looseLocationSelect'), {required:true});
+  document.getElementById("looseStockModal").classList.remove("hidden");
+}
+function closeLooseStockModal() { document.getElementById("looseStockModal").classList.add("hidden"); }
+document.getElementById("looseStockForm")?.addEventListener("submit", function(e) {
+  e.preventDefault();
+  const itemId = document.getElementById("looseKitSelect").value;
+  const locationId = document.getElementById("looseLocationSelect").value;
+  const quantity = this.quantity.value;
+
+  if (!itemId) { alert("{% trans 'Please select a kit.' %}"); return; }
+  if (!locationId) { alert("{% trans 'Please select a location.' %}"); return; }
+
+  fetch(`{% url 'stock_add' %}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+    body: JSON.stringify({ item_id: itemId, quantity: quantity, location_id: locationId })
+  })
+  .then(res => res.json())
+  .then(data => {
+    alert(data.message || "✅ {% trans 'Stock updated.' %}");
+    fetchStockInventory();
+    closeLooseStockModal();
+  })
+  .catch(() => {
+    alert("❌ {% trans 'Error updating stock.' %}");
+    fetchStockInventory();
+    closeLooseStockModal();
+  });
+});
+
+/* ---------- Create Location ---------- */
+let _afterCreateSelectId = null;
+async function openCreateLocationModal(selectIdToPreselect) {
+  _afterCreateSelectId = selectIdToPreselect || null;
+  const regionSel = document.getElementById('regionSelect');
+  const handled = await loadConfiguredRegionInto(regionSel);
+  if (!handled) {
+    regionSel.disabled = false;
+    regionSel.removeAttribute("data-locked");
+    await loadRegionsInto(regionSel, {includeAll:false});
+  }
+  document.getElementById("createLocationModal").classList.remove("hidden");
+}
+function closeCreateLocationModal() { document.getElementById("createLocationModal").classList.add("hidden"); }
+
+document.getElementById("createLocationForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const code = this.code.value.trim();
+  const name = this.name.value.trim();
+  const address = this.address.value.trim();
+  const regionId = document.getElementById("regionSelect").value || null;
+
+  if (!code || !name) { alert("{% trans 'Code and Name are required.' %}"); return; }
+
+  try {
+    const res = await fetch("{% url 'create_stock_location' %}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+      body: JSON.stringify({ code, name, address, region_id: regionId })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || "Failed");
+
+    await loadLocationsForAllPickers();
+
+    if (_afterCreateSelectId) {
+      const sel = document.getElementById(_afterCreateSelectId);
+      if (sel) sel.value = String(data.id);
+    } else {
+      const inlineSel = document.getElementById('locationFilterInline');
+      if (inlineSel) inlineSel.value = String(data.id);
+    }
+
+    alert(data.message || "✅ {% trans 'Location created.' %}");
+    closeCreateLocationModal();
+    fetchStockInventory();
+    this.reset();
+  } catch (err) {
+    alert("❌ {% trans 'Could not create location.' %}");
+  }
+});
+
+/* ---------- Create Region ---------- */
+function openCreateRegionModal() { document.getElementById("createRegionModal").classList.remove("hidden"); }
+function closeCreateRegionModal() { document.getElementById("createRegionModal").classList.add("hidden"); }
+document.getElementById("createRegionForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const name = this.name.value.trim();
+  const code = this.code.value.trim();
+  if (!name) { alert("{% trans 'Name is required.' %}"); return; }
+
+  try {
+    const res = await fetch("{% url 'create_region' %}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+      body: JSON.stringify({ name, code })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || "Failed");
+
+    await loadRegionsInto(document.getElementById('regionFilterInline'), {includeAll:true});
+    await loadRegionsInto(document.getElementById('fromRegionSelect'), {includeAll:true});
+    await loadRegionsInto(document.getElementById('toRegionSelect'), {includeAll:true});
+    if (document.getElementById('regionSelect')) {
+      await loadRegionsInto(document.getElementById('regionSelect'), {includeAll:false});
+    }
+
+    alert(data.message || "✅ {% trans 'Region created.' %}");
+    closeCreateRegionModal();
+    this.reset();
+  } catch (err) {
+    alert("❌ {% trans 'Could not create region.' %}");
+  }
+});
+
+/* ---------- Move Stock extras (optional) ---------- */
+async function openMoveStockModal() {
+  await loadKitsInto(document.getElementById('moveKitSelect'));
+  await loadRegionsInto(document.getElementById('fromRegionSelect'), {includeAll:true});
+  await loadRegionsInto(document.getElementById('toRegionSelect'), {includeAll:true});
+  await loadLocationsInto(document.getElementById('fromLocationSelect'), {required:true});
+  await loadLocationsInto(document.getElementById('toLocationSelect'), {required:true});
+  document.getElementById("moveStockModal").classList.remove("hidden");
+}
+function closeMoveStockModal() { document.getElementById("moveStockModal").classList.add("hidden"); }
+document.getElementById('fromRegionSelect').addEventListener('change', async (e) => {
+  await loadLocationsInto(document.getElementById('fromLocationSelect'), {required:true, regionId: e.target.value});
+});
+document.getElementById('toRegionSelect').addEventListener('change', async (e) => {
+  await loadLocationsInto(document.getElementById('toLocationSelect'), {required:true, regionId: e.target.value});
+});
+
+document.getElementById("moveStockForm").addEventListener("submit", async function(e) {
+  e.preventDefault();
+  const item_id = document.getElementById('moveKitSelect').value;
+  const from_location_id = document.getElementById('fromLocationSelect').value;
+  const to_location_id = document.getElementById('toLocationSelect').value;
+  const quantity = this.quantity.value;
+
+  if (!item_id || !from_location_id || !to_location_id) { alert("{% trans 'Please fill all required fields.' %}"); return; }
+  if (from_location_id === to_location_id) { alert("{% trans 'Source and destination cannot be the same.' %}"); return; }
+
+  try {
+    const res = await fetch("{% url 'move_stock_between_regions' %}", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCookie("csrftoken") },
+      body: JSON.stringify({ item_id, from_location_id, to_location_id, quantity })
+    });
+    const data = await res.json();
+    if (!data.success) throw new Error(data.message || "Failed");
+
+    alert(data.message || "✅ {% trans 'Stock moved successfully.' %}");
+    closeMoveStockModal();
+    fetchStockInventory();
+    this.reset();
+  } catch (err) {
+    alert("❌ {% trans 'Could not move stock.' %}");
+  }
+});
+
+/* ---------- Filters cascade ---------- */
+document.getElementById('regionFilterInline').addEventListener('change', async (e) => {
+  const regionId = e.target.value;
+  await loadLocationsInto(document.getElementById('locationFilterInline'), {allOptionLabel: "{% trans 'All' %}", regionId});
+  fetchStockInventory();
+});
+
+/* ---------- Init ---------- */
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadRegionsInto(document.getElementById('regionFilterInline'), {includeAll:true});
+  await loadLocationsForAllPickers();
+  document.getElementById('locationFilter').addEventListener('change', fetchStockInventory);
+  document.getElementById('locationFilterInline').addEventListener('change', fetchStockInventory);
+  fetchStockInventory();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,440 @@
+{% extends 'app_settings/settings_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex justify-between items-center">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">{% trans "Additional Billings Management" %}</h1>
+            <p class="text-gray-600 mt-1">{% trans "Manage additional equipment billings from site surveys" %}</p>
+        </div>
+        <div class="flex gap-3">
+            <button onclick="refreshBillings()" class="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors">
+                <i class="fas fa-refresh mr-2"></i>
+                {% trans "Refresh" %}
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white rounded-lg shadow p-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Status Filter" %}</label>
+                <select id="statusFilter" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="">{% trans "All Statuses" %}</option>
+                    <option value="draft">{% trans "Draft" %}</option>
+                    <option value="pending_approval">{% trans "Pending Approval" %}</option>
+                    <option value="approved">{% trans "Approved" %}</option>
+                    <option value="rejected">{% trans "Rejected" %}</option>
+                    <option value="paid">{% trans "Paid" %}</option>
+                    <option value="cancelled">{% trans "Cancelled" %}</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Search" %}</label>
+                <input type="text" id="searchInput" placeholder="{% trans 'Billing reference, order, or customer...' %}"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Per Page" %}</label>
+                <select id="perPageSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                    <option value="20">20</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                </select>
+            </div>
+            <div class="flex items-end">
+                <button onclick="applyFilters()" class="w-full bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    <i class="fas fa-search mr-2"></i>
+                    {% trans "Apply Filters" %}
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-blue-100">
+                    <i class="fas fa-file-invoice text-blue-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{% trans "Total Billings" %}</p>
+                    <p class="text-2xl font-bold text-gray-900" id="totalBillings">-</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-yellow-100">
+                    <i class="fas fa-clock text-yellow-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{% trans "Pending" %}</p>
+                    <p class="text-2xl font-bold text-gray-900" id="pendingBillings">-</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-green-100">
+                    <i class="fas fa-check-circle text-green-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{% trans "Paid" %}</p>
+                    <p class="text-2xl font-bold text-gray-900" id="paidBillings">-</p>
+                </div>
+            </div>
+        </div>
+        <div class="bg-white rounded-lg shadow p-6">
+            <div class="flex items-center">
+                <div class="p-3 rounded-full bg-purple-100">
+                    <i class="fas fa-dollar-sign text-purple-600 text-xl"></i>
+                </div>
+                <div class="ml-4">
+                    <p class="text-sm font-medium text-gray-500">{% trans "Total Revenue" %}</p>
+                    <p class="text-2xl font-bold text-gray-900" id="totalRevenue">-</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Billings Table -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 class="text-lg font-medium text-gray-900">{% trans "Additional Billings" %}</h3>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="p-8 text-center">
+            <i class="fas fa-spinner fa-spin text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">{% trans "Loading billings..." %}</p>
+        </div>
+
+        <!-- Table -->
+        <div id="billingsTable" class="hidden overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Reference" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Order" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Customer" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Amount" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Status" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Created" %}
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            {% trans "Actions" %}
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="billingsTableBody" class="bg-white divide-y divide-gray-200">
+                    <!-- Dynamic content -->
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Empty State -->
+        <div id="emptyState" class="hidden p-8 text-center">
+            <i class="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
+            <p class="text-gray-500">{% trans "No billings found matching your criteria." %}</p>
+        </div>
+
+        <!-- Pagination -->
+        <div id="paginationContainer" class="hidden bg-gray-50 px-6 py-3 border-t border-gray-200">
+            <div class="flex items-center justify-between">
+                <div class="text-sm text-gray-700">
+                    {% trans "Showing" %} <span id="startItem">1</span> {% trans "to" %} <span id="endItem">20</span>
+                    {% trans "of" %} <span id="totalItems">0</span> {% trans "results" %}
+                </div>
+                <div class="flex space-x-2">
+                    <button onclick="goToPage('prev')" id="prevBtn"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {% trans "Previous" %}
+                    </button>
+                    <span id="pageNumbers" class="flex space-x-1">
+                        <!-- Dynamic page numbers -->
+                    </span>
+                    <button onclick="goToPage('next')" id="nextBtn"
+                        class="px-3 py-1 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed">
+                        {% trans "Next" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Billing Detail Modal -->
+<div id="billingModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-screen overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-medium text-gray-900">{% trans "Billing Details" %}</h3>
+                    <button onclick="closeBillingModal()" class="text-gray-400 hover:text-gray-600">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="billingModalContent">
+                    <!-- Dynamic content -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let totalPages = 1;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadBillings();
+
+    // Add event listeners for real-time search
+    document.getElementById('searchInput').addEventListener('input', debounce(applyFilters, 500));
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('perPageSelect').addEventListener('change', applyFilters);
+});
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+async function loadBillings() {
+    try {
+        showLoading();
+
+        const params = new URLSearchParams({
+            page: currentPage,
+            per_page: document.getElementById('perPageSelect').value,
+            status: document.getElementById('statusFilter').value,
+            search: document.getElementById('searchInput').value
+        });
+
+        const response = await fetch(`/app_settings/additional_billings/get/?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+            renderBillingsTable(data.billings);
+            updatePagination(data.pagination);
+            updateStatistics(data.billings);
+        } else {
+            showError('Failed to load billings');
+        }
+    } catch (error) {
+        console.error('Error loading billings:', error);
+        showError('Error loading billings');
+    }
+}
+
+function renderBillingsTable(billings) {
+    const tbody = document.getElementById('billingsTableBody');
+
+    if (billings.length === 0) {
+        showEmptyState();
+        return;
+    }
+
+    tbody.innerHTML = billings.map(billing => `
+        <tr>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                ${billing.billing_reference}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${billing.order_reference}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <div>
+                    <div class="font-medium">${billing.customer_name}</div>
+                    <div class="text-gray-400 text-xs">${billing.customer_email}</div>
+                </div>
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+                $${billing.total_amount.toFixed(2)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap">
+                ${getStatusBadge(billing.status)}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                ${billing.created_at}
+            </td>
+            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <button onclick="viewBilling(${billing.id})" class="text-blue-600 hover:text-blue-900">
+                    <i class="fas fa-eye mr-1"></i>View
+                </button>
+                ${getActionButtons(billing)}
+            </td>
+        </tr>
+    `).join('');
+
+    showTable();
+}
+
+function getStatusBadge(status) {
+    const statusConfig = {
+        'draft': { color: 'gray', icon: 'edit' },
+        'pending_approval': { color: 'yellow', icon: 'clock' },
+        'approved': { color: 'blue', icon: 'thumbs-up' },
+        'rejected': { color: 'red', icon: 'times' },
+        'paid': { color: 'green', icon: 'check' },
+        'cancelled': { color: 'gray', icon: 'ban' }
+    };
+
+    const config = statusConfig[status] || statusConfig['draft'];
+
+    return `
+        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-${config.color}-100 text-${config.color}-800">
+            <i class="fas fa-${config.icon} mr-1"></i>
+            ${status.replace('_', ' ').toUpperCase()}
+        </span>
+    `;
+}
+
+function getActionButtons(billing) {
+    let buttons = '';
+
+    if (billing.status === 'pending_approval') {
+        buttons += `
+            <a href="/site-survey/billing/approval/${billing.id}/" target="_blank"
+               class="text-green-600 hover:text-green-900 ml-2">
+                <i class="fas fa-external-link-alt mr-1"></i>View Approval
+            </a>
+        `;
+    }
+
+    if (billing.status === 'approved') {
+        buttons += `
+            <a href="/site-survey/billing/payment/${billing.id}/" target="_blank"
+               class="text-purple-600 hover:text-purple-900 ml-2">
+                <i class="fas fa-credit-card mr-1"></i>Payment
+            </a>
+        `;
+    }
+
+    return buttons;
+}
+
+function updatePagination(pagination) {
+    currentPage = pagination.current_page;
+    totalPages = pagination.total_pages;
+
+    document.getElementById('startItem').textContent = ((currentPage - 1) * 20) + 1;
+    document.getElementById('endItem').textContent = Math.min(currentPage * 20, pagination.total_items);
+    document.getElementById('totalItems').textContent = pagination.total_items;
+
+    document.getElementById('prevBtn').disabled = !pagination.has_previous;
+    document.getElementById('nextBtn').disabled = !pagination.has_next;
+
+    document.getElementById('paginationContainer').classList.remove('hidden');
+}
+
+function updateStatistics(billings) {
+    const stats = billings.reduce((acc, billing) => {
+        acc.total++;
+        if (billing.status === 'pending_approval') acc.pending++;
+        if (billing.status === 'paid') {
+            acc.paid++;
+            acc.revenue += billing.total_amount;
+        }
+        return acc;
+    }, { total: 0, pending: 0, paid: 0, revenue: 0 });
+
+    document.getElementById('totalBillings').textContent = stats.total;
+    document.getElementById('pendingBillings').textContent = stats.pending;
+    document.getElementById('paidBillings').textContent = stats.paid;
+    document.getElementById('totalRevenue').textContent = '$' + stats.revenue.toFixed(2);
+}
+
+function showLoading() {
+    document.getElementById('loadingState').classList.remove('hidden');
+    document.getElementById('billingsTable').classList.add('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+    document.getElementById('paginationContainer').classList.add('hidden');
+}
+
+function showTable() {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('billingsTable').classList.remove('hidden');
+    document.getElementById('emptyState').classList.add('hidden');
+}
+
+function showEmptyState() {
+    document.getElementById('loadingState').classList.add('hidden');
+    document.getElementById('billingsTable').classList.add('hidden');
+    document.getElementById('emptyState').classList.remove('hidden');
+    document.getElementById('paginationContainer').classList.add('hidden');
+}
+
+function showError(message) {
+    alert('Error: ' + message);
+    showEmptyState();
+}
+
+function applyFilters() {
+    currentPage = 1;
+    loadBillings();
+}
+
+function refreshBillings() {
+    loadBillings();
+}
+
+function goToPage(direction) {
+    if (direction === 'prev' && currentPage > 1) {
+        currentPage--;
+    } else if (direction === 'next' && currentPage < totalPages) {
+        currentPage++;
+    }
+    loadBillings();
+}
+
+async function viewBilling(billingId) {
+    // Implementation for viewing billing details
+    alert('View billing details - to be implemented');
+}
+
+function closeBillingModal() {
+    document.getElementById('billingModal').classList.add('hidden');
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}

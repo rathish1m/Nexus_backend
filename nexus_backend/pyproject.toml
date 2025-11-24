@@ -1,0 +1,114 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nexus-backend"
+version = "1.0.0"
+description = "NEXUS Telecoms Backend - Starlink ISP Management System"
+authors = [
+    {name = "NEXUS Telecoms", email = "dev@nexustelecom.cd"}
+]
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | venv
+  | env
+  | _build
+  | buck-out
+  | build
+  | dist
+  | migrations
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 120
+skip_glob = ["*/migrations/*", "venv/*", "env/*"]
+known_django = ["django"]
+known_first_party = ["main", "client_app", "backoffice", "sales", "billing_management", "orders", "user", "site_survey", "tech"]
+sections = ["FUTURE", "STDLIB", "THIRDPARTY", "DJANGO", "FIRSTPARTY", "LOCALFOLDER"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "nexus_backend.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]
+addopts = """
+    --strict-markers
+    --reuse-db
+    --nomigrations
+    --tb=short
+    --maxfail=5
+    --ff
+    -v
+    --cov-report=term-missing:skip-covered
+    --cov-report=html
+    --cov-report=json
+    --cov-config=.coveragerc
+    --dist=loadfile
+    -n auto
+"""
+
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/migrations/*",
+    "*/tests/*",
+    "*/venv/*",
+    "*/env/*",
+    "*/__pycache__/*",
+    "manage.py",
+    "*/wsgi.py",
+    "*/asgi.py",
+]
+
+[tool.coverage.report]
+fail_under = 80
+precision = 2
+show_missing = true
+skip_covered = false
+
+[tool.bandit]
+exclude_dirs = ["/tests", "/migrations", "/venv", "/env"]
+skips = ["B101", "B601"]  # Skip assert_used and paramiko calls
+
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+exclude = [
+    "migrations",
+    "venv",
+    "env",
+]
+
+[tool.pylint.messages_control]
+disable = [
+    "C0111",  # missing-docstring
+    "C0103",  # invalid-name
+    "R0903",  # too-few-public-methods
+    "R0913",  # too-many-arguments
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint.basic]
+good-names = ["i", "j", "k", "ex", "Run", "_", "id", "pk"]
+
+[tool.pylint.design]
+max-args = 7
+max-locals = 20

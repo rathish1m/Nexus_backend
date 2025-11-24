@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer Statement · Relevé client</title>
+  <style>
+    @page { size: A4; margin: 14pt 16pt 14pt 16pt; }
+    body { margin: 0; background: #fff; color: #111; font-family: "Inter","Segoe UI",Arial,Helvetica,sans-serif; font-size: 11px; line-height: 1.35; }
+    .hdr { border-bottom: 2px solid #2563eb; padding: 8pt 0 6pt 0; }
+    .hdrtbl { width:100%; border-spacing:0; }
+    .hdrtbl td { vertical-align: top; }
+    .logo img { height:40px; display:block; }
+    .co h1 { margin:0 0 3pt 0; font-size:14px; color:#0f172a; font-weight:700; }
+    .co p  { margin:0; color:#555; font-size:10px; line-height:1.4; }
+    .ribbon { text-align:right; }
+    .ribbon .title { font-size:18px; margin:0; color:#2563eb; font-weight:700; }
+    .ribbon .meta  { color:#666; font-size:9px; margin-top:2pt; }
+
+    .infotbl { width:100%; border-spacing:0; margin: 8pt 0 6pt 0; }
+    .card { border:1px solid #e5e7eb; padding:6pt 8pt; border-radius:2pt; }
+    .card h3 { margin:0 0 4pt 0; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#0f172a; }
+    .card p  { margin:1pt 0; font-size:10.5px; }
+    .muted { color:#666; }
+
+    table { width:100%; border-spacing:0; }
+    thead th { background:#2563eb; color:#fff; font-size:9.5px; padding:5pt 4pt; text-align:left; text-transform:uppercase; letter-spacing:.04em; }
+    tbody td { border-bottom:1px solid #e5e7eb; padding:4pt 4pt; vertical-align:top; font-size:10.5px; }
+    .ta-r { text-align:right; }
+    .summary { border:1px solid #e5e7eb; border-radius:2pt; }
+    .summary td { padding:4pt; border-bottom:1px dashed #e5e7eb; font-size:10.5px; }
+    .summary tr:last-child td { border-bottom:none; }
+    .label { color:#444; }
+    .grand { font-weight:700; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hdr">
+      <table class="hdrtbl">
+        <tr>
+          <td style="width:45%;">
+            <div class="logo">
+              {% if company.logo %}
+                <img src="{{ company.logo.url }}" alt="{{ company.trade_name|default:company.legal_name|default:'Company' }}">
+              {% endif %}
+            </div>
+            <div class="co">
+              <h1>{{ company.trade_name|default:company.legal_name|default:"COMPANY" }}</h1>
+              <p>{{ company.street_address }}{% if company.city %}, {{ company.city }}{% endif %}{% if company.province %}, {{ company.province }}{% endif %}{% if company.country %}, {{ company.country }}{% endif %}</p>
+              <p>
+                {% if company.rccm %}RCCM: {{ company.rccm }}{% endif %}
+                {% if company.id_nat %} · Id.Nat: {{ company.id_nat }}{% endif %}
+                {% if company.nif %} · NIF: {{ company.nif }}{% endif %}
+              </p>
+              <p>
+                {% if company.email %}Email: {{ company.email }}{% endif %}
+                {% if company.phone %} · Tel: {{ company.phone }}{% endif %}
+                {% if company.website %} · {{ company.website }}{% endif %}
+              </p>
+            </div>
+          </td>
+          <td class="ribbon" style="width:55%;">
+            <div class="title">CUSTOMER STATEMENT · RELEVÉ CLIENT</div>
+            <div class="meta">
+              Period/Période: {{ filters.from|default:"—" }} → {{ filters.to|default:"—" }}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <table class="infotbl">
+      <tr>
+        <td style="width:58%; padding-right:6pt;">
+          <div class="card">
+            <h3>Summary · Résumé</h3>
+            <table class="summary">
+              <tr><td class="label">Opening · Ouverture</td><td class="ta-r">${{ opening|floatformat:2 }}</td></tr>
+              <tr><td class="label">Total Debit · Débit</td><td class="ta-r">${{ total_debit|floatformat:2 }}</td></tr>
+              <tr><td class="label">Total Credit · Crédit</td><td class="ta-r">${{ total_credit|floatformat:2 }}</td></tr>
+              <tr><td class="grand">Closing · Clôture</td><td class="grand ta-r">${{ closing|floatformat:2 }}</td></tr>
+              {% if cdf and cdf.rate %}
+              <tr><td class="label">Equivalent (CDF) · Équivalent (CDF)</td><td class="ta-r">CDF {{ cdf.closing|floatformat:2 }}</td></tr>
+              <tr><td class="label">FX rate used (USD→CDF) · Taux appliqué</td><td class="ta-r">{{ cdf.rate }}</td></tr>
+              {% endif %}
+            </table>
+          </div>
+        </td>
+        <td style="width:42%;">
+          <div class="card">
+            <h3>Aging · Échéancier</h3>
+            <table class="summary">
+              <tr><td class="label">0–30</td><td class="ta-r">${{ aging.d0_30|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">31–60</td><td class="ta-r">${{ aging.d31_60|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">61–90</td><td class="ta-r">${{ aging.d61_90|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">90+</td><td class="ta-r">${{ aging.d90_plus|default:0|floatformat:2 }}</td></tr>
+              {% if cdf %}
+              <tr><td class="label">CDF 0–30</td><td class="ta-r">CDF {{ cdf.aging.d0_30|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">CDF 31–60</td><td class="ta-r">CDF {{ cdf.aging.d31_60|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">CDF 61–90</td><td class="ta-r">CDF {{ cdf.aging.d61_90|default:0|floatformat:2 }}</td></tr>
+              <tr><td class="label">CDF 90+</td><td class="ta-r">CDF {{ cdf.aging.d90_plus|default:0|floatformat:2 }}</td></tr>
+              {% endif %}
+            </table>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <div style="margin-top:6pt;">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Type · Type</th>
+            <th>Description · Description</th>
+            <th class="ta-r">Debit (USD) · Débit (USD)</th>
+            <th class="ta-r">Credit (USD) · Crédit (USD)</th>
+            <th class="ta-r">Balance (USD) · Solde (USD)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if rows %}
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.date }}</td>
+                <td>{{ r.type }}</td>
+                <td>{{ r.description }}</td>
+                <td class="ta-r">${{ r.debit_usd }}</td>
+                <td class="ta-r">${{ r.credit_usd }}</td>
+                <td class="ta-r">${{ r.balance_usd }}</td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="6" class="muted">No transactions for the period · Aucune transaction pour la période</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

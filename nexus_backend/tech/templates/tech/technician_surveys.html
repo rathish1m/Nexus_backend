@@ -1,0 +1,239 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "My Site Surveys – Nexus Dashboard" %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-bg: #ffffff;
+            --sidebar-hover: #f0f4ff;
+            --sidebar-text: #374151;
+            --sidebar-active: #2563eb;
+        }
+
+        .sidebar-slide {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-slide.open {
+            transform: translateX(0);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-completed {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-in_progress {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-scheduled {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+
+<!-- Header -->
+<header class="bg-white shadow px-6 py-4 flex justify-between items-center md:hidden">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Logo" class="h-10">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600 focus:outline-none">
+        <i class="fas fa-bars fa-lg"></i>
+    </button>
+</header>
+
+<div class="flex flex-1 flex-col md:flex-row w-full">
+
+    <!-- Sidebar (Desktop) -->
+    <aside class="bg-white shadow-lg w-64 hidden md:flex flex-col">
+        <div class="p-6 border-b border-gray-200">
+            <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium text-gray-700">
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-gauge w-5 mr-3 text-blue-500"></i> {% trans "Dashboard" %}
+                </a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Field OPS</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'fe_ops_dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-hard-hat w-5 mr-3 text-blue-500"></i> {% trans "FE Dashboard" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_dashboard' %}" class="flex items-center px-4 py-2 rounded-lg bg-blue-50 text-blue-700">
+                    <i class="fas fa-clipboard-check w-5 mr-3"></i> {% trans "Site Survey" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'installation_job_list' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-tools w-5 mr-3 text-blue-500"></i> {% trans "Installation Jobs" %}
+                </a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'billing' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-file-invoice-dollar w-5 mr-3 text-blue-500"></i> {% trans "Billing" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'settings' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i> {% trans "Settings" %}
+                </a>
+            </div>
+
+            <a href="/{{ LANGUAGE_CODE }}{% url 'logout_request' %}" class="flex items-center px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+                <i class="fas fa-sign-out-alt w-5 mr-3"></i> {% trans "Logout" %}
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Sidebar (Mobile) -->
+    <div class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden hidden" id="mobile-overlay"
+         onclick="toggleMobileSidebar()"></div>
+    <aside id="mobileSidebar" class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden">
+        <div class="flex justify-end mb-4">
+            <button onclick="toggleMobileSidebar()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <nav class="space-y-3 text-sm font-medium text-gray-700">
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Main</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Dashboard" %}</a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Field OPS</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'fe_ops_dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "FE Dashboard" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_dashboard' %}" class="block px-3 py-2 rounded bg-blue-50 text-blue-700">{% trans "Site Survey" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'installation_job_list' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Installation Jobs" %}</a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Management</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'billing' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Billing" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'settings' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Settings" %}</a>
+            </div>
+
+            <a href="/{{ LANGUAGE_CODE }}{% url 'logout_request' %}" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 hover:text-red-700 transition">{% trans "Logout" %}</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-6 py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{% trans "My Site Surveys" %}</h1>
+            <p class="text-gray-600">{% trans "Surveys assigned to you" %}</p>
+        </div>
+
+        {% if surveys %}
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {% trans "Order" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {% trans "Status" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {% trans "Scheduled Date" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {% trans "Completed" %}
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                {% trans "Actions" %}
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white divide-y divide-gray-200">
+                        {% for survey in surveys %}
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ survey.order.order_reference }}
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {% if survey.status == 'completed' %}
+                                <span class="status-badge status-completed">{% trans "Completed" %}</span>
+                                {% elif survey.status == 'in_progress' %}
+                                <span class="status-badge status-in_progress">{% trans "In Progress" %}</span>
+                                {% else %}
+                                <span class="status-badge status-scheduled">{% trans "Scheduled" %}</span>
+                                {% endif %}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ survey.scheduled_date|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                {{ survey.completed_at|default:"-" }}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                {% if survey.status == 'scheduled' or survey.status == 'in_progress' %}
+                                <a href="/{{ LANGUAGE_CODE }}{% url 'conduct_survey' survey.id %}" class="text-blue-600 hover:text-blue-900 flex items-center">
+                                    <i class="fas fa-play mr-1"></i>
+                                    {% if survey.status == 'scheduled' %}{% trans "Start Survey" %}{% else %}{% trans "Continue Survey" %}{% endif %}
+                                </a>
+                                {% else %}
+                                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_detail' survey.id %}" class="text-green-600 hover:text-green-900 flex items-center">
+                                    <i class="fas fa-eye mr-1"></i>
+                                    {% trans "View" %}
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-lg shadow p-12 text-center">
+            <div class="text-gray-400 mb-4">
+                <i class="fas fa-clipboard-list text-6xl"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-900 mb-2">{% trans "No surveys assigned" %}</h3>
+            <p class="text-gray-500">{% trans "You don't have any site surveys assigned to you yet." %}</p>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4">
+        <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+    </div>
+</footer>
+
+<!-- Scripts -->
+<script>
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+    }
+</script>
+
+</body>
+</html>

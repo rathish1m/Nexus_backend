@@ -1,0 +1,14 @@
+{% load i18n %}
+{% comment %}Shared auth form fields and submit button.
+Use this file inside a form element. Provide blocks:
+ - auth_form_fields: the input fields (labels + inputs)
+ - auth_form_submit_label: the button text/label
+The wrapper keeps consistent classes.
+{% endcomment %}
+{% block auth_form_fields %}
+  {% include 'partials/_auth_fields.html' %}
+{% endblock %}
+
+<button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition flex items-center justify-center gap-2">
+  {% block auth_form_submit_label %}{% trans "Se connecter" %}{% endblock %}
+</button>

@@ -1,0 +1,12 @@
+services:
+  postgis:
+    # Use an official PostGIS image; 15-3.3 is a commonly available tag. Adjust if you need a different PG version.
+    image: postgis/postgis:15-3.3
+    env_file:
+      - docker-compose.test.env
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 12

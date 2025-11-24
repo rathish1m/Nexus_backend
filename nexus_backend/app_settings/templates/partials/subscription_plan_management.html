@@ -1,0 +1,63 @@
+{% load static i18n %}
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Subscription Plans Management" %}</h2>
+      <p class="text-sm text-gray-500">{% trans "Manage Starlink subscription plans and pricing." %}</p>
+    </div>
+    <button onclick="openSubscriptionPlanModal()"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+      <i class="fas fa-plus text-xs"></i> {% trans "Add Subscription Plan" %}
+    </button>
+  </div>
+
+  <!-- Mobile cards -->
+  <div id="subscriptionPlanCards" class="md:hidden grid grid-cols-1 gap-3">
+    <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+        <tr>
+          <th class="py-3 px-4">{% trans "Name" %}</th>
+          <th class="py-3 px-4">{% trans "Kit Type" %}</th>
+          <th class="py-3 px-4">{% trans "Plan Type" %}</th>
+          <th class="py-3 px-4">{% trans "Data (GB)" %}</th>
+          <th class="py-3 px-4">{% trans "Price (USD)" %}</th>
+          <th class="py-3 px-4">{% trans "Status" %}</th>
+            <th class="py-3 px-4">{% trans "Site Type" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="subscriptionPlanTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
+    <!-- Results info -->
+    <div class="text-sm text-gray-700 order-2 sm:order-1">
+      {% trans "Showing" %} <span id="showing-start">1</span> {% trans "to" %} <span id="showing-end">10</span> {% trans "of" %} <span id="total-items">0</span> {% trans "results" %}
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="flex items-center space-x-2 order-1 sm:order-2">
+      <button id="prev-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="fas fa-chevron-left mr-1"></i>{% trans "Previous" %}
+      </button>
+
+      <div id="page-numbers" class="flex space-x-1">
+        <!-- Page numbers will be dynamically generated -->
+      </div>
+
+      <button id="next-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        {% trans "Next" %}<i class="fas fa-chevron-right ml-1"></i>
+      </button>
+    </div>
+  </div>
+</section>

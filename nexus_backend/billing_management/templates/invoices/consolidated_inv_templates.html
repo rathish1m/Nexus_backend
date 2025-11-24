@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+{% load static %}
+{% with MAX_ROWS=12 %}
+<head>
+  <meta ch    .signblock { margin-top:2pt; text-align:center; position:relative; }
+    .signblock img { max-height:50px; max-width:150px; width:auto; height:auto; display:block; margin:0 auto 2pt auto; object-fit:contain; background:white; }
+    .signlabel { font-size:9px; color:#555; margin:1pt 0; }
+    .stamp-overlay { position:absolute; top:0; right:10%; max-height:70px; max-width:70px; opacity:0.85; background:white; }
+="UTF-8" />
+  <title>Consolidated Invoice – {{ company.trade_name|default:company.legal_name|default:"Company" }}</title>
+  <style>
+    /* === One-page A4 layout optimized for xhtml2pdf === */
+    @page {
+      size: A4;
+      margin: 14pt 16pt 30pt 16pt;
+    }
+
+    body {
+      margin: 0;
+      background: #fff;
+      color: #111;
+      font-family: "Inter","Segoe UI",Arial,Helvetica,sans-serif;
+      font-size: 11px;
+      line-height: 1.35;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .wrap { width:100%; }
+
+    /* === HEADER === */
+    .hdr { border-bottom: 2px solid #2563eb; padding: 8pt 0 6pt 0; }
+    .hdrtbl { width:100%; border-spacing:0; }
+    .hdrtbl td { vertical-align:top; }
+    .logo {
+      margin-bottom: 6pt;
+      overflow: hidden;
+    }
+    .logo img {
+      height: 40px !important;
+      width: auto !important;
+      display: block !important;
+      object-fit: contain;
+    }
+    .co h1 {
+      margin:0 0 3pt 0;
+      font-size:14px;
+      color:#0f172a;
+      font-weight:700;
+    }
+    .co p  { margin:0; color:#555; font-size:10px; line-height:1.4; }
+    .ribbon { text-align:right; }
+    .ribbon .title { font-size:18px; margin:0; color:#2563eb; font-weight:700; }
+    .ribbon .meta  { color:#666; font-size:9px; margin-top:2pt; }
+
+    /* === INFO === */
+    .infotbl { width:100%; border-spacing:0; margin:8pt 0 6pt 0; }
+    .card { border:1px solid #e5e7eb; padding:6pt 8pt; border-radius:2pt; }
+    .card h3 { margin:0 0 4pt 0; font-size:10px; text-transform:uppercase; letter-spacing:.05em; color:#0f172a; }
+    .card p  { margin:1pt 0; font-size:10.5px; }
+    .muted { color:#666; }
+
+    /* === TABLES === */
+    .tblwrap { margin:6pt 0; }
+    table { width:100%; border-spacing:0; }
+    thead th{
+      background:#2563eb; color:#fff; font-size:9.5px; padding:5pt 4pt;
+      text-align:left; text-transform:uppercase; letter-spacing:.04em;
+    }
+    tbody td{
+      border-bottom:1px solid #e5e7eb; padding:4pt 4pt; vertical-align:top; font-size:10.5px;
+    }
+    .ta-r{ text-align:right; }
+
+    .col-desc{ width:auto; }
+    .col-qty { width:40pt; text-align:center; }
+    .col-up  { width:66pt; text-align:right; }
+    .col-tot { width:72pt; text-align:right; }
+    .desc{ max-height:4.2em; overflow:hidden; }
+
+    /* Child invoice header row */
+    .child-hdr td{ background:#f3f4f6; color:#0f172a; font-size:10px; padding:4pt; }
+    .child-hdr strong{ font-weight:700; }
+
+    /* === ORDER GROUPING === */
+    .order-group { margin-bottom: 6pt; }
+    .order-header {
+      background: #f8fafc;
+      border-left: 3px solid #2563eb;
+      padding: 3pt 5pt;
+      margin-bottom: 2pt;
+      font-size: 9.5px;
+      font-weight: 600;
+      color: #1e293b;
+    }
+    .order-header .order-ref { color: #2563eb; }
+    .order-totals {
+      background: #f8fafc;
+      border: 1px solid #e5e7eb;
+      border-radius: 2pt;
+      padding: 3pt 6pt;
+      margin-top: 2pt;
+      font-size: 9px;
+    }
+    .order-totals table { width: 100%; border-spacing: 0; }
+    .order-totals td { padding: 1pt 0; font-size: 9px; }
+    .order-totals .order-ttc {
+      font-weight: 700;
+      font-size: 10px;
+      color: #2563eb;
+      border-top: 1px solid #cbd5e1;
+      padding-top: 2pt;
+      margin-top: 1pt;
+    }
+
+    /* === NOTES + TOTALS === */
+    .bottomtbl { width:100%; border-spacing:0; margin-top:6pt; }
+    .note { font-size:9.5px; color:#666; }
+    .summary { border:1px solid #e5e7eb; border-radius:2pt; }
+    .summary table { width:100%; border-spacing:0; }
+    .summary td { padding:4pt; border-bottom:1px dashed #e5e7eb; font-size:10.5px; }
+    .summary tr:last-child td { border-bottom:none; }
+    .label { color:#444; }
+    .grand { font-weight:700; font-size:12px; }
+
+    /* === SIGNATURES & FOOTER === */
+    .sigrow { margin-top:2pt; }
+    .sig { border-top:1px solid #e5e7eb; text-align:center; padding-top:3pt; color:#555; font-size:9.5px; }
+    .signblock { margin-top:2pt; text-align:center; position:relative; }
+    .signblock img { max-height:20px; max-width:60px; width:auto; height:auto; display:block; margin:0 auto 2pt auto; object-fit:contain; border:2px solid red; }
+    .signlabel { font-size:9px; color:#555; margin:1pt 0; }
+    .stamp-overlay { position:absolute; top:0; right:10%; max-height:20px; max-width:60px; opacity:0.85; border:2px solid blue; }
+
+    /* === FOOTER === */
+    .ftr { border-top:1px solid #e5e7eb; padding-top:3pt; margin-top:3pt; color:#666; font-size:9.5px; line-height:1.3; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+
+    <!-- HEADER -->
+    <div class="hdr">
+      <table class="hdrtbl">
+        <tr>
+          <td style="width:45%;">
+            <!-- Company Logo: Always display - use uploaded logo if available, otherwise fallback to static default -->
+            <div class="logo">
+              {% if company.logo %}
+                <img src="{{ company.logo.url }}" alt="{{ company.trade_name|default:company.legal_name|default:'Company' }}">
+              {% else %}
+                {# Static fallback logo ensures branding is always present on invoices #}
+                <img src="{% static 'images/logo/logo.png' %}" alt="{{ company.trade_name|default:company.legal_name|default:'Company' }}">
+              {% endif %}
+            </div>
+            <div class="co">
+              <h1>{{ company.trade_name|default:company.legal_name|default:"COMPANY" }}</h1>
+              <p>
+                {{ company.street_address }}{% if company.city %}, {{ company.city }}{% endif %}
+                {% if company.province %}, {{ company.province }}{% endif %}
+                {% if company.country %}, {{ company.country }}{% endif %}
+              </p>
+              <p>
+                {% if company.rccm %}RCCM: {{ company.rccm }}{% endif %}
+                {% if company.id_nat %} · Id.Nat: {{ company.id_nat }}{% endif %}
+              </p>
+              <p>
+                {% if company.nif %}NIF: {{ company.nif }}{% endif %}
+                {% if company.arptc_license %}{% if company.nif %} · {% endif %}Lic. ARPTC: {{ company.arptc_license }}{% endif %}
+              </p>
+              <p>
+                {% if company.email %}Email: {{ company.email }}{% endif %}
+                {% if company.phone %} · Tel: {{ company.phone }}{% endif %}
+                {% if company.website %} · {{ company.website }}{% endif %}
+              </p>
+            </div>
+          </td>
+          <td class="ribbon" style="width:55%;">
+            <div class="title">CONSOLIDATED INVOICE · FACTURE CONSOLIDÉE</div>
+            <div class="meta">
+              Tax Invoice · Facture fiscale · Currency/Devise: {{ consolidated.currency|default:company.currency }}
+            </div>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <!-- INFO ROW -->
+    <table class="infotbl">
+      <tr>
+        <td style="width:58%; padding-right:6pt;">
+          <div class="card">
+            <h3>Customer · Client</h3>
+            <p><strong>{{ consolidated.customer_name|default:"—" }}</strong></p>
+          </div>
+        </td>
+        <td style="width:42%;">
+          <div class="card" style="text-align:right;">
+            <h3 style="text-align:right;">Bank Details for Payment</h3>
+            <div style="display:inline-block; text-align:right;">
+              {% if company.bank_name %}<p><strong>Bank Name:</strong> {{ company.bank_name }}</p>{% endif %}
+              {% if company.bank_branch or company.city %}<p><strong>Branch:</strong> {{ company.bank_branch|default:company.city }}</p>{% endif %}
+              {% if company.bank_account_name %}<p><strong>Account Name:</strong> {{ company.bank_account_name }}</p>{% endif %}
+              {% if company.bank_account_number_usd %}<p><strong>Account Number (USD):</strong> {{ company.bank_account_number_usd }}</p>{% endif %}
+              {% if company.bank_account_number_cdf %}<p><strong>Account Number (CDF):</strong> {{ company.bank_account_number_cdf }}</p>{% endif %}
+              {% if company.bank_swift %}<p><strong>SWIFT/BIC:</strong> {{ company.bank_swift }}</p>{% endif %}
+              {% if company.bank_iban %}<p><strong>IBAN:</strong> {{ company.bank_iban }}</p>{% endif %}
+            </div>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- ITEMS -->
+    <div class="tblwrap">
+      <table>
+        <thead>
+          <tr>
+            <th class="col-desc">Description · Description</th>
+            <th class="col-qty">Qty · Qté</th>
+            <th class="col-up">Unit Price ({{ consolidated.currency }}) · Prix unitaire ({{ consolidated.currency }})</th>
+            <th class="col-tot ta-r">Line Total ({{ consolidated.currency }}) · Total ligne ({{ consolidated.currency }})</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% if consolidated.children %}
+            {% for child in consolidated.children %}
+              <tr class="child-hdr">
+                <td colspan="4">
+                  <strong>Invoice {{ child.number }}</strong>
+                  {% if child.issued_at %} · {{ child.issued_at }}{% endif %}
+                </td>
+              </tr>
+
+              {% if child.order_groups %}
+                {# Display grouped by order for this child invoice #}
+                {% for group in child.order_groups %}
+                  {% if forloop.parentloop.counter0 < MAX_ROWS %}
+                  <tr>
+                    <td colspan="4" style="padding:2pt 4pt;">
+                      <div class="order-group">
+                        <div class="order-header">
+                          <span class="order-ref">Order {{ group.order_ref }}</span>
+                          <span class="muted"> · {{ group.order_date|date:"d M Y" }}</span>
+                        </div>
+
+                        <table style="margin-top:2pt;">
+                          <tbody>
+                            {% for line in group.lines %}
+                            <tr>
+                              <td class="col-desc" style="border:none; padding:2pt 4pt;"><div class="desc">{{ line.description }}</div></td>
+                              <td class="col-qty" style="border:none; padding:2pt 4pt;">{{ line.quantity }}</td>
+                              <td class="col-up" style="border:none; padding:2pt 4pt;">{{ line.unit_price|floatformat:2 }}</td>
+                              <td class="col-tot ta-r" style="border:none; padding:2pt 4pt;">{{ line.line_total|floatformat:2 }}</td>
+                            </tr>
+                            {% endfor %}
+                          </tbody>
+                        </table>
+
+                        <div class="order-totals">
+                          <table>
+                            <tr>
+                              <td>Subtotal:</td>
+                              <td class="ta-r">{{ group.subtotal|floatformat:2 }}</td>
+                            </tr>
+                            {% if group.excise_amount > 0 %}
+                            <tr>
+                              <td>Excise{% if consolidated.excise_rate_percent %} ({{ consolidated.excise_rate_percent|floatformat:0 }}%){% endif %}:</td>
+                              <td class="ta-r">{{ group.excise_amount|floatformat:2 }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                              <td>VAT{% if consolidated.vat_rate_percent %} ({{ consolidated.vat_rate_percent|floatformat:0 }}%){% endif %}:</td>
+                              <td class="ta-r">{{ group.vat_amount|floatformat:2 }}</td>
+                            </tr>
+                            <tr class="order-ttc">
+                              <td><strong>Total TTC:</strong></td>
+                              <td class="ta-r"><strong>{{ group.total_ttc|floatformat:2 }}</strong></td>
+                            </tr>
+                          </table>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                {# Fallback: traditional item display #}
+                {% for item in child.items %}
+                  {% if forloop.parentloop.counter0 < MAX_ROWS %}
+                  <tr>
+                    <td class="col-desc"><div class="desc"><strong>{{ item.description }}</strong></div></td>
+                    <td class="col-qty">{{ item.quantity }}</td>
+                    <td class="col-up">{{ item.unit_price }}</td>
+                    <td class="col-tot ta-r">{{ item.line_total }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              {% endif %}
+
+              <tr>
+                <td colspan="2"></td>
+                <td class="ta-r"><strong>Invoice Total · Total facture</strong></td>
+                <td class="ta-r"><strong>{{ child.grand_total }}</strong></td>
+              </tr>
+            {% endfor %}
+          {% else %}
+            <tr><td colspan="4" class="muted">No invoice details</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- NOTES + TOTALS -->
+    <table class="bottomtbl">
+      <tr>
+        <td style="width:58%; padding-right:6pt;">
+          {% if notes %}
+          <div class="card">
+            <h3>Notes</h3>
+            {% for n in notes %}
+              {% if forloop.counter0 < 3 %}
+                <p class="note">{{ n }}</p>
+              {% endif %}
+            {% endfor %}
+            {% if notes|length > 3 %}
+              <p class="note">(+ {{ notes|length|add:"-3" }} more)</p>
+            {% endif %}
+          </div>
+          {% endif %}
+        </td>
+        <td style="width:42%;">
+          <div class="summary">
+            <table>
+              <tr><td class="label">Subtotal · Sous-total</td>   <td class="ta-r">{{ consolidated.subtotal }}</td></tr>
+              <tr><td class="label">Excise{% if consolidated.excise_rate_percent %} ({{ consolidated.excise_rate_percent|floatformat:0 }}%){% endif %} · Accise{% if consolidated.excise_rate_percent %} ({{ consolidated.excise_rate_percent|floatformat:0 }}%){% endif %}</td>         <td class="ta-r">{{ consolidated.excise }}</td></tr>
+              <tr><td class="label">VAT{% if consolidated.vat_rate_percent %} ({{ consolidated.vat_rate_percent|floatformat:0 }}%){% endif %} · TVA{% if consolidated.vat_rate_percent %} ({{ consolidated.vat_rate_percent|floatformat:0 }}%){% endif %}</td>               <td class="ta-r">{{ consolidated.vat }}</td></tr>
+              <tr><td class="grand">Total Due ({{ consolidated.currency }}) · Total à payer ({{ consolidated.currency }})</td>  <td class="grand ta-r">{{ consolidated.total }}</td></tr>
+              {% if consolidated.cdf_amount %}
+              <tr><td class="label">Equivalent (CDF) · Équivalent (CDF)</td> <td class="ta-r">{{ consolidated.cdf_amount }}</td></tr>
+              {% endif %}
+              <tr><td class="label">Invoices · Factures</td>   <td class="ta-r">{{ consolidated.children|length }}</td></tr>
+            </table>
+          </div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- SIGNATURES -->
+    <table class="bottomtbl sigrow">
+      <tr>
+        <td style="width:50%; padding-right:6pt;">
+          <div class="signblock">
+            {% if company.signature %}
+              <img src="{{ company.signature.url }}" alt="Signature" width="150" height="50" style="background:white;">
+            {% endif %}
+            {% if company.signatory_name %}
+              <div class="signlabel">{{ company.signatory_name }}{% if company.signatory_title %}, {{ company.signatory_title }}{% endif %}</div>
+            {% else %}
+              <div class="signlabel">_______________________</div>
+            {% endif %}
+            <div class="sig">Authorized by ({{ company.trade_name|default:'Company' }})</div>
+            {% if company.stamp %}
+              <img src="{{ company.stamp.url }}" alt="Company Stamp" class="stamp-overlay" width="70" height="70" style="background:white;">
+            {% endif %}
+          </div>
+        </td>
+        <td style="width:50%;">
+          <div class="sig">Received by (Client) – Name &amp; Signature</div>
+          <div class="signlabel">_______________________</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- FOOTER -->
+    <div class="ftr">
+      <div style="text-align:right; font-size:8px; color:#999; margin-bottom:2pt;">
+        <pdf:pagenumber> / <pdf:pagecount>
+      </div>
+      {% if company.arptc_license %}ARPTC License: {{ company.arptc_license }} · {% endif %}
+      {% if company.tax_office_name %}Tax Office: {{ company.tax_office_name }} · {% endif %}
+      {% if company.tax_regime_label %}Tax Regime: {{ company.tax_regime_label }} · {% endif %}
+      {{ company.website }}
+      {% if company.footer_text_fr and company.footer_text_en %}
+        <br>{{ company.footer_text_fr }} / {{ company.footer_text_en }}
+      {% elif company.footer_text_fr %}
+        <br>{{ company.footer_text_fr }}
+      {% elif company.footer_text_en %}
+        <br>{{ company.footer_text_en }}
+      {% endif %}
+      {% if company.legal_notes %}
+        <br><small>{{ company.legal_notes }}</small>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>
+{% endwith %}

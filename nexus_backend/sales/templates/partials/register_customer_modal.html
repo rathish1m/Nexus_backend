@@ -1,0 +1,1150 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<div id="registerModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 md:p-6">
+  <div id="registerModalDialog" role="dialog" aria-modal="true" aria-labelledby="registerModalTitle"
+       class="relative w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl bg-white rounded-xl sm:rounded-2xl shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col max-h-[90vh]">
+
+    <!-- Header -->
+    <header class="bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-500 text-white px-6 sm:px-8 py-6">
+      <div class="flex items-start gap-4">
+        <div class="shrink-0 hidden sm:block">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+            <i class="fa-solid fa-user-check text-xl"></i>
+          </span>
+        </div>
+        <div class="min-w-0">
+          <h2 id="registerModalTitle" class="text-2xl sm:text-3xl font-bold leading-tight">
+            {% trans "Create Account & Submit KYC" %}
+          </h2>
+          <p class="text-indigo-100/90 text-sm mt-1">
+            {% trans "Register your user account, then provide Personal or Business KYC." %}
+          </p>
+        </div>
+      </div>
+
+      <button type="button" onclick="closeRegisterModal()"
+              class="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full
+                     bg-white/80 text-gray-800 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 shadow-lg border border-gray-200 z-10 transition">
+        <span class="sr-only">{% trans "Close" %}</span>
+        <i class="fa-solid fa-xmark text-2xl"></i>
+      </button>
+    </header>
+
+    <!-- Body -->
+    <div class="flex-1 overflow-y-auto px-6 sm:px-8 py-6 space-y-6">
+      <!-- Step dots -->
+      <div class="flex items-center justify-center gap-2 text-xs text-gray-600 mb-1">
+        <span id="reg-dot-1" class="w-2.5 h-2.5 rounded-full bg-indigo-600"></span>
+        <span id="reg-dot-2" class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
+        <span id="reg-dot-3" class="w-2.5 h-2.5 rounded-full bg-gray-300"></span>
+      </div>
+
+      <form id="userKycForm" class="space-y-7" enctype="multipart/form-data" novalidate
+            data-lpignore="true" data-1p-ignore data-bwignore autocomplete="off">
+        {% csrf_token %}
+        <!-- hidden fields mapped to your models -->
+        <input type="hidden" name="full_name" id="full_name">
+        <input type="hidden" name="roles" id="roles_json" value='["customer"]'>
+
+        <!-- ================= STEP 1: Account ================= -->
+        <section id="regStep1" class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Account details" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 1 of 3" %}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "First name" %}</label>
+              <input name="first_name" type="text" required
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                     placeholder="{% trans 'First name' %}">
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Last name" %}</label>
+              <input name="last_name" type="text" required
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                     placeholder="{% trans 'Last name' %}">
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Email address" %}</label>
+              <input name="email" type="email" required autocomplete="email"
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                     placeholder="name@example.com">
+            </div>
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Username (optional)" %}</label>
+              <input name="username" type="text" autocomplete="username"
+                     class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                     placeholder="{% trans 'Username' %}">
+            </div>
+            <div class="space-y-1.5 sm:col-span-2">
+              <label class="text-sm font-medium text-gray-700">{% trans "Phone number" %}</label>
+              <div class="flex gap-2">
+                <select name="country_code"
+                        class="w-1/3 rounded-lg border-2 border-gray-200 px-3 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200">
+                  <option value="+243">🇨🇩 (+243)</option>
+                </select>
+                <input type="tel" name="phone" required autocomplete="tel"
+                       class="w-2/3 rounded-lg border-2 border-gray-200 px-4 py-3 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                       placeholder="{% trans 'Phone number' %}">
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Password + Generator -->
+            <div class="space-y-1.5">
+              <div class="flex items-center justify-between">
+                <label class="text-sm font-medium text-gray-700">{% trans "Password" %}</label>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="btnGenPwd" class="text-xs px-2 py-1 rounded border border-indigo-200 hover:bg-indigo-50">
+                    {% trans "Generate" %}
+                  </button>
+                  <button type="button" id="btnCopyPwd" class="text-xs px-2 py-1 rounded border border-gray-200 hover:bg-gray-50">
+                    {% trans "Copy" %}
+                  </button>
+                </div>
+              </div>
+              <div class="relative">
+                <input id="pwd1" name="password" type="password" required autocomplete="new-password" spellcheck="false"
+                       class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 pr-12 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                       placeholder="{% trans 'Min 12 chars incl. upper, lower, number, symbol' %}">
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" onclick="togglePwd('pwd1', this)">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+              <!-- Strength meter -->
+              <div class="mt-2">
+                <div class="w-full bg-gray-200 h-1.5 rounded">
+                  <div id="pwdStrengthBar" class="h-1.5 rounded transition-all duration-300" style="width:0%"></div>
+                </div>
+                <div class="text-xs mt-1 text-gray-600">{% trans "Strength:" %} <span id="pwdStrengthLabel">{% trans "Very Weak" %}</span></div>
+              </div>
+              <p class="text-[12px] text-gray-500 mt-1">
+                {% trans "Password must be at least 12 characters and include uppercase, lowercase, number, and symbol." %}
+              </p>
+            </div>
+
+            <!-- Confirm -->
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Confirm password" %}</label>
+              <div class="relative">
+                <input id="pwd2" name="password_confirm" type="password" required autocomplete="new-password" spellcheck="false"
+                       class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 pr-12 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+                       placeholder="{% trans 'Confirm password' %}">
+                <button type="button" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500" onclick="togglePwd('pwd2', this)">
+                  <i class="fa-regular fa-eye"></i>
+                </button>
+              </div>
+              <p id="pwdMatchHint" class="text-xs text-gray-500">{% trans "Passwords must match." %}</p>
+            </div>
+          </div>
+
+          <!-- Billing/Tax -->
+          <div class="border rounded-lg p-3 bg-gray-50">
+            <label class="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" name="is_tax_exempt" id="is_tax_exempt">
+              {% trans "This customer is tax-exempt" %}
+            </label>
+            <p class="text-xs text-gray-500 mt-1">{% trans "If checked, subscription invoices will skip VAT/Excise." %}</p>
+          </div>
+
+          <div class="flex items-center justify-end pt-1">
+            <button type="button" id="next1"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md">
+              <i class="fa-solid fa-arrow-right text-sm"></i>
+              {% trans "Next" %}
+            </button>
+          </div>
+        </section>
+
+        <!-- ================= STEP 2: KYC ================= -->
+        <section id="regStep2" class="hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "KYC Details" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 2 of 3" %}</span>
+          </div>
+
+          <!-- Type toggle -->
+          <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button id="btnKycPersonal" type="button"
+                    class="px-6 py-3 rounded-xl border font-semibold transition-all duration-300
+                           border-indigo-600 text-indigo-700 bg-indigo-50 hover:bg-indigo-100"
+                    onclick="selectKycType('personal')">
+              <i class="fa-solid fa-id-card-clip mr-2 text-indigo-600"></i>{% trans "Personal KYC" %}
+            </button>
+            <button id="btnKycBusiness" type="button"
+                    class="px-6 py-3 rounded-xl border font-semibold transition-all duration-300
+                           border-gray-300 text-gray-700 hover:bg-gray-50"
+                    onclick="selectKycType('business')">
+              <i class="fa-solid fa-building mr-2 text-gray-500"></i>{% trans "Business KYC" %}
+            </button>
+            <input type="hidden" name="kyc_type" id="kyc_type" value="">
+          </div>
+
+          <!-- === Personal KYC (names match PersonalKYC) === -->
+          <div id="kycPersonal" class="hidden space-y-4">
+            <div class="space-y-4">
+              <h4 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-2">{% trans "Personal Information" %}</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Full Name" %}</label>
+                  <input name="full_name_personal" type="text" placeholder="{% trans 'Full Name' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Date of Birth" %}</label>
+                  <input name="date_of_birth" type="date" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Nationality" %}</label>
+                  <select name="nationality" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200" required>
+                    <option value="">{% trans "Select your nationality" %}</option>
+                    <option value="Afghan">{% trans "Afghan" %}</option>
+                    <option value="Albanian">{% trans "Albanian" %}</option>
+                    <option value="Algerian">{% trans "Algerian" %}</option>
+                    <option value="American">{% trans "American" %}</option>
+                    <option value="Andorran">{% trans "Andorran" %}</option>
+                    <option value="Angolan">{% trans "Angolan" %}</option>
+                    <option value="Argentine">{% trans "Argentine" %}</option>
+                    <option value="Armenian">{% trans "Armenian" %}</option>
+                    <option value="Australian">{% trans "Australian" %}</option>
+                    <option value="Austrian">{% trans "Austrian" %}</option>
+                    <option value="Azerbaijani">{% trans "Azerbaijani" %}</option>
+                    <option value="Bahamian">{% trans "Bahamian" %}</option>
+                    <option value="Bahraini">{% trans "Bahraini" %}</option>
+                    <option value="Bangladeshi">{% trans "Bangladeshi" %}</option>
+                    <option value="Barbadian">{% trans "Barbadian" %}</option>
+                    <option value="Belarusian">{% trans "Belarusian" %}</option>
+                    <option value="Belgian">{% trans "Belgian" %}</option>
+                    <option value="Belizean">{% trans "Belizean" %}</option>
+                    <option value="Beninese">{% trans "Beninese" %}</option>
+                    <option value="Bhutanese">{% trans "Bhutanese" %}</option>
+                    <option value="Bolivian">{% trans "Bolivian" %}</option>
+                    <option value="Bosnian">{% trans "Bosnian" %}</option>
+                    <option value="Brazilian">{% trans "Brazilian" %}</option>
+                    <option value="British">{% trans "British" %}</option>
+                    <option value="Bruneian">{% trans "Bruneian" %}</option>
+                    <option value="Bulgarian">{% trans "Bulgarian" %}</option>
+                    <option value="Burkinabé">{% trans "Burkinabé" %}</option>
+                    <option value="Burmese">{% trans "Burmese" %}</option>
+                    <option value="Burundian">{% trans "Burundian" %}</option>
+                    <option value="Cambodian">{% trans "Cambodian" %}</option>
+                    <option value="Cameroonian">{% trans "Cameroonian" %}</option>
+                    <option value="Canadian">{% trans "Canadian" %}</option>
+                    <option value="Cape Verdean">{% trans "Cape Verdean" %}</option>
+                    <option value="Central African">{% trans "Central African" %}</option>
+                    <option value="Chadian">{% trans "Chadian" %}</option>
+                    <option value="Chilean">{% trans "Chilean" %}</option>
+                    <option value="Chinese">{% trans "Chinese" %}</option>
+                    <option value="Colombian">{% trans "Colombian" %}</option>
+                    <option value="Comoran">{% trans "Comoran" %}</option>
+                    <option value="Congolese" selected>{% trans "Congolese (DRC)" %}</option>
+                    <option value="Costa Rican">{% trans "Costa Rican" %}</option>
+                    <option value="Croatian">{% trans "Croatian" %}</option>
+                    <option value="Cuban">{% trans "Cuban" %}</option>
+                    <option value="Cypriot">{% trans "Cypriot" %}</option>
+                    <option value="Czech">{% trans "Czech" %}</option>
+                    <option value="Danish">{% trans "Danish" %}</option>
+                    <option value="Djiboutian">{% trans "Djiboutian" %}</option>
+                    <option value="Dominican">{% trans "Dominican" %}</option>
+                    <option value="Dutch">{% trans "Dutch" %}</option>
+                    <option value="Ecuadorian">{% trans "Ecuadorian" %}</option>
+                    <option value="Egyptian">{% trans "Egyptian" %}</option>
+                    <option value="Salvadoran">{% trans "Salvadoran" %}</option>
+                    <option value="Equatorial Guinean">{% trans "Equatorial Guinean" %}</option>
+                    <option value="Eritrean">{% trans "Eritrean" %}</option>
+                    <option value="Estonian">{% trans "Estonian" %}</option>
+                    <option value="Ethiopian">{% trans "Ethiopian" %}</option>
+                    <option value="Fijian">{% trans "Fijian" %}</option>
+                    <option value="Finnish">{% trans "Finnish" %}</option>
+                    <option value="French">{% trans "French" %}</option>
+                    <option value="Gabonese">{% trans "Gabonese" %}</option>
+                    <option value="Gambian">{% trans "Gambian" %}</option>
+                    <option value="Georgian">{% trans "Georgian" %}</option>
+                    <option value="German">{% trans "German" %}</option>
+                    <option value="Ghanaian">{% trans "Ghanaian" %}</option>
+                    <option value="Greek">{% trans "Greek" %}</option>
+                    <option value="Grenadian">{% trans "Grenadian" %}</option>
+                    <option value="Guatemalan">{% trans "Guatemalan" %}</option>
+                    <option value="Guinean">{% trans "Guinean" %}</option>
+                    <option value="Guyanese">{% trans "Guyanese" %}</option>
+                    <option value="Haitian">{% trans "Haitian" %}</option>
+                    <option value="Honduran">{% trans "Honduran" %}</option>
+                    <option value="Hungarian">{% trans "Hungarian" %}</option>
+                    <option value="Icelandic">{% trans "Icelandic" %}</option>
+                    <option value="Indian">{% trans "Indian" %}</option>
+                    <option value="Indonesian">{% trans "Indonesian" %}</option>
+                    <option value="Iranian">{% trans "Iranian" %}</option>
+                    <option value="Iraqi">{% trans "Iraqi" %}</option>
+                    <option value="Irish">{% trans "Irish" %}</option>
+                    <option value="Israeli">{% trans "Israeli" %}</option>
+                    <option value="Italian">{% trans "Italian" %}</option>
+                    <option value="Ivorian">{% trans "Ivorian" %}</option>
+                    <option value="Jamaican">{% trans "Jamaican" %}</option>
+                    <option value="Japanese">{% trans "Japanese" %}</option>
+                    <option value="Jordanian">{% trans "Jordanian" %}</option>
+                    <option value="Kazakh">{% trans "Kazakh" %}</option>
+                    <option value="Kenyan">{% trans "Kenyan" %}</option>
+                    <option value="Kuwaiti">{% trans "Kuwaiti" %}</option>
+                    <option value="Kyrgyz">{% trans "Kyrgyz" %}</option>
+                    <option value="Laotian">{% trans "Laotian" %}</option>
+                    <option value="Latvian">{% trans "Latvian" %}</option>
+                    <option value="Lebanese">{% trans "Lebanese" %}</option>
+                    <option value="Liberian">{% trans "Liberian" %}</option>
+                    <option value="Libyan">{% trans "Libyan" %}</option>
+                    <option value="Liechtensteiner">{% trans "Liechtensteiner" %}</option>
+                    <option value="Lithuanian">{% trans "Lithuanian" %}</option>
+                    <option value="Luxembourgish">{% trans "Luxembourgish" %}</option>
+                    <option value="Malagasy">{% trans "Malagasy" %}</option>
+                    <option value="Malawian">{% trans "Malawian" %}</option>
+                    <option value="Malaysian">{% trans "Malaysian" %}</option>
+                    <option value="Maldivian">{% trans "Maldivian" %}</option>
+                    <option value="Malian">{% trans "Malian" %}</option>
+                    <option value="Maltese">{% trans "Maltese" %}</option>
+                    <option value="Mauritanian">{% trans "Mauritanian" %}</option>
+                    <option value="Mauritian">{% trans "Mauritian" %}</option>
+                    <option value="Mexican">{% trans "Mexican" %}</option>
+                    <option value="Moldovan">{% trans "Moldovan" %}</option>
+                    <option value="Monacan">{% trans "Monacan" %}</option>
+                    <option value="Mongolian">{% trans "Mongolian" %}</option>
+                    <option value="Montenegrin">{% trans "Montenegrin" %}</option>
+                    <option value="Moroccan">{% trans "Moroccan" %}</option>
+                    <option value="Mozambican">{% trans "Mozambican" %}</option>
+                    <option value="Namibian">{% trans "Namibian" %}</option>
+                    <option value="Nepalese">{% trans "Nepalese" %}</option>
+                    <option value="New Zealander">{% trans "New Zealander" %}</option>
+                    <option value="Nicaraguan">{% trans "Nicaraguan" %}</option>
+                    <option value="Nigerien">{% trans "Nigerien" %}</option>
+                    <option value="Nigerian">{% trans "Nigerian" %}</option>
+                    <option value="North Korean">{% trans "North Korean" %}</option>
+                    <option value="North Macedonian">{% trans "North Macedonian" %}</option>
+                    <option value="Norwegian">{% trans "Norwegian" %}</option>
+                    <option value="Omani">{% trans "Omani" %}</option>
+                    <option value="Pakistani">{% trans "Pakistani" %}</option>
+                    <option value="Panamanian">{% trans "Panamanian" %}</option>
+                    <option value="Papua New Guinean">{% trans "Papua New Guinean" %}</option>
+                    <option value="Paraguayan">{% trans "Paraguayan" %}</option>
+                    <option value="Peruvian">{% trans "Peruvian" %}</option>
+                    <option value="Filipino">{% trans "Filipino" %}</option>
+                    <option value="Polish">{% trans "Polish" %}</option>
+                    <option value="Portuguese">{% trans "Portuguese" %}</option>
+                    <option value="Qatari">{% trans "Qatari" %}</option>
+                    <option value="Romanian">{% trans "Romanian" %}</option>
+                    <option value="Russian">{% trans "Russian" %}</option>
+                    <option value="Rwandan">{% trans "Rwandan" %}</option>
+                    <option value="Saint Lucian">{% trans "Saint Lucian" %}</option>
+                    <option value="Salvadoran">{% trans "Salvadoran" %}</option>
+                    <option value="Samoan">{% trans "Samoan" %}</option>
+                    <option value="San Marinese">{% trans "San Marinese" %}</option>
+                    <option value="São Toméan">{% trans "São Toméan" %}</option>
+                    <option value="Saudi">{% trans "Saudi" %}</option>
+                    <option value="Senegalese">{% trans "Senegalese" %}</option>
+                    <option value="Serbian">{% trans "Serbian" %}</option>
+                    <option value="Seychellois">{% trans "Seychellois" %}</option>
+                    <option value="Sierra Leonean">{% trans "Sierra Leonean" %}</option>
+                    <option value="Singaporean">{% trans "Singaporean" %}</option>
+                    <option value="Slovak">{% trans "Slovak" %}</option>
+                    <option value="Slovenian">{% trans "Slovenian" %}</option>
+                    <option value="Somali">{% trans "Somali" %}</option>
+                    <option value="South African">{% trans "South African" %}</option>
+                    <option value="South Korean">{% trans "South Korean" %}</option>
+                    <option value="Spanish">{% trans "Spanish" %}</option>
+                    <option value="Sri Lankan">{% trans "Sri Lankan" %}</option>
+                    <option value="Sudanese">{% trans "Sudanese" %}</option>
+                    <option value="Surinamese">{% trans "Surinamese" %}</option>
+                    <option value="Swazi">{% trans "Swazi" %}</option>
+                    <option value="Swedish">{% trans "Swedish" %}</option>
+                    <option value="Swiss">{% trans "Swiss" %}</option>
+                    <option value="Syrian">{% trans "Syrian" %}</option>
+                    <option value="Taiwanese">{% trans "Taiwanese" %}</option>
+                    <option value="Tajik">{% trans "Tajik" %}</option>
+                    <option value="Tanzanian">{% trans "Tanzanian" %}</option>
+                    <option value="Thai">{% trans "Thai" %}</option>
+                    <option value="Timorese">{% trans "Timorese" %}</option>
+                    <option value="Togolese">{% trans "Togolese" %}</option>
+                    <option value="Tongan">{% trans "Tongan" %}</option>
+                    <option value="Trinidadian">{% trans "Trinidadian" %}</option>
+                    <option value="Tunisian">{% trans "Tunisian" %}</option>
+                    <option value="Turkish">{% trans "Turkish" %}</option>
+                    <option value="Turkmen">{% trans "Turkmen" %}</option>
+                    <option value="Tuvaluan">{% trans "Tuvaluan" %}</option>
+                    <option value="Ugandan">{% trans "Ugandan" %}</option>
+                    <option value="Ukrainian">{% trans "Ukrainian" %}</option>
+                    <option value="Emirati">{% trans "Emirati" %}</option>
+                    <option value="Uruguayan">{% trans "Uruguayan" %}</option>
+                    <option value="Uzbek">{% trans "Uzbek" %}</option>
+                    <option value="Vanuatuan">{% trans "Vanuatuan" %}</option>
+                    <option value="Venezuelan">{% trans "Venezuelan" %}</option>
+                    <option value="Vietnamese">{% trans "Vietnamese" %}</option>
+                    <option value="Yemeni">{% trans "Yemeni" %}</option>
+                    <option value="Zambian">{% trans "Zambian" %}</option>
+                    <option value="Zimbabwean">{% trans "Zimbabwean" %}</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div class="space-y-4">
+              <h4 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-2">{% trans "Identity Information" %}</h4>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "ID Document Type" %}</label>
+                  <select name="id_document_type" id="idDocumentType" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                    <option value="">{% trans "Select Document Type" %}</option>
+                    <option value="voter_card">{% trans "Voter Card" %}</option>
+                    <option value="drivers_license">{% trans "Driver's License" %}</option>
+                    <option value="passport">{% trans "Passport" %}</option>
+                  </select>
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Document Number" %}</label>
+                  <input name="document_number" type="text" placeholder="{% trans 'Document Number' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Issue Date" %}</label>
+                  <input name="id_issue_date" type="date" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+                <div class="space-y-1.5">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Expiry Date" %}</label>
+                  <input name="id_expiry_date" type="date" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+                <div class="space-y-1.5 sm:col-span-2">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Address" %}</label>
+                  <input name="address_personal" type="text" placeholder="{% trans 'Full Address' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- === Business KYC (names match CompanyKYC) === -->
+          <div id="kycBusiness" class="hidden space-y-4">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Legal Representative Name" %}</label>
+                <input name="representative_name" type="text" placeholder="{% trans 'Legal Representative Name' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Company Name" %}</label>
+                <input name="company_name" type="text" placeholder="{% trans 'Company Name' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Address" %}</label>
+                <input name="address_business" type="text" placeholder="{% trans 'Address' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Date Established" %}</label>
+                <input name="established_date" type="date" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Business Sector" %}</label>
+                <select name="business_sector" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+                  <option value="">{% trans "Select sector" %}</option>
+                  <option value="agriculture">{% trans "Agriculture, Forestry and Fishing" %}</option>
+                  <option value="mining">{% trans "Mining and Quarrying" %}</option>
+                  <option value="manufacturing">{% trans "Manufacturing" %}</option>
+                  <option value="utilities">{% trans "Electricity, Gas, Steam and Water Supply" %}</option>
+                  <option value="construction">{% trans "Construction" %}</option>
+                  <option value="trade">{% trans "Wholesale and Retail Trade" %}</option>
+                  <option value="transport">{% trans "Transportation and Storage" %}</option>
+                  <option value="accommodation">{% trans "Accommodation and Food Service" %}</option>
+                  <option value="information">{% trans "Information and Communication" %}</option>
+                  <option value="finance">{% trans "Financial and Insurance Activities" %}</option>
+                  <option value="real_estate">{% trans "Real Estate Activities" %}</option>
+                  <option value="professional">{% trans "Professional, Scientific and Technical Activities" %}</option>
+                  <option value="administrative">{% trans "Administrative and Support Service Activities" %}</option>
+                  <option value="public_admin">{% trans "Public Administration and Defence" %}</option>
+                  <option value="education">{% trans "Education" %}</option>
+                  <option value="health">{% trans "Human Health and Social Work Activities" %}</option>
+                  <option value="arts">{% trans "Arts, Entertainment and Recreation" %}</option>
+                  <option value="other_services">{% trans "Other Service Activities" %}</option>
+                  <option value="household">{% trans "Household Activities" %}</option>
+                  <option value="extraterritorial">{% trans "Extraterritorial Organizations" %}</option>
+                  <option value="other">{% trans "Other" %}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Legal Status" %}</label>
+                <select name="legal_status" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3">
+                  <option value="">{% trans "Select status" %}</option>
+                  <option value="sa">SA</option>
+                  <option value="sarl">SARL</option>
+                  <option value="eurl">EURL</option>
+                  <option value="sas">SAS</option>
+                  <option value="sasu">SASU</option>
+                  <option value="ei">EI</option>
+                  <option value="auto_entrepreneur">{% trans "Auto-Entrepreneur" %}</option>
+                  <option value="association">{% trans "Association" %}</option>
+                  <option value="cooperative">{% trans "Cooperative" %}</option>
+                  <option value="gie">GIE</option>
+                  <option value="other">{% trans "Other" %}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "RCCM" %}</label>
+                <input name="rccm" type="text" placeholder="{% trans 'RCCM' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Tax ID (NIF)" %}</label>
+                <input name="nif" type="text" placeholder="{% trans 'Tax ID (NIF)' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "ID Nat" %}</label>
+                <input name="id_nat" type="text" placeholder="{% trans 'ID Nat' %}" class="w-full rounded-lg border-2 border-gray-200 px-4 py-3 required-field">
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-1">
+            <button type="button" id="prev2" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              <i class="fa-solid fa-arrow-left mr-2"></i>
+              {% trans "Previous" %}
+            </button>
+            <button type="button" id="next2"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md">
+              <i class="fa-solid fa-arrow-right text-sm"></i>
+              {% trans "Next" %}
+            </button>
+          </div>
+        </section>
+
+        <!-- ================= STEP 3: Documents & Terms ================= -->
+        <section id="regStep3" class="hidden space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Documents & Terms" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 3 of 3" %}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Personal docs (match PersonalKYC.document_file) -->
+            <div id="docsPersonal" class="hidden space-y-2">
+              <label class="text-sm font-medium text-gray-700">{% trans "Upload ID Document (Personal)" %}</label>
+              <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition">
+                <i class="fa-regular fa-file-lines text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop or click to browse." %}</p>
+                <p class="text-xs text-gray-400">{% trans "Accepted: PDF, JPG, PNG — Max 10MB" %}</p>
+                <input id="doc_personal" name="document_file" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                       class="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+              <div id="doc_personal_preview" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+
+              <div id="visaUploadWrapper" class="space-y-2 hidden">
+                <div class="flex items-center justify-between">
+                  <label class="text-sm font-medium text-gray-700">{% trans "Upload last visa page" %}</label>
+                  <span class="text-xs text-indigo-600 font-medium">{% trans "Required for non-Congolese nationals" %}</span>
+                </div>
+                <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition">
+                  <i class="fa-solid fa-passport text-2xl text-gray-400"></i>
+                  <p class="mt-2 text-sm text-gray-600">{% trans "Provide the most recent visa page showing entry authorization." %}</p>
+                  <p class="text-xs text-gray-400">{% trans "Accepted: PDF, JPG, PNG — Max 10MB" %}</p>
+                  <input id="visa_last_page" name="visa_last_page" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                         class="absolute inset-0 opacity-0 cursor-pointer" />
+                </div>
+                <div id="visa_last_page_preview" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+              </div>
+            </div>
+
+            <!-- Business docs (match CompanyKYC.representative_id_file & CompanyDocument via getlist) -->
+            <div id="docsBusiness" class="hidden space-y-2">
+              <label class="text-sm font-medium text-gray-700">{% trans "Upload Representative ID (Business)" %}</label>
+              <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition">
+                <i class="fa-regular fa-id-card text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop or click to browse." %}</p>
+                <p class="text-xs text-gray-400">{% trans "Accepted: PDF, JPG, PNG — Max 10MB" %}</p>
+                <input id="doc_business_rep" name="representative_id_file" type="file" accept=".pdf,.jpg,.jpeg,.png"
+                       class="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+              <div id="doc_business_rep_preview" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+
+              <label class="text-sm font-medium text-gray-700">{% trans "Upload Company Documents" %}</label>
+              <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition">
+                <i class="fa-solid fa-file-circle-check text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop or click to browse." %}</p>
+                <p class="text-xs text-gray-400">{% trans "Accepted: PDF, JPG, PNG — Max 10MB each" %}</p>
+                <!-- multiple => backend can iterate request.FILES.getlist('company_documents') -->
+                <input id="doc_business_company" name="company_documents" type="file" accept=".pdf,.jpg,.jpeg,.png" multiple
+                       class="absolute inset-0 opacity-0 cursor-pointer" />
+              </div>
+              <div id="doc_business_company_preview" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div>
+            <div id="termsContainer" class="max-h-40 overflow-y-auto border border-gray-300 rounded bg-gray-50 p-3 text-xs text-gray-700 mb-2" style="font-size:13px;">
+              <strong>{% trans "Terms and Conditions" %}</strong><br>
+              {% trans "By creating an account and submitting KYC, you consent to the processing of your data for verification and compliance purposes." %}
+            </div>
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" id="agreeTerms" name="agree_terms">
+              {% trans "I agree to the terms and conditions" %}
+            </label>
+            <p id="termsHint" class="text-xs text-gray-500 mt-1">
+              {% trans "Please scroll to the end and tick the checkbox to enable submission." %}
+            </p>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <button type="button" id="prev3" class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              <i class="fa-solid fa-arrow-left mr-2"></i>
+              {% trans "Previous" %}
+            </button>
+            <button type="submit" id="submitAll"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+              <i class="fa-solid fa-paper-plane text-sm"></i>
+              {% trans "Create account & submit KYC" %}
+            </button>
+          </div>
+        </section>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+
+function normalizePhoneE164(ccRaw, phoneRaw){
+  // Keep only digits from both
+  const cc = String(ccRaw || '').replace(/\D/g, '');          // "+243" -> "243"
+  let p  = String(phoneRaw || '').replace(/\D/g, '');         // "+243 099..." -> "243099..."
+
+  // Strip leading 00 (international prefix)
+  if (p.startsWith('00')) p = p.slice(2);
+
+  // If number starts with the country code, drop it (to avoid duplicating later)
+  if (cc && p.startsWith(cc)) p = p.slice(cc.length);
+
+  // Many users type the local format starting with a 0; drop that leading 0
+  if (p.startsWith('0')) p = p.slice(1);
+
+  // Return +<cc><national_number>
+  return cc ? `+${cc}${p}` : `+${p}`;
+}
+
+const PERSONAL_DOC_OPTIONS = (() => {
+  const select = document.getElementById('idDocumentType');
+  if(!select) return [];
+  return Array.from(select.options).map(opt => ({
+    value: opt.value,
+    label: opt.textContent,
+  }));
+})();
+if(Array.isArray(PERSONAL_DOC_OPTIONS) && PERSONAL_DOC_OPTIONS.length){
+  window.__personalDocOptions = PERSONAL_DOC_OPTIONS.slice();
+}
+
+function applyPersonalDocumentOptions(select, isCongolese){
+  if(!select) return;
+  const base = (Array.isArray(window.__personalDocOptions) && window.__personalDocOptions.length)
+    ? window.__personalDocOptions
+    : Array.from(select.options).map(opt => ({ value: opt.value, label: opt.textContent }));
+  if(!select.dataset.allOptions){
+    select.dataset.allOptions = JSON.stringify(base);
+  }
+  console.log('[register_modal] applyPersonalDocumentOptions', { isCongolese, base });
+  const desired = isCongolese
+    ? base
+    : base.filter(opt => opt.value === '' || opt.value === 'passport');
+  const previous = select.value;
+  select.innerHTML = '';
+  desired.forEach(opt => {
+    const optionEl = document.createElement('option');
+    optionEl.value = opt.value;
+    optionEl.textContent = opt.label;
+    select.appendChild(optionEl);
+  });
+  console.log('[register_modal] desired options & previous', { desired, previous });
+  if(desired.some(opt => opt.value === previous)){
+    select.value = previous;
+  }else if(!isCongolese){
+    select.value = 'passport';
+  }
+}
+
+window.__regBusinessDocsAdded = false;
+
+
+/* ===== Utilities ===== */
+function togglePwd(id, btn){
+  const el=document.getElementById(id); if(!el) return;
+  const is=el.type==='password'; el.type=is?'text':'password';
+  const i=btn.querySelector('i'); i?.classList.toggle('fa-eye'); i?.classList.toggle('fa-eye-slash');
+}
+function setDots(s){
+  document.getElementById('reg-dot-1').className="w-2.5 h-2.5 rounded-full "+(s===1?"bg-indigo-600":"bg-gray-300");
+  document.getElementById('reg-dot-2').className="w-2.5 h-2.5 rounded-full "+(s===2?"bg-indigo-600":"bg-gray-300");
+  document.getElementById('reg-dot-3').className="w-2.5 h-2.5 rounded-full "+(s===3?"bg-indigo-600":"bg-gray-300");
+}
+function showStep(n){
+  ['regStep1','regStep2','regStep3'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(i===n-1) el?.classList.remove('hidden'); else el?.classList.add('hidden');
+  });
+  setDots(n);
+}
+function visibleRequiredValid(container){
+  const fields=container.querySelectorAll('input,select,textarea'); let first=null, ok=true;
+  fields.forEach(f=>f.classList.remove('border-red-500'));
+  for(const f of fields){
+    if(f.required && !f.disabled && f.offsetParent!==null){
+      if(f.tagName==='INPUT' && ['text','email','tel','password','date'].includes(f.type)){ f.value=(f.value||'').trim(); }
+      if(!f.checkValidity()){ f.classList.add('border-red-500'); ok=false; if(!first) first=f; }
+    }
+  }
+  if(first){ first.reportValidity?.(); first.focus(); }
+  return ok;
+}
+
+/* ===== Password Generator, Policy & Strength ===== */
+(function(){
+  const P_MIN = 12, DEF_LEN = 16;
+  const A_UP="ABCDEFGHJKLMNPQRSTUVWXYZ", A_LO="abcdefghijkmnopqrstuvwxyz", A_DI="23456789", A_SY="!@#$%^&*()-_=+[]{};:,.?";
+  const pwd1=document.getElementById('pwd1'), pwd2=document.getElementById('pwd2');
+  const bar=document.getElementById('pwdStrengthBar'), lab=document.getElementById('pwdStrengthLabel'), hint=document.getElementById('pwdMatchHint');
+
+  function rand(max){
+    const cryptoObj = (typeof window !== 'undefined' && (window.crypto || window.msCrypto));
+    if(cryptoObj && typeof cryptoObj.getRandomValues === 'function'){
+      return cryptoObj.getRandomValues(new Uint32Array(1))[0] % max;
+    }
+    return Math.floor(Math.random() * max);
+  }
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=rand(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+  function generate(len=DEF_LEN){
+    const pools=A_UP+A_LO+A_DI+A_SY;
+    const req=[A_UP[rand(A_UP.length)],A_LO[rand(A_LO.length)],A_DI[rand(A_DI.length)],A_SY[rand(A_SY.length)]];
+    return shuffle(req.concat(Array.from({length:len-req.length},()=>pools[rand(pools.length)]))).join('');
+  }
+  function meetsPolicy(p){ return (p||'').length>=P_MIN && /[A-Z]/.test(p)&&/[a-z]/.test(p)&&/[0-9]/.test(p)&&/[^A-Za-z0-9]/.test(p); }
+  function score(p){ let s=0; if((p||'').length>=12)s++; if((p||'').length>=16)s++; if(/[A-Z]/.test(p))s++; if(/[a-z]/.test(p))s++; if(/[0-9]/.test(p))s++; if(/[^A-Za-z0-9]/.test(p))s++; return Math.min(s,5); }
+  function paint(p){
+    const s=score(p);
+    const widths=['0%','25%','45%','65%','85%','100%'];
+    const labels=['{% trans "Very Weak" %}','{% trans "Weak" %}','{% trans "Fair" %}','{% trans "Good" %}','{% trans "Strong" %}','{% trans "Excellent" %}'];
+    const colors=['bg-red-500','bg-orange-500','bg-yellow-500','bg-lime-500','bg-green-500','bg-emerald-600'];
+    bar.className='h-1.5 rounded transition-all duration-300 '+colors[s];
+    bar.style.width=widths[s];
+    lab.textContent=labels[s];
+  }
+  function sync(){
+    const p=pwd1?.value||'', c=pwd2?.value||'';
+    paint(p);
+    const match = !!p && !!c && p===c;
+    hint?.classList.toggle('text-red-600', !match && c.length>0);
+  }
+  document.getElementById('btnGenPwd')?.addEventListener('click', ()=>{
+    let p = generate();
+    while(!meetsPolicy(p)) p = generate();
+    if(pwd1) pwd1.value=p;
+    if(pwd2) pwd2.value=p;
+    sync();
+  });
+  document.getElementById('btnCopyPwd')?.addEventListener('click', async()=>{
+    try{
+      const v=pwd1?.value||''; if(!v) return;
+      await navigator.clipboard.writeText(v);
+      const b=document.getElementById('btnCopyPwd'); const t=b.textContent;
+      b.textContent='✓ {% trans "Copied" %}'; setTimeout(()=>b.textContent=t,1200);
+    }catch(e){ console.error(e); }
+  });
+  ['input','blur','keyup','change'].forEach(ev=>{
+    pwd1?.addEventListener(ev,sync);
+    pwd2?.addEventListener(ev,sync);
+  });
+  window._pwMeetsPolicy = () => meetsPolicy(pwd1?.value||'') && (pwd1?.value||'') === (pwd2?.value||'');
+})();
+
+/* ===== KYC Type Selection (show/hide + required) ===== */
+function selectKycType(type){
+  const personal=document.getElementById('kycPersonal');
+  const business=document.getElementById('kycBusiness');
+  const docsP=document.getElementById('docsPersonal');
+  const docsB=document.getElementById('docsBusiness');
+  const hidden=document.getElementById('kyc_type');
+  const repInput=document.getElementById('doc_business_rep');
+  const compInput=document.getElementById('doc_business_company');
+  hidden.value = type;
+
+  document.getElementById('btnKycPersonal').classList.toggle('bg-indigo-50', type!=='personal');
+  document.getElementById('btnKycPersonal').classList.toggle('border-indigo-600', type==='personal');
+  document.getElementById('btnKycBusiness').classList.toggle('bg-indigo-50', type!=='business');
+  document.getElementById('btnKycBusiness').classList.toggle('border-indigo-600', type==='business');
+
+  if(type==='personal'){
+    personal.classList.remove('hidden'); business.classList.add('hidden');
+    docsP.classList.remove('hidden');    docsB.classList.add('hidden');
+    toggleKycRequired('personal', true);
+    toggleKycRequired('business', false);
+    window.__regBusinessDocsAdded = false;
+    repInput?.removeAttribute('required');
+    compInput?.removeAttribute('required');
+    updateVisaRequirement();
+  }else{
+    business.classList.remove('hidden'); personal.classList.add('hidden');
+    docsB.classList.remove('hidden');    docsP.classList.add('hidden');
+    toggleKycRequired('personal', false);
+    toggleKycRequired('business', true);
+    document.getElementById('doc_business_rep')?.setAttribute('required','required');
+    document.getElementById('doc_business_company')?.setAttribute('required','required');
+    updateBusinessDocsFlag();
+    const visaWrap = document.getElementById('visaUploadWrapper');
+    const visaInput = document.getElementById('visa_last_page');
+    if(visaWrap){
+      visaWrap.classList.add('hidden');
+    }
+    if(visaInput){
+      visaInput.removeAttribute('required');
+      if(visaInput.value){
+        visaInput.value = '';
+      }
+      renderFileList(visaInput, 'visa_last_page_preview');
+    }
+    updateSubmitGating();
+  }
+}
+function toggleKycRequired(type, on){
+  const map = {
+    // PersonalKYC names
+    personal: ['full_name_personal','date_of_birth','nationality','id_document_type','document_number','id_issue_date','id_expiry_date','address_personal'],
+    // CompanyKYC names
+    business: ['representative_name','company_name','address_business','rccm','nif','id_nat']
+  };
+  (map[type]||[]).forEach(n=>{
+    const el = document.querySelector(`[name="${n}"]`);
+    if(el){ el.required = !!on; if(!on) el.classList.remove('border-red-500'); }
+  });
+}
+function isCongoleseNationality(value, label){
+  const val = (value || '').toLowerCase().trim();
+  const lbl = (label || '').toLowerCase().trim();
+  return val.startsWith('congol') || lbl.startsWith('congol');
+}
+function needsVisaForNationality(value, label){
+  return !isCongoleseNationality(value, label);
+}
+function updateVisaRequirement(){
+  const select = document.querySelector('#registerModal select[name="nationality"]');
+  const wrap = document.getElementById('visaUploadWrapper');
+  const input = document.getElementById('visa_last_page');
+  const docType = document.getElementById('idDocumentType');
+  if(!wrap || !input) return;
+  const label = select?.selectedOptions?.[0]?.textContent || '';
+  const isCongolese = select ? isCongoleseNationality(select.value || '', label) : false;
+  const requireVisa = !isCongolese;
+  console.log('[register_modal] updateVisaRequirement', { value: select?.value, label, isCongolese });
+  applyPersonalDocumentOptions(docType, isCongolese);
+  if(docType && requireVisa){
+    docType.value = 'passport';
+  }
+  if(requireVisa){
+    wrap.classList.remove('hidden');
+    input.setAttribute('required','required');
+  }else{
+    wrap.classList.add('hidden');
+    input.removeAttribute('required');
+    if(input.value){
+      input.value = '';
+    }
+    renderFileList(input, 'visa_last_page_preview');
+  }
+  updateSubmitGating();
+}
+function updateBusinessDocsFlag(){
+  const repInput = document.getElementById('doc_business_rep');
+  const compInput = document.getElementById('doc_business_company');
+  const repOk = !!(repInput && repInput.files && repInput.files.length);
+  const compOk = !!(compInput && compInput.files && compInput.files.length);
+  window.__regBusinessDocsAdded = repOk && compOk;
+  updateSubmitGating();
+}
+
+/* ===== Modal Controls ===== */
+if (typeof window !== 'undefined' && !window.openRegisterModal){
+  window.openRegisterModal = function(){
+    document.getElementById('registerModal')?.classList.remove('hidden');
+    showStep(1);
+    document.getElementById('submitAll')?.setAttribute('disabled','disabled');
+  };
+}
+if (typeof window !== 'undefined' && !window.closeRegisterModal){
+  window.closeRegisterModal = function(){
+    document.getElementById('registerModal')?.classList.add('hidden');
+  };
+}
+
+/* ===== File previews + submit gating ===== */
+function humanSize(bytes){
+  if (bytes === undefined || bytes === null) return "—";
+  const units = ['B','KB','MB','GB'];
+  let i = 0, n = bytes;
+  while (n >= 1024 && i < units.length-1){ n /= 1024; i++; }
+  return `${n.toFixed(n>=10?0:1)} ${units[i]}`;
+}
+function renderFileList(inputEl, previewId){
+  const box = document.getElementById(previewId);
+  if(!box) return;
+  box.innerHTML = "";
+
+  const files = Array.from(inputEl.files || []);
+  if(!files.length){ updateSubmitGating(); return; }
+
+  files.forEach(file => {
+    const isImg = (file.type||"").startsWith("image/");
+    const wrap = document.createElement("div");
+    wrap.className = "border rounded-lg p-2 flex items-center gap-2 bg-white";
+
+    if(isImg){
+      const img = document.createElement("img");
+      img.src = URL.createObjectURL(file);
+      img.onload = () => URL.revokeObjectURL(img.src);
+      img.alt = file.name;
+      img.className = "w-12 h-12 object-cover rounded";
+      wrap.appendChild(img);
+    }else{
+      const icon = document.createElement("div");
+      icon.className = "w-12 h-12 rounded flex items-center justify-center bg-gray-100";
+      icon.innerHTML = '<i class="fa-regular fa-file text-lg text-gray-500"></i>';
+      wrap.appendChild(icon);
+    }
+
+    const meta = document.createElement("div");
+    meta.className = "min-w-0";
+    meta.innerHTML = `<div class="text-sm font-medium text-gray-800 truncate">${file.name}</div>
+                      <div class="text-xs text-gray-500">${humanSize(file.size)}</div>`;
+    wrap.appendChild(meta);
+
+    box.appendChild(wrap);
+  });
+
+  window.__regDocsSelected = true;
+  updateSubmitGating();
+}
+function updateSubmitGating(){
+  const cb = document.getElementById('agreeTerms');
+  const submitBtn = document.getElementById('submitAll');
+  const hint = document.getElementById('termsHint');
+
+  const termsOk = !!(cb && cb.checked);
+  const scrolled = window.__regScrolledToEnd === true;
+  const type = document.getElementById('kyc_type')?.value || 'personal';
+  const personalDocInput = document.getElementById('doc_personal');
+  const personalDocOk = !!(personalDocInput && personalDocInput.files && personalDocInput.files.length);
+  const repInput = document.getElementById('doc_business_rep');
+  const compInput = document.getElementById('doc_business_company');
+  const repOk = !!(repInput && repInput.files && repInput.files.length);
+  const compOk = !!(compInput && compInput.files && compInput.files.length);
+  const nationalitySelect = document.querySelector('#registerModal select[name="nationality"]');
+  const visaInput = document.getElementById('visa_last_page');
+  const visaRequired = type === 'personal' && nationalitySelect ? needsVisaForNationality(nationalitySelect.value || '', nationalitySelect.selectedOptions?.[0]?.textContent || '') : false;
+  const visaOk = !visaRequired || (visaInput && visaInput.files && visaInput.files.length > 0);
+  const docsCondition = type === 'business' ? (repOk && (compOk || (window.__regBusinessDocsAdded === true))) : (scrolled || personalDocOk);
+
+  // enable if terms checked AND (either scrolled OR at least one document chosen)
+  const ok = termsOk && docsCondition && visaOk;
+
+  if(submitBtn){
+    submitBtn.disabled = !ok;
+    submitBtn.toggleAttribute('disabled', !ok);
+  }
+  if(!hint) return;
+
+  if(ok){
+    hint.classList.add('hidden');
+    hint.textContent = "{% trans 'Ready: terms accepted and documents selected.' %}";
+    return;
+  }
+  hint.classList.remove('hidden');
+  if(!termsOk){
+    hint.textContent = "{% trans 'Please scroll to the end and tick the checkbox to enable submission.' %}";
+  }else if(type === 'business' && (!repOk || !compOk)){
+    hint.textContent = "{% trans 'Please upload the representative ID and company documents.' %}";
+  }else if(visaRequired && !visaOk){
+    hint.textContent = "{% trans 'Please add the last visa page for non-Congolese nationals.' %}";
+  }else if(type === 'personal' && !personalDocOk && !scrolled){
+    hint.textContent = "{% trans 'Please scroll to the end and tick the checkbox to enable submission.' %}";
+  }else{
+    hint.textContent = "{% trans 'Please complete the required documents before submitting.' %}";
+  }
+}
+
+/* ===== Page wiring ===== */
+document.addEventListener('DOMContentLoaded', function(){
+  const form = document.getElementById('userKycForm');
+  const next1 = document.getElementById('next1');
+  const next2 = document.getElementById('next2');
+  const prev2 = document.getElementById('prev2');
+  const prev3 = document.getElementById('prev3');
+  const submitBtn = document.getElementById('submitAll');
+  const nationalitySelect = form?.querySelector('[name="nationality"]');
+
+  form?.addEventListener('input', (event)=>{
+    const target = event.target;
+    if(target && target.classList){
+      target.classList.remove('border-red-500');
+    }
+  }, true);
+
+  next1?.addEventListener('click', ()=>{
+    if(!_pwMeetsPolicy()){
+      alert('{% trans "Please use a strong password (12+ chars with upper/lower/number/symbol) and ensure both passwords match." %}');
+      return;
+    }
+    if(visibleRequiredValid(document.getElementById('regStep1'))){
+      // Build full_name for User model
+      const fn = (form.first_name?.value||'').trim();
+      const ln = (form.last_name?.value||'').trim();
+      document.getElementById('full_name').value = (fn+' '+ln).trim();
+      showStep(2);
+      if(!document.getElementById('kyc_type').value){
+        selectKycType('personal'); // default
+      }
+    }
+  });
+  prev2?.addEventListener('click', ()=>showStep(1));
+
+  next2?.addEventListener('click', ()=>{
+    const type = document.getElementById('kyc_type').value;
+    if(!type){ alert('{% trans "Please choose a KYC type." %}'); return; }
+
+    if(type==='personal'){
+      const issue = document.querySelector('[name="id_issue_date"]')?.value;
+      const exp   = document.querySelector('[name="id_expiry_date"]')?.value;
+      if(issue && exp && new Date(exp) <= new Date(issue)){
+        alert('❌ {% trans "Expiry date must be after issue date." %}'); return;
+      }
+      if(!visibleRequiredValid(document.getElementById('kycPersonal'))) return;
+    }else{
+      if(!visibleRequiredValid(document.getElementById('kycBusiness'))) return;
+    }
+    showStep(3);
+    submitBtn?.setAttribute('disabled','disabled'); // gated by terms/docs
+  });
+  prev3?.addEventListener('click', ()=>showStep(2));
+
+  // Hook file inputs to previews + gating
+  document.getElementById('doc_personal')?.addEventListener('change', (e)=>renderFileList(e.target, 'doc_personal_preview'));
+  document.getElementById('visa_last_page')?.addEventListener('change', (e)=>renderFileList(e.target, 'visa_last_page_preview'));
+  document.getElementById('doc_business_rep')?.addEventListener('change', (e)=>{
+    renderFileList(e.target, 'doc_business_rep_preview');
+    updateBusinessDocsFlag();
+  });
+  document.getElementById('doc_business_company')?.addEventListener('change', (e)=>{
+    renderFileList(e.target, 'doc_business_company_preview');
+    updateBusinessDocsFlag();
+  });
+  nationalitySelect?.addEventListener('change', updateVisaRequirement);
+  updateVisaRequirement();
+
+  // Terms gating (also considers docs selection)
+  (function(){
+    const c = document.getElementById('termsContainer');
+    const cb = document.getElementById('agreeTerms');
+    function onScroll(){
+      const atEnd = c.scrollTop + c.clientHeight >= c.scrollHeight - 2;
+      if(atEnd){ window.__regScrolledToEnd = true; }
+      updateSubmitGating();
+    }
+    c?.addEventListener('scroll', onScroll);
+    cb?.addEventListener('change', updateSubmitGating);
+    updateSubmitGating();
+  })();
+
+  // Submit: single POST carrying user + KYC + files
+  form?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+
+    if(!document.getElementById('agreeTerms').checked){
+      alert('{% trans "You must agree to the terms." %}'); return;
+    }
+    if(!_pwMeetsPolicy()){
+      alert('{% trans "Password does not meet the required complexity." %}'); return;
+    }
+
+    // normalize phone and full_name (E.164, prevent double country code)
+    const cc = form.country_code?.value || '';
+    const rawPhone = form.phone?.value || '';
+    const e164 = normalizePhoneE164(cc, rawPhone);
+    if (form.phone) form.phone.value = e164;
+
+    // If personal KYC full_name provided, prefer it; else keep User full_name
+    const pfn = (form.full_name_personal?.value||'').trim();
+    if(pfn){ document.getElementById('full_name').value = pfn; }
+
+    const fd = new FormData(form);
+
+    // Map address fields to model field names:
+    const addrPersonal = fd.get('address_personal'); if(addrPersonal){ fd.set('address', addrPersonal); }
+    const addrBusiness = fd.get('address_business'); if(addrBusiness){ fd.set('address', addrBusiness); }
+    fd.delete('address_personal'); fd.delete('address_business');
+
+    form.querySelectorAll('.border-red-500').forEach(el=>el.classList.remove('border-red-500'));
+
+    try{
+      const res = await fetch('{% url "register_customer" %}',{
+        method:'POST',
+        headers:{ 'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]')?.value || '' },
+        body: fd
+      });
+      const resClone = res.clone();
+      const ctype = res.headers.get('content-type') || '';
+      let data = null;
+      let fallbackText = '';
+      if(ctype.includes('application/json')){
+        try{
+          data = await res.json();
+        }catch(parseErr){
+          console.error(parseErr);
+          fallbackText = await resClone.text();
+        }
+      }else{
+        fallbackText = await res.text();
+      }
+
+      const serverMessage = data?.message || fallbackText;
+      const trimmedMessage = (serverMessage || '').trim();
+      const safeMessage = trimmedMessage.startsWith('<') ? '' : serverMessage;
+      if(!res.ok || data?.success === false){
+        alert('❌ ' + (safeMessage || '{% trans "Submission failed." %}'));
+        const fieldName = data?.field;
+        if(fieldName){
+          const fieldEl = form.querySelector(`[name="${fieldName}"]`);
+          fieldEl?.classList.add('border-red-500');
+          if(fieldEl && typeof fieldEl.setCustomValidity === 'function'){
+            fieldEl.setCustomValidity(safeMessage || '{% trans "Please correct this value." %}');
+            fieldEl.reportValidity?.();
+            setTimeout(()=>fieldEl.setCustomValidity(''), 1500);
+          }
+          fieldEl?.focus();
+        }
+        return;
+      }
+
+      alert('✅ ' + (safeMessage || '{% trans "Account created and KYC submitted." %}'));
+      form.reset();
+      updateVisaRequirement();
+      const docPersonalInput = document.getElementById('doc_personal');
+      const visaInput = document.getElementById('visa_last_page');
+      const docBusinessRep = document.getElementById('doc_business_rep');
+      const docBusinessCompany = document.getElementById('doc_business_company');
+      if(docPersonalInput){ renderFileList(docPersonalInput, 'doc_personal_preview'); }
+      if(visaInput){ renderFileList(visaInput, 'visa_last_page_preview'); }
+      if(docBusinessRep){ renderFileList(docBusinessRep, 'doc_business_rep_preview'); }
+      if(docBusinessCompany){ renderFileList(docBusinessCompany, 'doc_business_company_preview'); }
+      window.__regDocsSelected = false;
+      window.__regScrolledToEnd = false;
+      window.__regBusinessDocsAdded = false;
+      updateSubmitGating();
+      closeRegisterModal();
+    }catch(err){
+      console.error(err);
+      alert('⚠️ {% trans "Server error. Please try again later." %}');
+    }
+  });
+});
+</script>

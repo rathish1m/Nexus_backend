@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Invoice {{ order_reference }}</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            font-size: 12px;
+            margin: 40px;
+            color: #333;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .header img {
+            height: 60px;
+        }
+        .company-info {
+            text-align: right;
+        }
+        h2 {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 20px;
+            color: #000;
+        }
+        .section {
+            margin-top: 20px;
+        }
+        .section p {
+            margin: 5px 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+        th, td {
+            padding: 8px;
+            border: 1px solid #ccc;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+        .right {
+            text-align: right;
+        }
+        .total {
+            font-weight: bold;
+            font-size: 14px;
+            text-align: right;
+            margin-top: 15px;
+        }
+        .footer {
+            margin-top: 50px;
+            text-align: center;
+            font-size: 10px;
+            color: #777;
+        }
+    </style>
+</head>
+<body>
+<div class="header">
+    <img src="{{ STATIC_URL }}images/logo/logo.png" alt="Company Logo">
+    <div class="company-info">
+        <strong>NEXUS TELECOM</strong><br>
+        2 Av Du Nord, Plateau Karavia<br>
+        Lubumbashi, RDC<br>
+        contact@nexustelecom.cd
+    </div>
+</div>
+
+<h2>INVOICE</h2>
+
+<div class="section">
+    <p><strong>Invoice Reference:</strong> {{ order_reference }}</p>
+    <p><strong>Date:</strong> {{ order_date }}</p>
+    <p><strong>Status:</strong> {{ status|title }}</p>
+    <p><strong>Payment Method:</strong> {{ payment_method|default:"-" }}</p>
+</div>
+
+<div class="section">
+    <p><strong>Client:</strong> {{ full_name }}</p>
+    <p><strong>Email:</strong> {{ email }}</p>
+    <p><strong>Address:</strong> {{ address }}</p>
+    {% if kyc_type == 'business' %}
+        <p><strong>NIF:</strong> {{ nif }}</p>
+        <p><strong>RCCM:</strong> {{ rccm }}</p>
+        <p><strong>IDNAT:</strong> {{ idnat }}</p>
+    {% endif %}
+</div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th class="right">Amount (USD)</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if payment_for == 'hardware' or 'hardware' in payment_for %}
+        <tr>
+            <td>{{ kit_name|default:"Starlink Hardware Kit" }}</td>
+            <td>One-time</td>
+            <td class="right">{{ kit_price|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        {% if payment_for == 'subscription' or 'subscription' in payment_for %}
+        <tr>
+            <td>{{ plan_name|default:"Internet Subscription" }}</td>
+            <td>Monthly</td>
+            <td class="right">{{ plan_price|floatformat:2 }}</td>
+        </tr>
+        {% endif %}
+
+        {% for tax in taxes %}
+        <tr>
+            <td>{{ tax.name }}</td>
+            <td>Tax</td>
+            <td class="right">{{ tax.amount|floatformat:2 }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<p class="total">Total Amount: ${{ total_price|floatformat:2 }}</p>
+
+<div class="footer">
+    Thank you for your business. For questions, contact billing@nexustelecom.cd
+</div>
+</body>
+</html>

@@ -1,0 +1,98 @@
+{% load static i18n %}
+
+<!-- Subscription Plan Modal -->
+<div id="subscriptionPlanModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-6 border-b border-gray-200">
+        <h3 id="subscriptionPlanModalTitle" class="text-lg font-semibold text-gray-900">{% trans "Add Subscription Plan" %}</h3>
+        <button onclick="closeSubscriptionPlanModal()" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times fa-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6">
+        <form id="subscriptionPlanForm">
+          <input type="hidden" name="plan_id" id="subscription_plan_id">
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="subscription_plan_name" class="block text-sm font-medium text-gray-700">{% trans "Plan Name" %}</label>
+              <input type="text" id="subscription_plan_name" name="name" required
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+              <label for="subscription_plan_kit_type" class="block text-sm font-medium text-gray-700">{% trans "Starlink Kit" %}</label>
+              <select id="subscription_plan_kit_type" name="kit_type" required
+                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="">{% trans "Select kit" %}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label for="subscription_plan_plan_type" class="block text-sm font-medium text-gray-700">{% trans "Plan Type" %}</label>
+              <select id="subscription_plan_plan_type" name="plan_type" required
+                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="">{% trans "Select plan type" %}</option>
+                <option value="unlimited_standard">{% trans "Unlimited Standard Data" %}</option>
+                <option value="limited_standard">{% trans "Limited Standard Data" %}</option>
+                <option value="unlimited_with_priority">{% trans "Unlimited + Priority Data" %}</option>
+                <option value="smart_education">{% trans "Smart Education Impact" %}</option>
+                <option value="smart_health">{% trans "Smart Health / Community Impact" %}</option>
+              </select>
+            </div>
+
+            <div>
+              <label for="subscription_plan_data_gb" class="block text-sm font-medium text-gray-700">{% trans "Data (GB)" %}</label>
+    <input type="number" id="subscription_plan_data_gb" name="data_gb" min="0" step="1"
+      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+      placeholder="{% trans 'Leave empty for unlimited' %}">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <label for="subscription_plan_price" class="block text-sm font-medium text-gray-700">{% trans "Base Price (USD)" %}</label>
+              <input type="number" id="subscription_plan_price" name="price_usd" step="0.01" min="0" required
+                     class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+            </div>
+
+            <div>
+              <label for="subscription_plan_site_type" class="block text-sm font-medium text-gray-700">{% trans "Site Type" %}</label>
+              <select id="subscription_plan_site_type" name="site_type" required
+                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                <option value="">{% trans "Select site type" %}</option>
+                <option value="fixed">{% trans "Fixed Site" %}</option>
+                <option value="portable">{% trans "Portable Site" %}</option>
+                <option value="flexible">{% trans "Flexible Site" %}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <label for="subscription_plan_description" class="block text-sm font-medium text-gray-700">{% trans "Description" %}</label>
+            <textarea id="subscription_plan_description" name="description" rows="3" required
+                      class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"></textarea>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <button onclick="closeSubscriptionPlanModal()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
+          {% trans "Cancel" %}
+        </button>
+        <button onclick="submitSubscriptionPlanForm()"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">
+          {% trans "Save Plan" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

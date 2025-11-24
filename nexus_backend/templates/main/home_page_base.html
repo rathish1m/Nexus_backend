@@ -1,0 +1,1261 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>NEXUS – Starlink Authorised Reseller in DRC</title>
+
+  <!-- Tailwind + Animations + Icons -->
+     <script src="https://cdn.tailwindcss.com"></script>
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'css/output.css' %}"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"/>
+
+  <!-- Optional telephone input -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@17.0.19/build/css/intlTelInput.min.css"/>
+
+  <style>
+    @keyframes fade-in-up {
+      0% { opacity: 0; transform: translateY(30px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in-up { animation: fade-in-up 1s ease-out both; }
+    #goTopBtn { box-shadow: 0 8px 20px rgba(59,130,246,.6); }
+    details[open] .faq-icon { transform: rotate(180deg); }
+    
+    /* Fixed Starlink Reseller Badge */
+    .starlink-badge {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 60; /* Higher than header (z-50) */
+      background: linear-gradient(to right, #000000, #1a1a1a);
+      padding: 0.5rem 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      transition: transform 0.3s ease;
+    }
+    
+    /* Add top padding to header to account for the badge */
+    header.with-badge {
+      padding-top: 3.5rem; /* Adjust based on badge height */
+    }
+    <!-- Starlink Reseller Badge -->
+<div class="fixed top-0 left-0 right-0 z-[60] bg-gradient-to-r from-black to-[#1a1a1a] py-2 shadow-[0_2px_8px_rgba(0,0,0,0.3)] transition-transform duration-300 ease-in-out">
+  <p class="text-center text-white text-sm font-medium">Official Starlink Reseller</p>
+</div>
+
+<!-- Header with badge padding -->
+<header class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur shadow pt-14">
+  <!-- Header content -->
+</header>
+
+    /* Smooth scroll behavior */
+    html {
+      scroll-behavior: smooth;
+    }
+  </style>
+
+  <script>
+    // JavaScript URLs object to avoid Django template tags in AJAX contexts
+    window.nexusUrls = {
+      verify2FA: "{% url 'verify_2fa' %}",
+      resendOTP: "{% url 'resend_otp' %}"
+    };
+
+    // Registration form translations
+    window.registrationTranslations = {
+      validPhoneError: "{% trans 'Please enter a valid DR Congo number (+243).' %}",
+      only243Error: "{% trans 'Only +243 numbers are permitted.' %}",
+      phoneRegisteredError: "{% trans 'This phone number is already registered. Please use another.' %}",
+      registrationFailed: "{% trans 'Registration failed.' %}",
+      serverError: "{% trans 'Server error. Please try again later.' %}",
+      enter6DigitError: "{% trans 'Please enter the 6-digit code.' %}",
+      invalidOTPError: "{% trans 'Invalid OTP. Try again.' %}",
+      resendNotConfigured: "{% trans 'Resend URL is not configured.' %}",
+      unableToResend: "{% trans 'Unable to resend code.' %}",
+      networkError: "{% trans 'Network error.' %}"
+    };
+  </script>
+</head>
+
+<body class="font-sans bg-white text-gray-800">
+
+<!-- ========================= Starlink Authorised Reseller Badge ========================= -->
+<div class="starlink-badge">
+  <div class="max-w-7xl mx-auto px-4 flex justify-center">
+    <img src="{% static 'images/aut_res/strlinkreseller.png' %}" alt="Starlink Authorised Reseller" class="h-8 sm:h-10 w-auto">
+  </div>
+</div>
+
+<!-- ========================= Header ========================= -->
+<header class="fixed top-0 w-full z-50 bg-white/95 backdrop-blur shadow with-badge">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+    <!-- Logo -->
+    <div class="flex items-center gap-3">
+      <img src="{% static 'images/logo/logo.png' %}" alt="NEXUS Logo" class="w-32 sm:w-60 h-auto">
+    </div>
+
+    <!-- Desktop Nav -->
+    <nav class="hidden md:flex items-center gap-6 text-sm">
+      <a href="#steps" class="hover:text-blue-600">{% trans "How It Works" %}</a>
+      <a href="#why" class="hover:text-blue-600">{% trans "Why Nexus" %}</a>
+      <a href="#pricing" class="hover:text-blue-600">{% trans "Pricing" %}</a>
+      <a href="#contact" class="hover:text-blue-600">{% trans "Contact" %}</a>
+      <a href="#faq" class="hover:text-blue-600">{% trans "FAQ" %}</a>
+      <a href="#" onclick="openModal()" class="text-blue-600 font-semibold hover:underline">{% trans "Register" %}</a>
+{# <a href="{% url 'login_page' %}" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">{% trans "Login" %}</a> #}
+{#      #}
+        <button type="button" onclick="openLoginModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+  {% trans "Login" %}
+</button>
+
+        <form method="post" action="{% url 'set_language' %}" class="ml-2">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <select name="language" onchange="this.form.submit()" class="border border-gray-300 text-sm px-2 py-1 rounded text-gray-700">
+          <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
+          <option value="fr" {% if LANGUAGE_CODE == 'fr' %}selected{% endif %}>FR</option>
+        </select>
+      </form>
+    </nav>
+
+    <!-- Mobile Toggle -->
+    <div class="md:hidden">
+      <button id="menu-toggle" class="text-gray-600 focus:outline-none" aria-label="Menu">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div id="mobile-menu" class="hidden md:hidden px-4 pb-4">
+    
+    <a href="#steps" class="block py-2 text-sm text-gray-700 hover:text-blue-600">{% trans "How It Works" %}</a>
+    <a href="#why" class="block py-2 text-sm text-gray-700 hover:text-blue-600">{% trans "Why Nexus" %}</a>
+    <a href="#pricing" class="block py-2 text-sm text-gray-700 hover:text-blue-600">{% trans "Pricing" %}</a>
+    <a href="#contact" class="block py-2 text-sm text-gray-700 hover:text-blue-600">{% trans "Contact" %}</a>
+    <a href="#faq" class="block py-2 text-sm text-gray-700 hover:text-blue-600">{% trans "FAQ" %}</a>
+    <a href="#" onclick="openModal()" class="block py-2 text-sm text-blue-600 font-semibold hover:underline">{% trans "Register" %}</a>
+{#    <a href="{% url 'login_page' %}" class="block py-2 text-sm text-white bg-blue-600 rounded text-center hover:bg-blue-700">{% trans "Login" %}</a>#}
+{#    #}
+      <button type="button" onclick="openLoginModal()" class="w-full block py-2 text-sm text-white bg-blue-600 rounded text-center hover:bg-blue-700">
+  {% trans "Login" %}
+</button>
+
+      <form method="post" action="{% url 'set_language' %}" class="mt-2">
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ request.path }}">
+      <select name="language" onchange="this.form.submit()" class="w-full border border-gray-300 text-sm px-2 py-1 rounded text-gray-700">
+        <option value="en" {% if LANGUAGE_CODE == 'en' %}selected{% endif %}>EN</option>
+        <option value="fr" {% if LANGUAGE_CODE == 'fr' %}selected{% endif %}>FR</option>
+      </select>
+    </form>
+  </div>
+</header>
+
+<!-- ========================= Modal Login TWOFA ========================= -->
+{% include 'partials/modal_login_twofa.html' %}
+
+<!-- ========================= Hero ========================= -->
+<!-- Added pt-24 for extra padding to account for both badge and header -->
+<section
+  class="relative min-h-[850px] flex flex-col items-center justify-center px-6 pt-24 pb-24 bg-cover bg-center bg-no-repeat "
+  style="background-image: url('{% static "images/hero.png" %}')">
+
+  <!-- <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-gray-950"></div> -->
+<div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-gray-950 "></div>
+  <div class="relative z-10 text-center max-w-3xl mx-auto animate__animated animate__fadeInDown">
+    <span class="inline-block bg-blue-700 text-white text-xs font-medium px-3 py-1 rounded-full uppercase tracking-wide mb-5">
+      {% trans "Authorized Starlink Reseller" %}
+    </span>
+    <h1 class="text-4xl sm:text-5xl font-extrabold tracking-tight leading-tight text-white mb-6">
+      {% trans "Satellite Internet. Everywhere." %}
+    </h1>
+    <p class="text-lg sm:text-xl text-gray-300 mb-10">
+      {% trans "Experience global Starlink coverage with Nexus — your trusted reseller in the DRC. Fast, secure, and always connected." %}
+    </p>
+    <div class="flex justify-center gap-4 flex-wrap mb-14">
+      <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition shadow-lg">
+        {% trans "Get Connected with Nexus" %}
+      </button>
+      <a href="#pricing" class="border border-gray-400 hover:border-white hover:text-white text-gray-300 px-6 py-3 rounded-lg transition">
+        {% trans "See Pricing" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="relative z-10 mt-16 w-full max-w-6xl mx-auto">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 px-4 text-center text-white">
+      <div class="bg-gray-900/60 border border-blue-700 rounded-xl p-6 shadow-xl animate-pulse">
+        <i class="fas fa-tachometer-alt text-blue-400 text-3xl mb-3 animate-bounce"></i>
+        <h4 class="text-xl font-semibold mb-1">{% trans "Download Speed" %}</h4>
+        <div class="flex items-center justify-center gap-1 text-2xl font-extrabold">
+          <span id="downloadSpeed">100</span><span class="animate-pulse-fast">–</span><span id="downloadSpeedMax">220</span><span class="text-sm ml-1">Mbps</span>
+        </div>
+        <p class="text-gray-400 text-sm mt-1">{% trans "Stream & work effortlessly" %}</p>
+      </div>
+
+      <div class="bg-gray-900/60 border border-green-700 rounded-xl p-6 shadow-xl animate-pulse">
+        <i class="fas fa-upload text-green-400 text-3xl mb-3 animate-bounce"></i>
+        <h4 class="text-xl font-semibold mb-1">{% trans "Upload Speed" %}</h4>
+        <div class="flex items-center justify-center gap-1 text-2xl font-extrabold">
+          <span id="uploadSpeed">10</span><span class="animate-pulse-fast">–</span><span id="uploadSpeedMax">25</span><span class="text-sm ml-1">Mbps</span>
+        </div>
+        <p class="text-gray-400 text-sm mt-1">{% trans "Great for cloud & calls" %}</p>
+      </div>
+
+      <div class="bg-gray-900/60 border border-yellow-600 rounded-xl p-6 shadow-xl animate-pulse">
+        <i class="fas fa-stopwatch text-yellow-400 text-3xl mb-3 animate-spin-slow"></i>
+        <h4 class="text-xl font-semibold mb-1">{% trans "Latency" %}</h4>
+        <div class="flex items-center justify-center gap-1 text-2xl font-extrabold">
+          <span id="latency">20</span><span class="animate-pulse-fast">–</span><span id="latencyMax">40</span><span class="text-sm ml-1">ms</span>
+        </div>
+    <p class="text-gray-400 text-sm mt-1">{% trans "Low ping gaming & voice" %}</p>
+      </div>
+
+      <div class="bg-gray-900/60 border border-purple-600 rounded-xl p-6 shadow-xl">
+        <i class="fas fa-signal text-purple-400 text-3xl mb-3 animate-pulse"></i>
+        <h4 class="text-xl font-semibold mb-1">{% trans "Uptime" %}</h4>
+        <div class="flex items-center justify-center gap-1 text-2xl font-extrabold">
+          <span id="uptime">99.9%</span>
+        </div>
+        <p class="text-gray-400 text-sm mt-1">{% trans "Reliable & consistent" %}</p>
+        </div>
+      </div>
+        </div>
+</section>
+
+
+
+<!-- ========================= How It Works ========================= -->
+  <section id="steps" class="bg-gray-950 text-white py-24 px-4 sm:px-8 scroll-mt-36">
+  <div class="max-w-7xl mx-auto relative">
+    <div class="text-center mb-16">
+      <h2 class="text-4xl sm:text-5xl font-extrabold mb-4">{% trans "How It Works" %}</h2>
+      <p class="text-gray-300 text-lg max-w-2xl mx-auto">
+        {% trans "Just 5 simple steps to get your Starlink connection activated anywhere in the DRC." %}
+      </p>
+    </div>
+
+    <div class="hidden lg:block absolute top-[280px] left-1/2 -translate-x-1/2 w-[80%] h-1 z-0">
+      <div class="w-full h-full bg-gradient-to-r from-blue-500 via-green-500 to-purple-500 animate-pulse rounded-full"></div>
+    </div>
+
+    <div class="relative z-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 text-center">
+      <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-blue-600 shadow-lg transition">
+        <div class="text-blue-500 text-4xl mb-4"><i class="fas fa-user-plus"></i></div>
+        <h3 class="text-lg font-semibold mb-2">{% trans "1. Create Account" %}</h3>
+        <p class="text-gray-400 text-sm">{% trans "Sign up with your email and phone number to begin." %}</p>
+      </div>
+
+      <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-green-600 shadow-lg transition">
+        <div class="text-green-500 text-4xl mb-4"><i class="fas fa-id-card"></i></div>
+        <h3 class="text-lg font-semibold mb-2">{% trans "2. Verify Identity" %}</h3>
+        <p class="text-gray-400 text-sm">{% trans "Upload ID or business documents for KYC verification." %}</p>
+      </div>
+
+      <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-yellow-500 shadow-lg transition">
+        <div class="text-yellow-400 text-4xl mb-4"><i class="fas fa-map-marked-alt"></i></div>
+        <h3 class="text-lg font-semibold mb-2">{% trans "3. Select Plan" %}</h3>
+        <p class="text-gray-400 text-sm">{% trans "Choose your Starlink package and mark your location." %}</p>
+      </div>
+
+      <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-teal-500 shadow-lg transition">
+        <div class="text-teal-400 text-4xl mb-4"><i class="fas fa-credit-card"></i></div>
+        <h3 class="text-lg font-semibold mb-2">{% trans "4. Make Payment" %}</h3>
+        <p class="text-gray-400 text-sm">{% trans "Pay securely via Mobile Money, Card or Bank." %}</p>
+      </div>
+
+      <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 hover:border-purple-600 shadow-lg transition">
+        <div class="text-purple-400 text-4xl mb-4"><i class="fas fa-satellite-dish"></i></div>
+        <h3 class="text-lg font-semibold mb-2">{% trans "5. Install & Go Live" %}</h3>
+        <p class="text-gray-400 text-sm">{% trans "A technician installs your kit and activates service." %}</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================= Why Nexus ========================= --> 
+<section id="why" class="py-24 bg-gray-950 text-white px-6 text-center scroll-mt-36">
+  <div class="max-w-7xl mx-auto">
+    <h2 class="text-4xl sm:text-5xl font-extrabold mb-6 animate__animated animate__fadeInDown">
+      {% trans "Why Choose Nexus?" %}
+    </h2>
+    <p class="text-lg text-gray-300 mb-16 max-w-2xl mx-auto animate__animated animate__fadeInUp"> 
+      {% trans "As a certified Starlink reseller in the DRC, Nexus goes beyond internet delivery — we empower your digital journey with local support, enterprise-grade solutions, and intelligent add-ons tailored to your lifestyle or business." %}
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/support-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Local Support">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Local Support" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "24/7 support teams based in Kinshasa, Lubumbashi, and Kolwezi for direct assistance." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/technicien-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Technicians">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Certified Technicians" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Our trained field engineers handle your Starlink installation and configuration on-site." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/wifi-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Wi-Fi">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Managed Wi-Fi" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Get complete Wi-Fi setup, optimization, and remote troubleshooting bundled with your kit." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/network-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="IP">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Static IP & Networking" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Optional static IPs and custom routing configurations for businesses and IT departments." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/security-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Security">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Cybersecurity Add-ons" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Enhance your Starlink setup with endpoint protection, firewalls, and secured browsing." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/analitycs-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Analytics">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Usage & Analytics" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Business plans include data usage tracking, uptime reports, and remote device management." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/payments-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Payment">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Secure Payments" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Pay with Mobile Money, Visa/MasterCard, or bank transfers – fully encrypted and trackable." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/nations-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="Coverage">
+        <h4 class="text-xl font-semibold mb-2">{% trans "Nationwide Reach" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Kits delivered anywhere in DRC: from Goma to Tshikapa, Kinshasa to Bunia." %}
+        </p>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 hover:shadow-xl transition hover:-translate-y-1">
+        <img src="{% static 'icons/fieldops-min.png' %}" class="w-10 h-10 mx-auto mb-4" alt="NGO">
+        <h4 class="text-xl font-semibold mb-2">{% trans "NGO & Field Solutions" %}</h4>
+        <p class="text-gray-400 text-sm">
+          {% trans "Special packages for humanitarian, medical, and emergency operations with priority setup." %}
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ========================= Pricing (adds Reseller plan) ========================= -->
+
+    <section id="pricing" class="relative bg-gradient-to-b from-white to-gray-50 text-gray-900 py-24 px-6 scroll-mt-20">
+        <!-- Decorative background shapes -->
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0 overflow-hidden">
+    <span class="absolute -top-24 -left-24 h-72 w-72 rounded-full bg-blue-100 blur-3xl opacity-50"></span>
+    <span class="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-indigo-100 blur-3xl opacity-50"></span>
+  </div>
+  
+  <div class="max-w-6xl mx-auto">
+    <div class="text-center mb-14">
+      <span class="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-blue-700/80">
+        <i class="fa-solid fa-tags"></i> {% trans "Pricing" %}
+      </span>
+      <h2 class="mt-3 text-4xl sm:text-5xl font-extrabold">
+        {% trans "Clear, Professional Plans" %}
+      </h2>
+      <p class="mt-3 text-gray-600 max-w-2xl mx-auto">
+        {% trans "Choose the package that fits your needs. Simple terms, strong service, zero surprises." %}
+      </p>
+
+      <!-- Billing Toggle -->
+      <div id="billing-toggle" class="mt-7 inline-flex items-center rounded-full border border-gray-200 bg-gray-50 p-1 shadow-sm" role="tablist" aria-label="Billing period">
+        <button id="bill-m" type="button" data-announce="{% trans 'Billing updated: Monthly' %}" class="px-5 py-2 rounded-full text-sm font-medium bg-white shadow" aria-selected="true" role="tab">
+          {% trans "Monthly" %}
+        </button>
+        <button id="bill-y" type="button" data-announce="{% trans 'Billing updated: Yearly' %}" class="px-5 py-2 rounded-full text-sm font-medium text-gray-600 hover:text-gray-900" aria-selected="false" role="tab">
+          {% trans "Yearly" %} <span class="ml-1 text-emerald-600 font-semibold">-10%</span>
+        </button>
+      </div>
+      <p class="mt-2 text-xs text-gray-500">{% trans "Billed in USD. Tax-inclusive Pricing." %}</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8">
+      <!-- Residential -->
+      <article class="group relative rounded-2xl border border-gray-200 bg-white/90 p-7 lg:p-8 shadow-sm hover:shadow-lg hover:-translate-y-1 transition focus-within:ring-2 focus-within:ring-blue-500/40" role="region" aria-labelledby="plan-residential">
+        <div class="absolute right-5 top-5 h-9 w-16 flex items-center justify-center rounded-full bg-blue-50 text-blue-700 space-x-2">
+          <i class="fa-solid fa-house-signal"></i>
+          <i class="fa-solid fa-building"></i>
+        </div>
+        <h3 id="plan-residential" class="text-xl font-bold">{% trans "Fixed Site Plans" %}</h3>
+        <p class="mt-1 text-sm text-gray-600">{% trans "Ideal for homes and businesses seeking reliable satellite connectivity." %}</p>
+        <div class="mt-6 flex items-end gap-2">
+          <span class="text-4xl font-extrabold plan-price" data-monthly="21" data-yearly="210">$21</span>
+          <span class="text-gray-500 mb-1 plan-period">/mo</span>
+          <span class="ml-2 mb-1 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 save-badge hidden">{% trans "Save 10%" %}</span>
+        </div>
+        <p class="text-xs text-gray-500">{% trans "Kits: starting from $499 onwards" %}</p>
+        <ul class="mt-6 space-y-2 text-sm">
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Download speeds: Upto 220 Mbps" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Latency: Low latency 20–40ms" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Wi-Fi: Managed Wi-Fi setup" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Support: Email & chat support" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Advanced options: Optional static IP & VLAN" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Monitoring: Remote monitoring" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Pricing: Monthly subscriptions start at $21.00, with data packages from 50GB to 3TB" %}</li>
+        </ul>
+        <button onclick="openModal()" class="mt-7 w-full rounded-lg bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition">
+          {% trans "Choose Fixed Site" %}
+        </button>
+      </article>
+
+      <!-- Business (Most Popular) -->
+      <article class="group relative rounded-2xl border-2 border-blue-600/20 bg-white p-7 lg:p-8 shadow-lg hover:shadow-xl hover:-translate-y-1 transition focus-within:ring-2 focus-within:ring-blue-500/40" role="region" aria-labelledby="plan-business">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white shadow">
+            {% trans "Coming Soon" %}
+          </span>
+        </div>
+        <div class="absolute right-5 top-5 h-9 w-9 grid place-items-center rounded-full bg-blue-600/10 text-blue-700">
+          <i class="fa-solid fa-route"></i>
+        </div>
+        <h3 id="plan-business" class="text-xl font-bold">{% trans "Roaming Plans" %}</h3>
+        <p class="mt-1 text-sm text-gray-600">{% trans "Perfect for staying connected while on the move." %}</p>
+        <div class="mt-6 flex items-end gap-2">
+          <span class="text-4xl font-extrabold plan-price" data-monthly="150" data-yearly="1500">$150</span>
+          <span class="text-gray-500 mb-1 plan-period">/mo</span>
+          <span class="ml-2 mb-1 inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-2 py-0.5 save-badge hidden">{% trans "Save 10%" %}</span>
+        </div>
+        <p class="text-xs text-gray-500">{% trans "Kit: $280 onwards" %}</p>
+        <ul class="mt-6 space-y-2 text-sm">
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Use Case: In-motion connectivity" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Coverage: Nationwide satellite coverage" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Flexibility: Pause and resume service as needed" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Hardware: Vehicle mount options available" %}</li>
+          <li class="flex gap-2"><i class="fa-solid fa-check text-emerald-600 mt-1"></i>{% trans "Support: Included with every plan" %}</li>
+          <li><br><br><br></li>
+        </ul>
+        <button class="mt-7 w-full rounded-lg bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition">
+          {% trans "Choose Roaming" %}
+        </button>
+        
+      </article>
+    </div>
+  </div>
+</section>
+
+      <!-- Reseller / Partner -->
+      <!-- <article class="group relative rounded-2xl border border-amber-500/30 bg-white p-7 lg:p-8 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition">
+        <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+          <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500 text-white shadow">
+            {% trans "For Partners" %}
+          </span>
+        </div>
+        <div class="absolute right-5 top-5 h-9 w-9 grid place-items-center rounded-full bg-amber-50 text-amber-700">
+          <i class="fa-solid fa-handshake"></i>
+        </div>
+        <h3 class="text-xl font-bold">{% trans "Reseller / Partner" %}</h3>
+        <p class="mt-6 text-sm text-gray-600">
+          {% trans "If you are interested in being a reseller/partner please contact us at:" %}<br>
+          <a href="mailto:partner@nexus.cd" class="text-blue-600 hover:underline font-semibold">partner@nexus.cd</a>
+        </p>
+      </article> -->
+    </div>
+  </div>
+  <!-- <div class="max-w-6xl mx-auto mt-8 border-8 border-red-500"> -->
+  <p class="mt-3 text-sm text-gray-500 text-center" >{% trans "Performance may vary by location. Business priority applies during network congestion. Reseller benefits subject to program terms." %}  </p>
+<div class="text-center mt-8 mb-12">
+  <button onclick="document.getElementById('compareModal').classList.remove('hidden')" 
+           class="inline-flex items-center gap-2 rounded-lg bg-blue-600 text-white px-6 py-3 font-semibold hover:bg-blue-700 transition">
+    <i class="fa-solid fa-code-compare"></i> {% trans "Compare Plans" %}
+  </button>
+  <button onclick="openModal()" 
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-black transition ml-4">
+    <i class="fa-solid fa-headset"></i> {% trans "Talk to Sales" %}
+  </button>
+  
+</div>
+</div>
+        
+</section>
+<script src="{% static 'client_app/js/mainpg_pricing.js' %}"></script>
+
+<script src="{% static 'client_app/js/gmail_subsc.js' %}"></script>
+<!-- 
+ <p class="mt-3 text-sm text-gray-500 text-center" >{% trans "Performance may vary by location. Business priority applies during network congestion. Reseller benefits subject to program terms." %}  </p>
+ Compare Plans Button 
+
+<div class="text-center mt-8 mb-12">
+  <button onclick="document.getElementById('compareModal').classList.remove('hidden')" 
+           class="inline-flex items-center gap-2 rounded-lg bg-blue-600 text-white px-6 py-3 font-semibold hover:bg-blue-700 transition">
+    <i class="fa-solid fa-code-compare"></i> {% trans "Compare Plans" %}
+  </button>
+  <button onclick="openModal()" 
+          class="inline-flex items-center gap-2 rounded-lg bg-gray-900 text-white px-6 py-3 font-semibold hover:bg-black transition ml-4">
+    <i class="fa-solid fa-headset"></i> {% trans "Talk to Sales" %}
+  </button>
+</div> -->
+
+
+</div>
+
+<!-- Comparison Modal -->
+ 
+<div id="compareModal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" 
+     onclick="if(event.target === this) this.classList.add('hidden')">
+  <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <!-- Modal Header -->
+    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+      <h3 class="text-2xl font-bold">{% trans "Compare Plans" %}</h3>
+      <button onclick="document.getElementById('compareModal').classList.add('hidden')" 
+              class="text-gray-500 hover:text-gray-700 text-2xl">
+        &times;
+      </button>
+      
+    </div> 
+    
+
+    <!-- Modal Content -->
+    <div class="p-6">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border border-gray-200 rounded-lg">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="px-4 py-3 text-left">{% trans "Feature" %}</th>
+              <th class="px-4 py-3 text-center">{% trans "Residential" %}</th>
+              <th class="px-4 py-3 text-center bg-blue-50">{% trans "Business" %}</th>
+              <th class="px-4 py-3 text-center">{% trans "Reseller" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr>
+              <td class="px-4 py-3">{% trans "Download speeds" %}</td>
+              <td class="px-4 py-3 text-center">100–220 Mbps</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">{% trans "Priority throughput" %}</td>
+              <td class="px-4 py-3 text-center">{% trans "Varies by tier" %}</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3">{% trans "Latency" %}</td>
+              <td class="px-4 py-3 text-center">20–40 ms</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">20–40 ms</td>
+              <td class="px-4 py-3 text-center">{% trans "Varies by tier" %}</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3">{% trans "Static IP (add-on)" %}</td>
+              <td class="px-4 py-3 text-center">—</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">✓</td>
+              <td class="px-4 py-3 text-center">✓</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3">{% trans "SLA & priority support" %}</td>
+              <td class="px-4 py-3 text-center">—</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">✓</td>
+              <td class="px-4 py-3 text-center">✓</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3">{% trans "Installation type" %}</td>
+              <td class="px-4 py-3 text-center">{% trans "Fixed" %}</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">{% trans "Fixed" %}</td>
+              <td class="px-4 py-3 text-center">{% trans "Flexible" %}</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3">{% trans "Partner portal & billing" %}</td>
+              <td class="px-4 py-3 text-center">—</td>
+              <td class="px-4 py-3 text-center bg-blue-50/30">—</td>
+              <td class="px-4 py-3 text-center">✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+   </div>
+</section>
+
+<!-- ========================= Contact ========================= -->
+<section id="contact" class="relative bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 text-white py-36 px-4 sm:px-8 overflow-hidden">
+  <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+
+  <div class="relative z-10 max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-16 items-start">
+    <!-- Form -->
+    <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-10 sm:p-12 animate__animated animate__fadeInLeft border border-white/10">
+      <h3 class="text-3xl font-extrabold text-white mb-6">{% trans "Get in Touch" %}</h3>
+      <form action="#" method="POST" class="space-y-6">
+         {% csrf_token %}
+        <div>
+          <label for="name" class="block text-sm font-medium text-white mb-1">{% trans "Full Name" %}</label>
+          <input type="text" id="name" name="name" placeholder="{% trans 'Jane Doe' %}"
+                 class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:bg-white/30">
+        </div>
+        <div>
+          <label for="email" class="block text-sm font-medium text-white mb-1">{% trans "Email Address" %}</label>
+          <input type="email" id="email" name="email" placeholder="jane@example.com"
+                 class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:bg-white/30">
+        </div>
+        <div>
+          <label for="subject" class="block text-sm font-medium text-white mb-1">{% trans "Subject" %}</label>
+          <input type="text" id="subject" name="subject" placeholder="{% trans 'Reseller application' %}"
+                 class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:bg-white/30">
+        </div>
+        <div>
+          <label for="message" class="block text-sm font-medium text-white mb-1">{% trans "Message" %}</label>
+          <textarea id="message" name="message" rows="5" placeholder="{% trans 'Write your message here...' %}"
+                    class="w-full px-4 py-3 rounded-lg bg-white/20 text-white placeholder-gray-300 border border-white/20 focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:bg-white/30 resize-none"></textarea>
+        </div>
+        <div class="text-center">
+          <button type="submit"
+                  class="bg-cyan-500 hover:bg-cyan-600 text-white font-bold px-8 py-3 rounded-full shadow-lg transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+            {% trans "Send Message" %}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Offices -->
+    <div class="text-white space-y-6 animate__animated animate__fadeInRight animate__slower">
+      <h3 class="text-3xl font-extrabold mb-6">{% trans "Our Office Network" %}</h3>
+
+      <div class="space-y-5 text-white">
+        <div class="flex items-start space-x-4 group">
+         
+<div class="space-y-6">
+  <div class="flex items-start space-x-4 group">
+    <i class="fas fa-building text-blue-400 text-xl animate__animated animate__fadeInLeft animate__delay-1s"></i>
+    <div>
+      <h4 class="font-semibold text-lg">{% trans "Lubumbashi" %}</h4>
+      <ul class="text-gray-300 text-sm list-disc pl-5">
+        <li><strong>{% trans "Head Office" %}</strong><br>{% trans "8273, Avenue Lukonzolwa, Lubumbashi, DRC" %}</li>
+        <li><strong>{% trans "Sales Office" %}</strong><br>{% trans "La Plage, Lubumbashi. DRC" %}</li>
+      </ul>
+    </div>
+  </div>
+  <div class="flex items-start space-x-4 group">
+    <i class="fas fa-store text-green-400 text-xl animate__animated animate__fadeInLeft animate__delay-1s"></i>
+    <div>
+      <h4 class="font-semibold text-lg">{% trans "Kolwezi" %}</h4>
+      <ul class="text-gray-300 text-sm list-disc pl-5">
+        <li><strong>{% trans "Sales Office" %}</strong><br>{% trans "La Joie Mall, Kolwezi, DRC" %}</li>
+      </ul>
+    </div>
+  </div>
+  <div class="flex items-start space-x-4 group">
+    <i class="fas fa-store text-yellow-400 text-xl animate__animated animate__fadeInLeft animate__delay-1s"></i>
+    <div>
+      <h4 class="font-semibold text-lg">{% trans "Kinshasa" %}</h4>
+      <ul class="text-gray-300 text-sm list-disc pl-5">
+        <li><strong>{% trans "Sales Office" %}</strong><br>{% trans "Kinshasa Mall, Kinshasa" %}</li>
+        <li><strong>{% trans "Administration & Operations Office" %}</strong><br>{% trans "Avenue Mongala, Kinshasa" %}</li>
+      </ul>
+    </div>
+    
+  </div>
+  <br><br><br><br><br>
+  <div><h3 class="text-xl font-bold ">{% trans "Reseller / Partner" %}</h3>
+        <p class="mt-2 text-sm text-white">
+          {% trans "If you are interested in being a reseller/partner please contact us at:" %}
+          <a href="mailto:partner@nexus.cd" class="text-green-600 hover:underline font-semibold">partner@nexus.cd</a>
+        </p>
+        </div>
+</div>
+
+
+    </div>
+  </div>
+</section>
+</div>
+<!-- ========================= Modal Include ========================= -->
+{% include "main/partials/modal_registration_otp.html" %}
+
+<!-- ========================= Footer with FAQs ========================= -->
+<footer class="bg-gray-900 text-gray-300 pt-8 scroll-mt-36"  id="faq">
+  <div class="max-w-7xl mx-auto px-6">
+    <!-- Top: Newsletter / Quick CTA -->
+     <h4 class="text-4xl font-bold text-white mb-1" > <br>{% trans "Frequently Asked Questions" %}</h4>
+<div class="py-14 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+  <div class="space-y-3">
+    <!-- <h4 class="text-2xl font-bold text-white mb-6">{% trans "Frequently Asked Questions" %}</h4> -->
+
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "How long does installation take?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Most installations complete within 2–3 hours, depending on roof access and cabling path." %}
+      </p>
+    </details>
+
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "Can I get a static IP?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Yes—available on Business and Reseller plans. We can also configure VLANs and QoS if needed." %}
+      </p>
+    </details>
+
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "Which areas do you cover?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Nationwide across DRC. We ship and install in major cities and remote locations." %}
+      </p>
+    </details>
+
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "What payment options do you accept?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Mobile Money, Visa/MasterCard, and bank transfers are supported." %}
+      </p>
+    </details>
+
+     <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "I’ve already purchased a Starlink kit. Can I still use Nexus services and support?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Absolutely! You can request a Kit Migration to bring your existing Starlink hardware under Nexus support. Just get in touch with us, and we’ll guide you through the process" %}
+      </p>
+    </details>
+    </div>
+  <!-- Column 2 -->
+  <div class="space-y-3">
+  
+   
+
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "Do you offer installation on weekends?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Yes, weekend installations are available upon request in most regions." %}
+      </p>
+    </details>
+  
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "What speeds can I expect?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Typically, 50–250 Mbps download and 10–20 Mbps upload." %}
+      </p>
+    </details>
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "Can I move my Starlink dish?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Only with a roaming plan." %}
+      </p>
+    </details>
+     <!-- <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+      <summary class="cursor-pointer list-none flex items-center justify-between">
+        <span class="font-medium">{% trans "What is the difference between the Standard Kit and the Minikit?" %}</span>
+        <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+      </summary>
+      <p class="mt-3 text-sm text-gray-400">
+        {% trans "Please refer to the table below" %}
+      </p>
+    </details> -->
+    <details class="bg-white/5 rounded-lg border border-white/10 p-4 group transition">
+  <summary class="cursor-pointer list-none flex items-center justify-between">
+    <span class="font-medium">{% trans "What is the difference between the Standard Kit and the Minikit?" %}</span>
+    <i class="fa-solid fa-chevron-down faq-icon transition-transform"></i>
+  </summary>
+  <p class="mt-3 text-sm text-gray-400">
+    {% trans "Click on :-" %}
+    <button onclick="document.getElementById('kitComparisonModal').classList.remove('hidden')" 
+            class="ml-2 text-blue-400 hover:text-blue-300 underline">
+      {% trans "View Comparison" %}
+    </button>
+  </p>
+</details>
+
+ <!-- Kit Comparison Modal -->
+<div id="kitComparisonModal" class="hidden fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" 
+     onclick="if(event.target === this) this.classList.add('hidden')">
+  <div class="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+    <!-- Modal Header -->
+    <div class="sticky top-0 bg-white border-b px-6 py-4 flex justify-between items-center">
+      <h3 class="text-2xl font-bold text-gray-900">{% trans "Kit Comparison" %}</h3>
+      <button onclick="document.getElementById('kitComparisonModal').classList.add('hidden')" 
+              class="text-gray-500 hover:text-gray-700 text-2xl">
+        &times;
+      </button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="p-6">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border border-gray-200 rounded-lg">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold text-gray-900">{% trans "Feature" %}</th>
+              <th class="px-4 py-3 text-left font-semibold text-gray-900">{% trans "Starlink Standard Kit" %}</th>
+              <th class="px-4 py-3 text-left font-semibold text-gray-900 bg-blue-50">{% trans "Starlink Mini Kit" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-200">
+            <tr>
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Primary Use" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Fixed locations like homes and businesses" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Portable, on-the-go use (e.g., camping, RVs)" %}</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Size & Portability" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Larger and heavier, less portable" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Compact and lightweight, designed to fit in a backpack" %}</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Router" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Separate external router" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Built into the antenna itself" %}</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Speed" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Generally higher average download speeds (e.g., 100–250 Mbps)" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Lower average speeds (e.g., 50–150 Mbps)" %}</td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Power Consumption" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Higher power consumption (around 70 watts), uses standard wall power" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Lower power consumption, more energy-efficient" %}</td>
+            </tr>
+            <tr class="bg-gray-50">
+              <td class="px-4 py-3 font-medium text-gray-900">{% trans "Included Equipment" %}</td>
+              <td class="px-4 py-3 text-gray-800">{% trans "Antenna, Gen 3 router, cables" %}</td>
+              <td class="px-4 py-3 text-gray-800 bg-blue-50/30">{% trans "Antenna with integrated router, kickstand, pipe adapter, and cables" %}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+  </div>
+
+  <!-- Column 3 -->
+   <!-- <div class="bg-white/5 rounded-2xl border border-white/10 p-6 flex flex-col justify-center"> -->
+        <div class="flex flex-col justify-center  p-6">
+    <h5 class="text-white font-semibold mb-3">{% trans "Still have questions?" %}</h5>
+    <p class="text-gray-400 text-sm mb-5">
+      {% trans "Our team is happy to advise on coverage, plans and installation specifics." %}
+    </p>
+    <a href="#contact" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+      <i class="fa-solid fa-envelope-open-text"></i> {% trans "Contact Support" %}
+    </a>
+  </div>
+  
+</div>
+<!-- break point -->
+ 
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-10 pb-14 pt-6 border-t border-b border-white/10">
+      <div>
+        <img src="{% static 'images/logo/logo.png' %}" alt="NEXUS" class="w-40 mb-4">
+        <p class="text-sm text-gray-400">
+          {% trans "Official Starlink reseller in the DRC. Reliable connectivity, professional install, and local support." %}
+        </p>
+        <div class="mt-4 flex gap-3 text-xl">
+          <a href="https://www.facebook.com/people/Nexus-Telecoms-RDC/61582669302837/" class="hover:text-white"><i class="fab fa-facebook"></i></a>
+          <a href="https://x.com/NexusStarlink" class="hover:text-white"><i class="fab fa-x-twitter"></i></a>
+          <a href="https://www.linkedin.com/company/nexus-telecoms" class="hover:text-white"><i class="fab fa-linkedin"></i></a>
+          <a href="https://www.instagram.com/nexustelecomsrdc/" class="hover:text-white"><i class="fab fa-instagram"></i></a>
+          <a href="https://www.tiktok.com/@nexustelecomsrdc" class="hover:text-white" target="_blank" rel="noopener noreferrer"> <i class="fa-brands fa-tiktok"></i> </a>
+
+        </div>
+      </div>
+
+      <div>
+        <h4 class="font-semibold text-white mb-3">{% trans "Quick Links" %}</h4>
+        <ul class="space-y-2 text-sm">
+          <li><a class="hover:text-white" href="#pricing">{% trans "Pricing" %}</a></li>
+          <li><a class="hover:text-white" href="#steps">{% trans "How It Works" %}</a></li>
+          <li><a class="hover:text-white" href="#why">{% trans "Why Nexus" %}</a></li>
+          <li><a class="hover:text-white" href="#contact">{% trans "Contact" %}</a></li>
+          <li><a class="hover:text-white" href="#" onclick="openModal()">{% trans "Register" %}</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h4 class="font-semibold text-white mb-3">{% trans "Stay Updated" %}</h4>
+        <p class="text-sm text-gray-400 mb-3">{% trans "Get news and promo updates." %}</p>
+    
+<form id="newsletter-form" class="flex gap-2">
+  <input type="email" name="email" required placeholder="you@example.com"
+         class="w-full px-4 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500">
+  <button type="submit" class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">  Join  </button>
+</form>
+      </div>
+    </div>
+    
+
+</div>
+
+
+
+    <!-- Bottom bar -->
+    <div class="border-t border-white/10 py-6 text-sm text-center text-gray-400">
+      &copy; 2025 Nexus Telecom – {% trans "Official Starlink Reseller in DRC" %}. {% trans "All rights reserved." %}
+    </div>
+  </div>
+</footer>
+
+<!-- ========================= Go to Top Button ========================= -->
+<button id="goTopBtn" onclick="scrollToTop()" title="Go to top"
+        class="hidden fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-2xl bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 text-white text-xl transition duration-300 hover:scale-110 hover:from-blue-700 hover:to-cyan-500">
+  <i class="fas fa-arrow-up"></i>
+</button>
+
+<!-- ========================= Scripts ========================= -->
+<script>
+  function openModal() {
+    const modal = document.getElementById('modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      document.body.classList.add('overflow-hidden');
+    }
+  }
+  function closeModal() {
+    const modal = document.getElementById('modal');
+    if (modal) {
+      modal.classList.add('hidden');
+      document.body.classList.remove('overflow-hidden');
+    }
+  }
+
+  // Mobile nav
+  const menuToggle = document.getElementById('menu-toggle');
+  const mobileMenu = document.getElementById('mobile-menu');
+  if (menuToggle) {
+    menuToggle.addEventListener('click', () => {
+      mobileMenu.classList.toggle('hidden');
+    });
+  }
+
+  // GoTop visibility
+  const goTopBtn = document.getElementById("goTopBtn");
+  window.addEventListener('scroll', () => {
+    if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+      goTopBtn.classList.remove("hidden");
+    } else {
+      goTopBtn.classList.add("hidden");
+    }
+  });
+  function scrollToTop() { window.scrollTo({ top: 0, behavior: 'smooth' }); }
+
+  // Pricing: monthly/yearly toggle
+  (function () {
+    const mBtn = document.getElementById('bill-m');
+    const yBtn = document.getElementById('bill-y');
+    const prices = document.querySelectorAll('#pricing .plan-price');
+    const periods = document.querySelectorAll('#pricing .plan-period');
+
+    function setBilling(mode) {
+      const yearly = mode === 'yearly';
+      prices.forEach(el => {
+        const m = el.getAttribute('data-monthly');
+        const y = el.getAttribute('data-yearly');
+        el.textContent = '$' + (yearly ? y : m);
+      });
+      periods.forEach(el => el.textContent = yearly ? '/yr' : '/mo');
+
+      mBtn.classList.toggle('bg-white', !yearly);
+      mBtn.classList.toggle('shadow', !yearly);
+      mBtn.classList.toggle('text-gray-900', !yearly);
+      mBtn.classList.toggle('text-gray-600', yearly);
+      mBtn.setAttribute('aria-selected', (!yearly).toString());
+
+      yBtn.classList.toggle('bg-white', yearly);
+      yBtn.classList.toggle('shadow', yearly);
+      yBtn.classList.toggle('text-gray-900', yearly);
+      yBtn.classList.toggle('text-gray-600', !yearly);
+      yBtn.setAttribute('aria-selected', yearly.toString());
+    }
+
+    if (mBtn && yBtn) {
+      mBtn.addEventListener('click', () => setBilling('monthly'));
+      yBtn.addEventListener('click', () => setBilling('yearly'));
+      setBilling('monthly');
+    }
+  })();
+</script>
+
+<script>
+  // ===== Login Modal controls =====
+  function openLoginModal() {
+    const m = document.getElementById('loginModal');
+    if (!m) return;
+    m.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    setTimeout(() => document.getElementById('login_username')?.focus(), 50);
+  }
+  function closeLoginModal() {
+    const m = document.getElementById('loginModal');
+    if (!m) return;
+    m.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    // reset form + alerts
+    const f = document.getElementById('loginFormModal');
+    const a = document.getElementById('login-alert-modal');
+    f?.reset();
+    if (a) { a.className = 'hidden mb-4 px-4 py-2 rounded text-sm'; a.textContent = ''; }
+    toggleBtnLoading(document.getElementById('loginSubmitBtn'), false);
+  }
+
+  // ===== 2FA Modal controls =====
+  function openTwoFAModal() {
+    const m = document.getElementById('twoFAModal');
+    if (!m) return;
+    m.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    setTimeout(() => document.getElementById('twofa_code')?.focus(), 50);
+  }
+  function closeTwoFAModal() {
+    const m = document.getElementById('twoFAModal');
+    if (!m) return;
+    m.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    const f = document.getElementById('twoFAForm');
+    const a = document.getElementById('twofa-alert');
+    f?.reset();
+    if (a) { a.className = 'hidden mb-3 px-4 py-2 rounded text-sm'; a.textContent = ''; }
+    toggleBtnLoading(document.getElementById('twofaVerifyBtn'), false);
+  }
+
+  // Close on ESC
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') { closeLoginModal(); closeTwoFAModal(); }
+  });
+
+  // ===== Helpers =====
+  function toggleBtnLoading(btn, loading) {
+    if (!btn) return;
+    const label = btn.querySelector('[data-label]');
+    const spin  = btn.querySelector('[data-spinner]');
+    if (loading) {
+      btn.setAttribute('disabled', 'disabled');
+      label?.classList.add('hidden');
+      spin?.classList.remove('hidden');
+    } else {
+      btn.removeAttribute('disabled');
+      label?.classList.remove('hidden');
+      spin?.classList.add('hidden');
+    }
+  }
+  function showAlert(el, msg, ok=false) {
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = (ok
+      ? 'bg-green-50 text-green-700'
+      : 'bg-red-100 text-red-700'
+    ) + ' px-4 py-2 rounded text-sm mb-4';
+    el.classList.remove('hidden');
+  }
+
+  // ===== AJAX: Login -> maybe 2FA -> redirect =====
+  (function initAuthFlows(){
+    const loginForm = document.getElementById('loginFormModal');
+    const loginAlert = document.getElementById('login-alert-modal');
+    const loginBtn = document.getElementById('loginSubmitBtn');
+
+    const twoFAForm = document.getElementById('twoFAForm');
+    const twoFAAlert = document.getElementById('twofa-alert');
+    const twoFABtn = document.getElementById('twofaVerifyBtn');
+    const twoFAHelper = document.getElementById('twofa-helper');
+    const twoFAChallenge = document.getElementById('twofa_challenge_id');
+    const twofaResendBtn = document.getElementById('twofaResendBtn');
+    const twofaUseOtherBtn = document.getElementById('twofaUseOtherBtn');
+
+    if (!loginForm) return; // safety
+
+    const csrf = (document.querySelector('#loginFormModal [name="csrfmiddlewaretoken"]') || {}).value;
+
+    // NEW: force 2FA form to post to verify_2fa
+    const VERIFY_2FA_URL = window.nexusUrls.verify2FA;
+    if (twoFAForm) {
+      twoFAForm.setAttribute('action', VERIFY_2FA_URL);
+    }
+
+    // Login submit
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      toggleBtnLoading(loginBtn, true);
+      showAlert(loginAlert, '', true); // clear
+
+      try {
+        const res = await fetch(loginForm.action, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': csrf,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+          },
+          body: new FormData(loginForm)
+        });
+        const data = await res.json();
+
+        // Success -> redirect
+        if (data.success && data.redirect_url) {
+          window.location.href = data.redirect_url;
+          return;
+        }
+
+        // 2FA required -> open 2FA modal
+        if (data.twofa_required) {
+          closeLoginModal();
+          // Fill 2FA helper text if provided
+          if (data.method && data.dest_masked) {
+            twoFAHelper.textContent = (
+              data.method === 'app'
+              ? '{{ _("Ouvrez votre application d’authentification et entrez le code à 6 chiffres.") }}'
+              : '{{ _("Un code a été envoyé à") }} ' + data.dest_masked + '. {{ _("Entrez-le ci-dessous.") }}'
+            );
+          } else {
+            twoFAHelper.textContent = '{{ _("Entrez le code à 6 chiffres envoyé à votre appareil.") }}';
+          }
+          if (data.challenge_id) { twoFAChallenge.value = data.challenge_id; }
+          openTwoFAModal();
+          return;
+        }
+
+        // Else show error
+        showAlert(loginAlert, data.message || '{{ _("Identifiants invalides.") }}', false);
+      } catch (err) {
+        showAlert(loginAlert, '{{ _("Erreur du serveur. Réessayez.") }}', false);
+      } finally {
+        toggleBtnLoading(loginBtn, false);
+      }
+    });
+
+    // NEW: clicking the verify button explicitly submits to verify_2fa
+    if (twoFABtn) {
+      twoFABtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!twoFAForm) return;
+        // quick 6-digit check before submit
+        const code = (document.getElementById('twofa_code')?.value || '').replace(/\D/g, '');
+        if (code.length < 6) {
+          showAlert(twoFAAlert, '{{ _("Veuillez entrer le code à 6 chiffres.") }}', false);
+          return;
+        }
+        // ensure action is correct and submit
+        twoFAForm.setAttribute('action', VERIFY_2FA_URL);
+        twoFAForm.requestSubmit();
+      });
+    }
+
+    // 2FA verify (form submit handler)
+    if (twoFAForm) {
+      twoFAForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        toggleBtnLoading(twoFABtn, true);
+        showAlert(twoFAAlert, '', true); // clear
+
+        try {
+          // Use the form's action (already set to verify_2fa)
+          const res = await fetch(twoFAForm.action, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': csrf,
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json'
+            },
+            body: new FormData(twoFAForm)
+          });
+          const data = await res.json();
+
+          if (data.success && data.redirect_url) {
+            window.location.href = data.redirect_url;
+            return;
+          }
+
+          showAlert(twoFAAlert, data.message || '{{ _("Code invalide ou expiré.") }}', false);
+        } catch (err) {
+          showAlert(twoFAAlert, '{{ _("Erreur du serveur. Réessayez.") }}', false);
+        } finally {
+          toggleBtnLoading(twoFABtn, false);
+        }
+      });
+    }
+
+    // 2FA resend
+    if (twofaResendBtn) {
+      twofaResendBtn.addEventListener('click', async () => {
+        if (!twoFAChallenge.value) return;
+        try {
+          const res = await fetch(window.nexusUrls.resendOTP, {
+            method: 'POST',
+            headers: {
+              'X-CSRFToken': csrf,
+              'X-Requested-With': 'XMLHttpRequest',
+              'Accept': 'application/json',
+              'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({ challenge_id: twoFAChallenge.value })
+          });
+          const data = await res.json();
+          if (data.success) {
+            showAlert(twoFAAlert, '{{ _("Nouveau code envoyé.") }}', true);
+          } else {
+            showAlert(twoFAAlert, data.message || '{{ _("Impossible d’envoyer le code.") }}', false);
+          }
+        } catch {
+          showAlert(twoFAAlert, '{{ _("Erreur du serveur. Réessayez.") }}', false);
+        }
+      });
+    }
+
+    // Switch method (if you support SMS/email/app choice server-side)
+    if (twofaUseOtherBtn) {
+      twofaUseOtherBtn.addEventListener('click', async () => {
+        // Optional: call an endpoint to rotate method, then update helper text.
+        showAlert(twoFAAlert, '{{ _("Si plusieurs méthodes sont disponibles, sélectionnez-la dans votre compte.") }}', false);
+      });
+    }
+  })();
+</script>
+
+{% include 'partials/modal_reset_password.html' %}
+
+<script src="{% static 'client_app/js/gmail_subsc.js' %}"></script>
+
+</body>
+
+</html>

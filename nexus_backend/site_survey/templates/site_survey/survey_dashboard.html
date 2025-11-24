@@ -1,0 +1,2260 @@
+{% extends 'site_survey/fe_dashboard_main.html' %}
+{% load static %}
+
+{% block content %}
+    {% if is_technician %}
+    <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8 animate-fade-in">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-clipboard-check text-3xl opacity-90"></i>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">My Site Surveys</h1>
+                        <p class="text-indigo-100 text-sm mt-1">View and conduct your assigned site surveys.</p>
+                    </div>
+                </div>
+                <button onclick="loadSurveys()" class="inline-flex items-center gap-2 bg-white/95 text-indigo-700 hover:bg-white px-4 py-2 rounded-lg font-medium shadow-sm">
+                    <i class="fas fa-rotate"></i> Refresh
+                </button>
+            </div>
+        </header>
+{% else %}
+         <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8 animate-fade-in">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <i class="fas fa-clipboard-check text-3xl opacity-90"></i>
+                    <div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Site Survey Management</h1>
+                        <p class="text-indigo-100 text-sm mt-1">Manage site surveys for Starlink installations.</p>
+                    </div>
+                </div>
+                <button onclick="loadSurveys()" class="inline-flex items-center gap-2 bg-white/95 text-indigo-700 hover:bg-white px-4 py-2 rounded-lg font-medium shadow-sm">
+                    <i class="fas fa-rotate"></i> Refresh
+                </button>
+            </div>
+        </header>
+    {% endif %}
+
+
+    <div class="w-full">
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <!-- Scheduled Surveys -->
+            <div class="bg-gradient-to-r from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-300 ease-in-out">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-indigo-700">Scheduled</span>
+                    <span class="text-indigo-500 animate-bounce">📅</span>
+                </div>
+                <div class="text-3xl font-bold text-indigo-800 mt-3" id="scheduledCount">0</div>
+                <p class="text-xs text-indigo-600 mt-2">Surveys scheduled</p>
+            </div>
+
+            <!-- In Progress -->
+            <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-300 ease-in-out">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-blue-700">In Progress</span>
+                    <span class="text-blue-500 animate-pulse">🔄</span>
+                </div>
+                <div class="text-3xl font-bold text-blue-800 mt-3" id="inProgressCount">0</div>
+                <p class="text-xs text-blue-600 mt-2">Surveys being conducted</p>
+            </div>
+
+            <!-- Completed -->
+            <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-300 ease-in-out">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-yellow-700">Completed</span>
+                    <span class="text-yellow-500 animate-spin">✅</span>
+                </div>
+                <div class="text-3xl font-bold text-yellow-800 mt-3" id="completedCount">0</div>
+                <p class="text-xs text-yellow-600 mt-2">Awaiting approval</p>
+            </div>
+
+            <!-- Approved -->
+            <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-300 ease-in-out">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-green-700">Approved</span>
+                    <span class="text-green-500 animate-bounce">👍</span>
+                </div>
+                <div class="text-3xl font-bold text-green-800 mt-3" id="approvedCount">0</div>
+                <p class="text-xs text-green-600 mt-2">Ready for installation</p>
+            </div>
+        </div>
+
+        <!-- Survey List Table -->
+        <div class="bg-white border border-gray-200 rounded-2xl shadow p-6">
+            {% if is_technician %}
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">My Assigned Site Surveys</h2>
+            {% else %}
+                <h2 class="text-xl font-semibold text-gray-700 mb-4">Site Surveys</h2>
+            {% endif %}
+
+            <!-- Filter Section -->
+            <div class="mb-4 flex items-center space-x-4">
+                <label for="statusFilter" class="text-sm font-medium text-gray-700">Filter by Status:</label>
+                <select id="statusFilter" onchange="applyFilter()" class="border border-gray-300 text-sm rounded px-3 py-2">
+                    <option value="All">All</option>
+                    <option value="scheduled">Scheduled</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                </select>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+                    <tr>
+                        <th class="px-4 py-3">#</th>
+                        <th class="px-4 py-3">Order Ref</th>
+                        <th class="px-4 py-3">Technician</th>
+                        <th class="px-4 py-3">Scheduled at</th>
+                        <th class="px-4 py-3">Status</th>
+                        <th class="px-4 py-3">Location</th>
+                        <th class="px-4 py-3 text-center">Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody id="surveysTableBody" class="divide-y divide-gray-100">
+                    <!-- Populated dynamically with JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    {% if not is_technician %}
+    <!-- Assign Technician Modal -->
+    <div id="assignModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-gray-200">
+            <div class="flex items-start justify-between">
+                <h2 class="text-xl font-semibold">Assign Technician to Site Survey</h2>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeAssignModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="mb-4 mt-2 text-sm text-gray-600">Order Ref: <span id="assignModalOrderRef" class="font-bold text-gray-900"></span></p>
+
+            <label class="block mb-2 text-sm font-medium">Select Technician</label>
+            <select id="assignTechnicianSelect" class="w-full border border-gray-300 p-2 rounded-lg mb-4 focus:ring-2 focus:ring-indigo-500">
+                <option value="">-- Select Technician --</option>
+            </select>
+
+            <label class="block mb-2 text-sm font-medium">Scheduled Date</label>
+            <input type="date" id="assignDate" class="w-full border border-gray-300 p-2 rounded-lg mb-6 focus:ring-2 focus:ring-indigo-500">
+
+            <div class="flex justify-end gap-2">
+                <button onclick="closeAssignModal()" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50">Cancel</button>
+                <button onclick="submitAssign()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm">Assign</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Location Modal (Leaflet / OpenStreetMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+    <div id="locationModal" class="fixed inset-0 z-[60] hidden">
+        <div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200" id="locationModalOverlay" onclick="closeLocationModal()"></div>
+        <div class="absolute inset-x-0 top-10 mx-auto w-[92%] max-w-3xl opacity-0 translate-y-4 transition-all duration-200" id="locationModalPanel">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-4 border-b bg-gradient-to-r from-sky-50 to-indigo-50">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white">
+                            <i class="fas fa-map-location-dot text-sm"></i>
+                        </span>
+                        <h3 class="text-base sm:text-lg font-semibold text-gray-900">Survey Location</h3>
+                    </div>
+                    <button class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100" onclick="closeLocationModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="p-4">
+                    <div id="leafletMap" class="w-full h-[55vh] rounded-xl border border-gray-200"></div>
+                    <div class="mt-3 flex items-center justify-between text-xs text-gray-600">
+                        <span id="locCoords">—</span>
+                        <div class="space-x-2">
+                            <a id="locLinkOSM" target="_blank" class="underline text-indigo-600 hover:text-indigo-700">Open in OSM</a>
+                            <a id="locLinkGMaps" target="_blank" class="underline text-indigo-600 hover:text-indigo-700">Open in Google Maps</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-5 py-3 border-t bg-gray-50 flex justify-end">
+                    <button class="px-3 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm" onclick="closeLocationModal()">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Conduct Survey Modal -->
+    <div id="conductSurveyModal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 bg-black/60 opacity-0 transition-opacity duration-200" id="conductSurveyOverlay" onclick="closeConductSurveyModal()"></div>
+        <div class="absolute inset-x-0 top-5 mx-auto w-[95%] max-w-4xl opacity-0 translate-y-4 transition-all duration-200" id="conductSurveyPanel">
+            <div class="rounded-2xl border border-gray-200 bg-white shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+                <div class="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
+                            <i class="fas fa-clipboard-check text-sm"></i>
+                        </span>
+                        <h3 class="text-lg font-semibold text-gray-900">Conduct Site Survey</h3>
+                        <span id="conductSurveyOrderRef" class="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded"></span>
+                    </div>
+                    <button class="text-gray-500 hover:text-gray-700 p-2 rounded-lg hover:bg-gray-100" onclick="closeConductSurveyModal()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-6">
+                    <div id="surveyContent" class="space-y-6">
+                        <!-- Loading state -->
+                        <div id="surveyLoading" class="text-center py-8">
+                            <i class="fas fa-spinner fa-spin text-4xl text-gray-300 mb-4"></i>
+                            <p class="text-gray-500">Loading survey checklist...</p>
+                        </div>
+
+                        <!-- Checklist content will be populated here -->
+                        <div id="surveyChecklist" class="hidden space-y-6"></div>
+
+                        <!-- Photo Upload Section -->
+                        <div id="photoUploadSection" class="hidden space-y-4 border-t pt-6">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-lg font-semibold text-gray-900 flex items-center">
+                                    <i class="fas fa-camera mr-2 text-blue-600"></i>
+                                    Survey Photos
+                                </h4>
+                                <span class="text-sm text-gray-500">Upload important photos to support your survey</span>
+                            </div>
+
+                            <!-- Upload Area -->
+                            <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-400 transition-colors"
+                                 id="photoDropZone"
+                                 ondrop="handlePhotoDrop(event)"
+                                 ondragover="handlePhotoDragOver(event)"
+                                 ondragenter="handlePhotoDragEnter(event)"
+                                 ondragleave="handlePhotoDragLeave(event)">
+                                <div id="dropZoneContent">
+                                    <i class="fas fa-cloud-upload-alt text-4xl text-gray-400 mb-3"></i>
+                                    <p class="text-lg font-medium text-gray-600 mb-2">Drop photos here or click to browse</p>
+                                    <p class="text-sm text-gray-500 mb-4">Supports: JPG, PNG, WEBP (Max 10MB each)</p>
+                                    <input type="file" id="photoInput" multiple accept="image/jpeg,image/png,image/webp"
+                                           class="hidden" onchange="handlePhotoSelect(event)">
+                                    <button type="button" onclick="document.getElementById('photoInput').click()"
+                                            class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                                        <i class="fas fa-plus mr-2"></i>Select Photos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Photo Preview Area -->
+                            <div id="photoPreviewArea" class="hidden">
+                                <h5 class="font-medium text-gray-900 mb-3">Selected Photos</h5>
+                                <div id="photoPreviewGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+
+                                <div class="mt-4 flex justify-between items-center">
+                                    <span id="photoCount" class="text-sm text-gray-600">0 photos selected</span>
+                                    <button type="button" onclick="uploadSelectedPhotos()"
+                                            class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:bg-gray-400"
+                                            id="uploadPhotosBtn" disabled>
+                                        <i class="fas fa-upload mr-2"></i>Upload Photos
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Uploaded Photos Area -->
+                            <div id="uploadedPhotosArea" class="hidden">
+                                <h5 class="font-medium text-gray-900 mb-3">Uploaded Photos</h5>
+                                <div id="uploadedPhotosGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
+                            </div>
+                        </div>
+
+                        <!-- Final Assessment Section -->
+                        <div id="finalAssessment" class="hidden space-y-4 border-t pt-6">
+                            <h4 class="text-lg font-semibold text-gray-900">Final Assessment</h4>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Installation Feasible?</label>
+                                    <select id="installationFeasible" onchange="clearValidationError(this)" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Select --</option>
+                                        <option value="true">Yes, feasible</option>
+                                        <option value="false">No, not feasible</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Recommended Mounting</label>
+                                    <select id="recommendedMounting" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Select --</option>
+                                        <option value="roof_mount">Roof Mount</option>
+                                        <option value="pole_mount">Pole Mount</option>
+                                        <option value="wall_mount">Wall Mount</option>
+                                        <option value="ground_mount">Ground Mount</option>
+                                        <option value="other">Other</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Overall Assessment</label>
+                                <textarea id="overallAssessment" rows="4" oninput="clearValidationError(this)"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Provide a comprehensive assessment of the site survey..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Additional Costs Section -->
+                        <div id="additionalCostsSection" class="hidden space-y-4 border-t pt-6">
+                            <div class="flex items-center justify-between">
+                                <h4 class="text-lg font-semibold text-gray-900">Additional Equipment & Costs</h4>
+                                <button id="addCostBtn" onclick="showAddCostForm()" class="px-3 py-1 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                                    <i class="fas fa-plus mr-1"></i> Add Item
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                                        Additional Equipment Required?
+                                        <span class="text-red-500 ml-1">*</span>
+                                    </label>
+                                    <select id="requiresAdditionalEquipment" onchange="toggleAdditionalCosts()" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                        <option value="">-- Select --</option>
+                                        <option value="false">No, standard installation</option>
+                                        <option value="true">Yes, additional equipment needed</option>
+                                    </select>
+                                </div>
+
+                                <div id="estimatedCostDiv" class="hidden">
+                                    <label class="block text-sm font-medium text-gray-700 mb-2">Estimated Additional Cost</label>
+                                    <div class="relative">
+                                        <span class="absolute left-3 top-2 text-gray-500">$</span>
+                                        <input type="number" id="estimatedAdditionalCost" step="0.01" readonly
+                                            class="w-full border border-gray-300 rounded-lg pl-8 pr-3 py-2 bg-gray-50"
+                                            placeholder="0.00">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Add Cost Item Form -->
+                            <div id="addCostForm" class="hidden bg-gray-50 p-4 rounded-lg border">
+                                <h5 class="font-medium text-gray-900 mb-3">Add Equipment/Cost Item</h5>
+                                <div class="grid grid-cols-1 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1">Select Equipment *</label>
+                                        <select id="extraChargeSelect" onchange="updateEquipmentDetails()" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                            <option value="">-- Select Equipment --</option>
+                                            <!-- Options will be loaded dynamically -->
+                                        </select>
+                                        <p class="text-xs text-gray-500 mt-1">Choose from predefined equipment with fixed pricing</p>
+                                    </div>
+
+                                    <div id="equipmentDetails" class="hidden bg-blue-50 p-3 rounded-lg">
+                                        <h6 class="font-medium text-blue-900 mb-2">Equipment Details</h6>
+                                        <div class="text-sm text-blue-800 space-y-1">
+                                            <div><span class="font-medium">Category:</span> <span id="selectedCategory">-</span></div>
+                                            <div><span class="font-medium">Brand/Model:</span> <span id="selectedBrandModel">-</span></div>
+                                            <div><span class="font-medium">Unit Price:</span> $<span id="selectedUnitPrice">0.00</span></div>
+                                            <div id="selectedDescription" class="text-xs text-blue-600 mt-2"></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Quantity *</label>
+                                            <input type="number" id="itemQuantity" min="1" value="1" onchange="updateTotalPrice()" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500">
+                                        </div>
+
+                                        <div>
+                                            <label class="block text-sm font-medium text-gray-700 mb-1">Total Price</label>
+                                            <div class="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-50 text-gray-700 font-medium">
+                                                $<span id="totalPrice">0.00</span>
+                                            </div>
+                                            <p class="text-xs text-gray-500 mt-1">Automatically calculated based on quantity</p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mt-3">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Justification *</label>
+                                    <textarea id="itemJustification" rows="3" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Explain why this equipment is necessary for the installation..."></textarea>
+                                </div>
+
+                                <div class="mt-3 flex items-center">
+                                    <input type="checkbox" id="isRequired" checked class="mr-2">
+                                    <label for="isRequired" class="text-sm text-gray-700">This item is absolutely necessary</label>
+                                </div>
+
+                                <div class="mt-4 flex gap-2">
+                                    <button onclick="addCostItem()" class="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700">
+                                        <i class="fas fa-plus mr-1"></i> Save Item
+                                    </button>
+                                    <button onclick="hideAddCostForm()" class="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg text-sm hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Additional Costs List -->
+                            <div id="additionalCostsList" class="space-y-3">
+                                <!-- Dynamic cost items will be added here -->
+                            </div>
+
+                            <!-- Cost Justification -->
+                            <div id="costJustificationDiv" class="hidden">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Overall Cost Justification</label>
+                                <textarea id="costJustification" rows="3"
+                                    class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    placeholder="Provide overall justification for additional costs..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t bg-gray-50 flex justify-between">
+                    <button class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-sm" onclick="closeConductSurveyModal()">Cancel</button>
+                    <div class="space-x-2">
+                        <button id="saveProgressBtn" onclick="saveProgress()" class="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm shadow-sm">
+                            <i class="fas fa-save mr-1"></i> Save Progress
+                        </button>
+                        <button id="submitSurveyBtn" onclick="submitSurvey()" class="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm shadow-sm">
+                            <i class="fas fa-check mr-1"></i> Submit Survey
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reassign Survey Modal -->
+    <div id="reassignModal" class="fixed inset-0 bg-black/50 hidden flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-gray-900">🔄 Reassign Survey for Counter-Expertise</h3>
+                <button class="text-gray-500 hover:text-gray-700" onclick="closeReassignModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <p class="mb-2 text-sm text-gray-600">Order Ref: <span id="reassignModalOrderRef" class="font-bold text-gray-900"></span></p>
+            <p class="mb-4 text-sm text-gray-600">Current Technician: <span id="reassignModalCurrentTech" class="font-semibold text-red-600"></span></p>
+
+            <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <div class="flex items-start">
+                    <i class="fas fa-exclamation-triangle text-yellow-500 mt-1 mr-2"></i>
+                    <div class="text-sm text-yellow-800">
+                        <strong>Counter-Expertise:</strong> Assign another technician to verify the rejection and provide a second opinion on site feasibility.
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Select New Technician:</label>
+                <select id="reassignTechnicianSelect" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Loading technicians...</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Reassignment Reason:</label>
+                <textarea id="reassignReason" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Counter-expertise required to verify rejection, second opinion needed..."></textarea>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeReassignModal()" class="px-4 py-2 rounded-lg border border-gray-300 bg-white hover:bg-gray-50 flex-1">Cancel</button>
+                <button onclick="confirmReassign()" class="px-4 py-2 rounded-lg bg-orange-600 hover:bg-orange-700 text-white flex-1">
+                    <i class="fas fa-user-edit mr-1"></i> Reassign
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        /* modal transition helpers */
+        .modal-show #locationModalOverlay { opacity: 1; }
+        .modal-show #locationModalPanel   { opacity: 1; transform: translateY(0); }
+        .modal-show #conductSurveyOverlay { opacity: 1; }
+        .modal-show #conductSurveyPanel   { opacity: 1; transform: translateY(0); }
+
+        /* Photo upload styles */
+        #photoDropZone.drag-over {
+            border-color: #3b82f6 !important;
+            background-color: #eff6ff !important;
+        }
+
+        .photo-preview-item {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .photo-preview-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .photo-type-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        /* Validation error styles */
+        .validation-error {
+            border-color: #ef4444 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+            background-color: #fef2f2 !important;
+        }
+
+        .validation-error.bg-white {
+            border: 2px solid #ef4444 !important;
+        }
+
+        /* Shake animation for validation errors */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        .validation-error {
+            animation: shake 0.5s ease-in-out;
+        }
+    </style>
+
+    <script>
+        // Global URL variables - defined individually to avoid syntax issues
+        const URL_GET_AVAILABLE_EXTRA_CHARGES = "{% url 'site_survey:get_available_extra_charges' %}";
+        const URL_ADD_ADDITIONAL_COST = "{% url 'site_survey:add_additional_cost' %}";
+        const URL_START_SITE_SURVEY = "{% url 'site_survey:start_site_survey' %}";
+        const URL_SAVE_SURVEY_RESPONSE = "{% url 'site_survey:save_survey_response' %}";
+        const URL_SUBMIT_SURVEY = "{% url 'site_survey:submit_survey' %}";
+        const URL_SURVEY_DASHBOARD_API = "{% url 'site_survey:survey_dashboard_api' %}";
+        const URL_ASSIGN_TO_TECHNICIAN = "{% url 'site_survey:assign_to_technician' %}";
+        const URL_TECHNICIANS_LIST = "{% url 'site_survey:technicians_list' %}";
+        const URL_REASSIGN_SURVEY = "{% url 'site_survey:reassign_survey' %}";
+        const URL_GET_SURVEY_CHECKLIST = "{% url 'site_survey:get_survey_checklist' 999999 %}";
+        const URL_GET_ADDITIONAL_COSTS = "{% url 'site_survey:get_additional_costs' survey_id=0 %}";
+        const URL_SURVEY_DETAIL = "{% url 'site_survey:survey_detail' 999999 %}";
+        const URL_UPLOAD_SURVEY_PHOTOS = "{% url 'site_survey:upload_survey_photos' survey_id=999999 %}";
+
+        let allSurveys = [];
+        let currentSurveyId = null;
+        const userRole = "{{ user_role|escapejs }}"; // Get user role from Django context
+
+        /* ------- Leaflet Map Modal ------- */
+        let _leafletMap = null;
+        let _leafletMarker = null;
+
+        function openLocationModal(lat, lng) {
+            // Show modal with transitions
+            const modal = document.getElementById('locationModal');
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-show');
+
+            // Update helper links / coords text
+            document.getElementById('locCoords').textContent = `Lat: ${lat.toFixed(6)} | Lng: ${lng.toFixed(6)}`;
+            document.getElementById('locLinkOSM').href   = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=16/${lat}/${lng}`;
+            document.getElementById('locLinkGMaps').href = `https://www.google.com/maps?q=${lat},${lng}&z=16`;
+
+            // Initialize Leaflet once
+            const mapEl = document.getElementById('leafletMap');
+            if (!_leafletMap) {
+                _leafletMap = L.map(mapEl, { zoomControl: true, attributionControl: true });
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap contributors'
+                }).addTo(_leafletMap);
+            }
+
+            // Set view + marker
+            const pos = [lat, lng];
+            _leafletMap.setView(pos, 16);
+            if (_leafletMarker) {
+                _leafletMarker.setLatLng(pos);
+            } else {
+                _leafletMarker = L.marker(pos).addTo(_leafletMap);
+            }
+
+            // Fix sizing after modal becomes visible
+            setTimeout(() => _leafletMap.invalidateSize(), 200);
+        }
+
+        function closeLocationModal() {
+            document.getElementById('locationModal').classList.add('hidden');
+            document.body.classList.remove('modal-show');
+        }
+
+        // ESC to close
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeLocationModal();
+                closeConductSurveyModal();
+            }
+        });
+
+        /* ------- Conduct Survey Modal ------- */
+        function openConductSurveyModal(surveyId, orderRef) {
+            currentSurveyId = surveyId;
+            document.getElementById('conductSurveyOrderRef').textContent = orderRef;
+
+            const modal = document.getElementById('conductSurveyModal');
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-show');
+        }
+
+        function closeConductSurveyModal() {
+            document.getElementById('conductSurveyModal').classList.add('hidden');
+            document.body.classList.remove('modal-show');
+            currentSurveyId = null;
+
+            // Reset photo upload data
+            selectedPhotos = [];
+            document.getElementById('photoInput').value = '';
+            document.getElementById('photoPreviewArea').classList.add('hidden');
+            document.getElementById('uploadedPhotosArea').classList.add('hidden');
+        }
+
+        /* ------- Start Survey Function ------- */
+        async function startSurvey(surveyId) {
+            if (!confirm("Are you sure you want to start this site survey?")) return;
+
+            try {
+                const response = await fetch(URL_START_SITE_SURVEY, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: surveyId
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log("Survey started successfully:", data.message);
+                    loadSurveys(); // Refresh the surveys list
+                } else {
+                    alert(data.message || "Failed to start survey.");
+                }
+            } catch (error) {
+                console.error("Error starting survey:", error);
+                alert("Something went wrong.");
+            }
+        }
+
+        /* ------- Location button generator ------- */
+        function locationButton(lat, lng) {
+            if (lat == null || lng == null) {
+                return `<button type="button" disabled class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-gray-100 text-gray-400 text-xs font-semibold cursor-not-allowed">
+                          <i class="fas fa-map-pin fa-fw"></i> View
+                        </button>`;
+            }
+            return `<button type="button"
+                      class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-blue-100 text-blue-700 text-xs font-semibold shadow-sm hover:bg-blue-200 hover:text-blue-800 transition-all"
+                      onclick="openLocationModal(${Number(lat)}, ${Number(lng)})">
+                      <i class="fas fa-map-location-dot fa-fw"></i> View
+                    </button>`;
+        }
+
+        function getCSRFToken() {
+            const name = "csrftoken";
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                cookie = cookie.trim();
+                if (cookie.startsWith(name + '=')) {
+                    return decodeURIComponent(cookie.substring(name.length + 1));
+                }
+            }
+            return null;
+        }
+
+        /* ------- Conduct Survey Functions ------- */
+        let currentSurveyData = null;
+
+        async function openConductSurveyModal(surveyId, orderRef) {
+            currentSurveyId = surveyId;
+            document.getElementById("conductSurveyOrderRef").textContent = orderRef;
+
+            // Show loading state
+            document.getElementById('surveyLoading').style.display = 'block';
+            document.getElementById('surveyChecklist').classList.add('hidden');
+            document.getElementById('finalAssessment').classList.add('hidden');
+
+            // Open modal
+            const modal = document.getElementById('conductSurveyModal');
+            modal.classList.remove('hidden');
+            document.body.classList.add('modal-show');
+
+            // Load survey data
+            await loadSurveyChecklist(surveyId);
+        }
+
+        async function loadSurveyChecklist(surveyId) {
+            try {
+                const response = await fetch(URL_GET_SURVEY_CHECKLIST.replace('999999', surveyId));
+                const data = await response.json();
+
+                if (data.success) {
+                    currentSurveyData = data;
+                    renderSurveyChecklist(data.checklist);
+
+                    // Load final assessment data
+                    if (data.final_assessment) {
+                        loadFinalAssessmentData(data.final_assessment);
+                    }
+
+                    // Load additional costs
+                    await loadAdditionalCosts(surveyId);
+
+                    // Load existing photos
+                    await loadUploadedPhotos();
+
+                    // Sync existing DOM values with response object
+                    syncDOMWithResponses();
+
+                    // Hide loading, show content
+                    document.getElementById('surveyLoading').style.display = 'none';
+                    document.getElementById('surveyChecklist').classList.remove('hidden');
+                    document.getElementById('photoUploadSection').classList.remove('hidden');
+                    document.getElementById('finalAssessment').classList.remove('hidden');
+                    document.getElementById('additionalCostsSection').classList.remove('hidden');
+                } else {
+                    alert(data.message || "Failed to load survey checklist");
+                    closeConductSurveyModal();
+                }
+            } catch (error) {
+                console.error("Error loading survey checklist:", error);
+                alert("Failed to load survey checklist");
+                closeConductSurveyModal();
+            }
+        }
+
+        function loadFinalAssessmentData(finalAssessment) {
+            // Load installation feasible
+            if (finalAssessment.installation_feasible !== null) {
+                const installationFeasibleSelect = document.getElementById('installationFeasible');
+                if (installationFeasibleSelect) {
+                    installationFeasibleSelect.value = finalAssessment.installation_feasible ? 'true' : 'false';
+                }
+            }
+
+            // Load recommended mounting
+            if (finalAssessment.recommended_mounting) {
+                const recommendedMountingSelect = document.getElementById('recommendedMounting');
+                if (recommendedMountingSelect) {
+                    recommendedMountingSelect.value = finalAssessment.recommended_mounting;
+                }
+            }
+
+            // Load overall assessment
+            if (finalAssessment.overall_assessment) {
+                const overallAssessmentTextarea = document.getElementById('overallAssessment');
+                if (overallAssessmentTextarea) {
+                    overallAssessmentTextarea.value = finalAssessment.overall_assessment;
+                }
+            }
+
+            // Load requires additional equipment
+            if (finalAssessment.requires_additional_equipment !== null) {
+                const requiresAdditionalEquipmentSelect = document.getElementById('requiresAdditionalEquipment');
+                if (requiresAdditionalEquipmentSelect) {
+                    requiresAdditionalEquipmentSelect.value = finalAssessment.requires_additional_equipment ? 'true' : 'false';
+                    // Note: Don't call toggleAdditionalCosts() here - it will be called after loading costs
+                }
+            }
+
+            // Load cost justification
+            if (finalAssessment.cost_justification) {
+                const costJustificationTextarea = document.getElementById('costJustification');
+                if (costJustificationTextarea) {
+                    costJustificationTextarea.value = finalAssessment.cost_justification;
+                }
+            }
+
+            // Load estimated additional cost
+            if (finalAssessment.estimated_additional_cost !== null && finalAssessment.estimated_additional_cost !== undefined) {
+                const estimatedAdditionalCostInput = document.getElementById('estimatedAdditionalCost');
+                if (estimatedAdditionalCostInput) {
+                    estimatedAdditionalCostInput.value = parseFloat(finalAssessment.estimated_additional_cost).toFixed(2);
+                }
+            }
+        }
+
+        function renderSurveyChecklist(checklist) {
+            const container = document.getElementById('surveyChecklist');
+            container.innerHTML = '';
+
+            Object.keys(checklist).forEach(categoryKey => {
+                const category = checklist[categoryKey];
+
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = 'border rounded-lg p-4 bg-gray-50';
+                categoryDiv.innerHTML = `
+                    <h5 class="font-medium text-gray-900 mb-3 flex items-center">
+                        <i class="fas fa-list-check mr-2 text-blue-600"></i>
+                        ${category.name}
+                    </h5>
+                    <div class="space-y-3" id="category-${categoryKey}"></div>
+                `;
+
+                container.appendChild(categoryDiv);
+
+                const itemsContainer = document.getElementById(`category-${categoryKey}`);
+
+                category.items.forEach(item => {
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'bg-white p-3 rounded border';
+
+                    let inputHtml = '';
+                    const currentValue = item.response.value || '';
+                    const currentNotes = item.response.notes || '';
+                    const isWeatherConditionField = item.question && item.question.toLowerCase().includes('weather conditions during survey');
+                    const isRequired = item.is_required || isWeatherConditionField;
+
+                    switch (item.question_type) {
+                        case 'yes_no':
+                            inputHtml = `
+                                <div class="flex space-x-4 mb-2">
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="item_${item.id}" value="Yes" ${currentValue === 'Yes' ? 'checked' : ''}
+                                               class="form-radio text-blue-600" onchange="updateResponse(${item.id}, this.value)">
+                                        <span class="ml-2 text-sm">Yes</span>
+                                    </label>
+                                    <label class="inline-flex items-center">
+                                        <input type="radio" name="item_${item.id}" value="No" ${currentValue === 'No' ? 'checked' : ''}
+                                               class="form-radio text-blue-600" onchange="updateResponse(${item.id}, this.value)">
+                                        <span class="ml-2 text-sm">No</span>
+                                    </label>
+                                </div>
+                            `;
+                            break;
+                        case 'text':
+                            inputHtml = `
+                                <input type="text" value="${currentValue}"
+                                       class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2"
+                                       onchange="updateResponse(${item.id}, this.value)"
+                                       placeholder="Enter your response...">
+                            `;
+                            break;
+                        case 'multiple_choice':
+                            const choices = item.choices || [];
+                            inputHtml = `
+                                <select class="w-full border border-gray-300 rounded px-3 py-2 text-sm mb-2"
+                                        onchange="updateResponse(${item.id}, this.value)">
+                                    <option value="">-- Select an option --</option>
+                                    ${choices.map(choice =>
+                                        `<option value="${choice}" ${currentValue === choice ? 'selected' : ''}>${choice}</option>`
+                                    ).join('')}
+                                </select>
+                            `;
+                            break;
+                        case 'rating':
+                            inputHtml = `
+                                <div class="flex space-x-2 mb-2">
+                                    ${[1, 2, 3, 4, 5].map(rating => `
+                                        <label class="inline-flex items-center">
+                                            <input type="radio" name="item_${item.id}" value="${rating}"
+                                                   ${currentValue == rating ? 'checked' : ''}
+                                                   class="form-radio text-blue-600" onchange="updateResponse(${item.id}, this.value)">
+                                            <span class="ml-1 text-sm">${rating}</span>
+                                        </label>
+                                    `).join('')}
+                                </div>
+                            `;
+                            break;
+                    }
+
+                    itemDiv.innerHTML = `
+                        <div class="flex items-start justify-between mb-2">
+                            <label class="text-sm font-medium text-gray-700 flex-1">
+                                ${item.question}
+                                ${isRequired ? '<span class="text-red-500 ml-1">*</span>' : ''}
+                            </label>
+                        </div>
+                        ${inputHtml}
+                        <textarea placeholder="Additional notes..."
+                                  class="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                                  rows="2" onchange="updateResponseNotes(${item.id}, this.value)">${currentNotes}</textarea>
+                    `;
+
+                    itemsContainer.appendChild(itemDiv);
+                });
+            });
+        }
+
+        // Store responses temporarily
+        let surveyResponses = {};
+
+        function updateResponse(itemId, value) {
+            if (!surveyResponses[itemId]) {
+                surveyResponses[itemId] = {};
+            }
+            surveyResponses[itemId].response_value = value;
+            surveyResponses[itemId].checklist_item_id = itemId;
+
+            // Clear validation error if field is now filled
+            if (value && value.trim() !== '') {
+                // Remove error from radio buttons, text inputs, and select elements
+                const inputs = document.querySelectorAll(`[name="item_${itemId}"], input[onchange*="updateResponse(${itemId}"], select[onchange*="updateResponse(${itemId}"]`);
+                inputs.forEach(input => {
+                    const container = input.closest('.bg-white');
+                    if (container) {
+                        container.classList.remove('validation-error');
+                    }
+                });
+            }
+        }
+
+        function updateResponseNotes(itemId, notes) {
+            if (!surveyResponses[itemId]) {
+                surveyResponses[itemId] = {};
+            }
+            surveyResponses[itemId].notes = notes;
+            surveyResponses[itemId].checklist_item_id = itemId;
+        }
+
+        async function saveProgress() {
+            if (!currentSurveyId) return;
+
+            const responses = Object.values(surveyResponses);
+
+            // Add final assessment fields to the responses
+            const finalAssessmentData = {
+                installation_feasible: document.getElementById('installationFeasible')?.value,
+                recommended_mounting: document.getElementById('recommendedMounting')?.value,
+                overall_assessment: document.getElementById('overallAssessment')?.value,
+                requires_additional_equipment: document.getElementById('requiresAdditionalEquipment')?.value,
+                cost_justification: document.getElementById('costJustification')?.value
+            };
+
+            // Include additional costs data (for synchronization)
+            const additionalCostsData = {
+                costs: additionalCosts,
+                estimated_total: document.getElementById('estimatedAdditionalCost')?.value || 0
+            };
+
+            try {
+                const response = await fetch(URL_SAVE_SURVEY_RESPONSE, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: currentSurveyId,
+                        responses: responses,
+                        final_assessment: finalAssessmentData,
+                        additional_costs: additionalCostsData
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    // Show success message
+                    const btn = document.getElementById('saveProgressBtn');
+                    const originalText = btn.innerHTML;
+                    btn.innerHTML = '<i class="fas fa-check mr-1"></i> Saved!';
+                    btn.className = btn.className.replace('bg-blue-600', 'bg-green-600');
+
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.className = btn.className.replace('bg-green-600', 'bg-blue-600');
+                    }, 2000);
+                } else {
+                    alert(data.message || "Failed to save progress");
+                }
+            } catch (error) {
+                console.error("Error saving progress:", error);
+                alert("Failed to save progress");
+            }
+        }
+
+        function validateSurveyCompletion() {
+            const validationErrors = [];
+
+            // Clear previous error highlights
+            document.querySelectorAll('.validation-error').forEach(el => {
+                el.classList.remove('validation-error');
+            });
+
+            // 1. Validate required checklist items
+            if (currentSurveyData && currentSurveyData.checklist) {
+                Object.keys(currentSurveyData.checklist).forEach(categoryKey => {
+                    const category = currentSurveyData.checklist[categoryKey];
+                    category.items.forEach(item => {
+                        const isWeatherConditionRequired = item.question && item.question.toLowerCase().includes('weather conditions during survey');
+
+                        if (item.is_required || isWeatherConditionRequired) {
+                            // Check both JavaScript object and DOM values
+                            let hasValue = false;
+
+                            // First check if we have a value in our JavaScript object
+                            const response = surveyResponses[item.id];
+                            if (response && response.response_value && response.response_value.trim() !== '') {
+                                hasValue = true;
+                            }
+
+                            // If no value in JS object, check the DOM for current selections
+                            if (!hasValue) {
+                                switch (item.question_type) {
+                                    case 'yes_no':
+                                        const radioChecked = document.querySelector(`input[name="item_${item.id}"]:checked`);
+                                        if (radioChecked && radioChecked.value) {
+                                            hasValue = true;
+                                            // Update our JS object to reflect DOM state
+                                            updateResponse(item.id, radioChecked.value);
+                                        }
+                                        break;
+                                    case 'text':
+                                        const textInput = document.querySelector(`input[onchange*="updateResponse(${item.id}"]`);
+                                        if (textInput && textInput.value.trim() !== '') {
+                                            hasValue = true;
+                                            updateResponse(item.id, textInput.value);
+                                        }
+                                        break;
+                                    case 'multiple_choice':
+                                        const selectInput = document.querySelector(`select[onchange*="updateResponse(${item.id}"]`);
+                                        if (selectInput && selectInput.value !== '') {
+                                            hasValue = true;
+                                            updateResponse(item.id, selectInput.value);
+                                        }
+                                        break;
+                                    case 'rating':
+                                        const ratingChecked = document.querySelector(`input[name="item_${item.id}"]:checked`);
+                                        if (ratingChecked && ratingChecked.value) {
+                                            hasValue = true;
+                                            updateResponse(item.id, ratingChecked.value);
+                                        }
+                                        break;
+                                }
+                            }
+
+                            if (!hasValue) {
+                                validationErrors.push(`Question obligatoire non remplie: "${item.question}"`);
+
+                                // Highlight the field
+                                const inputs = document.querySelectorAll(`[name="item_${item.id}"], input[onchange*="updateResponse(${item.id}"], select[onchange*="updateResponse(${item.id}"]`);
+                                inputs.forEach(input => {
+                                    input.closest('.bg-white')?.classList.add('validation-error');
+                                });
+                            }
+                        }
+                    });
+                });
+            }
+
+            // 2. Validate final assessment
+            const installationFeasible = document.getElementById('installationFeasible');
+            const recommendedMounting = document.getElementById('recommendedMounting');
+            const overallAssessment = document.getElementById('overallAssessment');
+
+            if (!installationFeasible.value) {
+                validationErrors.push('Veuillez indiquer si l\'installation est réalisable.');
+                installationFeasible.classList.add('validation-error');
+            }
+
+            if (!recommendedMounting.value) {
+                validationErrors.push('Veuillez sélectionner un type de montage recommandé.');
+                recommendedMounting.classList.add('validation-error');
+            }
+
+            if (!overallAssessment.value.trim()) {
+                validationErrors.push('Veuillez fournir une évaluation globale.');
+                overallAssessment.classList.add('validation-error');
+            }
+
+            // 2.5. Validate photos (at least one photo required)
+            const uploadedPhotos = document.querySelectorAll('#uploadedPhotosGrid .relative');
+            const selectedPhotosCount = selectedPhotos.length;
+
+            if (uploadedPhotos.length === 0 && selectedPhotosCount === 0) {
+                validationErrors.push('Veuillez uploader au moins une photo du site survey.');
+                const photoSection = document.getElementById('photoUploadSection');
+                if (photoSection) {
+                    photoSection.classList.add('validation-error');
+                }
+            }
+
+            // 3. Validate additional equipment requirement (always required)
+            const requiresAdditionalEquipment = document.getElementById('requiresAdditionalEquipment');
+            const costJustification = document.getElementById('costJustification');
+
+            if (!requiresAdditionalEquipment.value) {
+                validationErrors.push('Veuillez indiquer si un équipement supplémentaire est requis.');
+                requiresAdditionalEquipment.classList.add('validation-error');
+            } else if (requiresAdditionalEquipment.value === 'true') {
+                // If additional equipment is required, validate related fields
+                if (additionalCosts.length === 0) {
+                    validationErrors.push('Veuillez ajouter au moins un élément de coût supplémentaire ou modifier l\'exigence d\'équipement.');
+                    requiresAdditionalEquipment.classList.add('validation-error');
+                }
+                if (!costJustification.value.trim()) {
+                    validationErrors.push('Veuillez fournir une justification globale des coûts.');
+                    costJustification.classList.add('validation-error');
+                }
+            }
+
+            return validationErrors;
+        }
+
+        function clearValidationError(element) {
+            // Remove validation error styling from the element
+            if (element.value && element.value.trim() !== '') {
+                element.classList.remove('validation-error');
+            }
+        }
+
+        function getCurrentRequiredFieldsCount() {
+            let count = 0;
+
+            // Count required checklist items
+            if (currentSurveyData && currentSurveyData.checklist) {
+                Object.keys(currentSurveyData.checklist).forEach(categoryKey => {
+                    const category = currentSurveyData.checklist[categoryKey];
+                    category.items.forEach(item => {
+                        if (item.is_required) {
+                            count++;
+                        }
+                    });
+                });
+            }
+
+            // Add final assessment fields (always required)
+            count += 3; // Installation feasible + Recommended mounting + Overall assessment + Additional equipment required
+
+            // Add additional equipment required field (always required)
+            count += 1; // Additional equipment required
+
+            // Add additional cost justification if equipment is required
+            const requiresAdditionalEquipment = document.getElementById('requiresAdditionalEquipment')?.value;
+            if (requiresAdditionalEquipment === 'true') {
+                count += 1; // Cost justification
+            }
+
+            return count;
+        }
+
+        function syncDOMWithResponses() {
+            // Synchronize existing DOM values with our JavaScript response object
+            if (currentSurveyData && currentSurveyData.checklist) {
+                Object.keys(currentSurveyData.checklist).forEach(categoryKey => {
+                    const category = currentSurveyData.checklist[categoryKey];
+                    category.items.forEach(item => {
+                        // Skip if we already have this response in our object
+                        if (surveyResponses[item.id] && surveyResponses[item.id].response_value) {
+                            return;
+                        }
+
+                        let currentValue = null;
+
+                        switch (item.question_type) {
+                            case 'yes_no':
+                            case 'rating':
+                                const radioChecked = document.querySelector(`input[name="item_${item.id}"]:checked`);
+                                if (radioChecked) {
+                                    currentValue = radioChecked.value;
+                                }
+                                break;
+                            case 'text':
+                                const textInput = document.querySelector(`input[onchange*="updateResponse(${item.id}"]`);
+                                if (textInput && textInput.value.trim()) {
+                                    currentValue = textInput.value.trim();
+                                }
+                                break;
+                            case 'multiple_choice':
+                                const selectInput = document.querySelector(`select[onchange*="updateResponse(${item.id}"]`);
+                                if (selectInput && selectInput.value) {
+                                    currentValue = selectInput.value;
+                                }
+                                break;
+                        }
+
+                        if (currentValue) {
+                            updateResponse(item.id, currentValue);
+                        }
+                    });
+                });
+            }
+        }
+
+        async function submitSurvey() {
+            if (!currentSurveyId) return;
+
+            // Save current responses first
+            await saveProgress();
+
+            // Validate all required fields
+            const validationErrors = validateSurveyCompletion();
+
+            if (validationErrors.length > 0) {
+                const totalRequired = getCurrentRequiredFieldsCount();
+                const completed = totalRequired - validationErrors.length;
+
+                let errorMessage = `⚠️ FORMULAIRE INCOMPLET\n\n`;
+                errorMessage += `Progression: ${completed}/${totalRequired} champs obligatoires remplis\n\n`;
+                errorMessage += `Veuillez compléter les champs obligatoires suivants :\n\n`;
+
+                validationErrors.forEach((error, index) => {
+                    errorMessage += `❌ ${error}\n`;
+                });
+
+                errorMessage += `\n💡 Les champs manquants sont maintenant mis en évidence en rouge.`;
+
+                alert(errorMessage);
+
+                // Scroll to first error
+                const firstError = document.querySelector('.validation-error');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+
+                return;
+            }
+
+            // Get final assessment data
+            const installationFeasible = document.getElementById('installationFeasible').value;
+            const recommendedMounting = document.getElementById('recommendedMounting').value;
+            const overallAssessment = document.getElementById('overallAssessment').value;
+
+            // Additional costs data
+            const requiresAdditionalEquipment = document.getElementById('requiresAdditionalEquipment').value;
+            const estimatedAdditionalCost = document.getElementById('estimatedAdditionalCost').value;
+            const costJustification = document.getElementById('costJustification').value;
+
+            if (!confirm("Are you sure you want to submit this survey? This action cannot be undone.")) return;
+
+            try {
+                const response = await fetch(URL_SUBMIT_SURVEY, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: currentSurveyId,
+                        installation_feasible: installationFeasible === 'true',
+                        recommended_mounting: recommendedMounting,
+                        overall_assessment: overallAssessment,
+                        requires_additional_equipment: requiresAdditionalEquipment === 'true',
+                        estimated_additional_cost: parseFloat(estimatedAdditionalCost) || 0,
+                        cost_justification: costJustification
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("Survey submitted successfully!");
+                    closeConductSurveyModal();
+                    loadSurveys(); // Refresh the surveys list
+                } else {
+                    alert(data.message || "Failed to submit survey");
+                }
+            } catch (error) {
+                console.error("Error submitting survey:", error);
+                alert("Failed to submit survey");
+            }
+        }
+
+        async function loadSurveys() {
+            try {
+                const response = await fetch(URL_SURVEY_DASHBOARD_API);
+                const data = await response.json();
+                console.log("Loaded surveys data:", data); // Debug log
+                allSurveys = data.surveys || [];
+                renderSurveys(allSurveys);
+            } catch (error) {
+                console.error("Error loading surveys:", error);
+            }
+        }
+
+        /* ------- Additional Costs Management ------- */
+        let additionalCosts = [];
+        let availableExtraCharges = [];
+        let selectedExtraCharge = null;
+
+        // Load available extra charges from backend
+        async function loadAvailableExtraCharges() {
+            try {
+                const response = await fetch(URL_GET_AVAILABLE_EXTRA_CHARGES, {
+                    method: 'GET',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                });
+
+                if (!response.ok) {
+                    console.error('Failed to load extra charges:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success) {
+                    availableExtraCharges = data.extra_charges;
+                    populateExtraChargesDropdown();
+                } else {
+                    console.error('Error loading extra charges:', data.message);
+                }
+            } catch (error) {
+                console.error('Error loading extra charges:', error);
+            }
+        }
+
+        // Populate the dropdown with available extra charges
+        function populateExtraChargesDropdown() {
+            const select = document.getElementById('extraChargeSelect');
+            if (!select) return;
+
+            // Clear existing options except the first one
+            select.innerHTML = '<option value="">-- Select Equipment --</option>';
+
+            // Group by category
+            const groups = {};
+            availableExtraCharges.forEach(charge => {
+                if (!groups[charge.cost_type_display]) {
+                    groups[charge.cost_type_display] = [];
+                }
+                groups[charge.cost_type_display].push(charge);
+            });
+
+            // Add grouped options
+            Object.keys(groups).forEach(categoryName => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = categoryName;
+
+                groups[categoryName].forEach(charge => {
+                    const option = document.createElement('option');
+                    option.value = charge.id;
+                    option.textContent = charge.display_name + ` ($${charge.unit_price.toFixed(2)})`;
+                    optgroup.appendChild(option);
+                });
+
+                select.appendChild(optgroup);
+            });
+        }
+
+        // Update equipment details when selection changes
+        function updateEquipmentDetails() {
+            const selectElement = document.getElementById('extraChargeSelect');
+            const chargeId = selectElement.value;
+            const detailsDiv = document.getElementById('equipmentDetails');
+
+            if (!chargeId) {
+                detailsDiv.classList.add('hidden');
+                selectedExtraCharge = null;
+                updateTotalPrice();
+                return;
+            }
+
+            selectedExtraCharge = availableExtraCharges.find(charge => charge.id == chargeId);
+            if (!selectedExtraCharge) return;
+
+            // Update details display
+            document.getElementById('selectedCategory').textContent = selectedExtraCharge.cost_type_display;
+
+            const brandModel = [];
+            if (selectedExtraCharge.brand) brandModel.push(selectedExtraCharge.brand);
+            if (selectedExtraCharge.model) brandModel.push(selectedExtraCharge.model);
+            document.getElementById('selectedBrandModel').textContent = brandModel.join(' ') || '-';
+
+            document.getElementById('selectedUnitPrice').textContent = selectedExtraCharge.unit_price.toFixed(2);
+
+            const descriptionEl = document.getElementById('selectedDescription');
+            if (selectedExtraCharge.description) {
+                descriptionEl.textContent = selectedExtraCharge.description;
+                descriptionEl.style.display = 'block';
+            } else {
+                descriptionEl.style.display = 'none';
+            }
+
+            detailsDiv.classList.remove('hidden');
+            updateTotalPrice();
+        }
+
+        // Update total price calculation
+        function updateTotalPrice() {
+            const quantity = parseInt(document.getElementById('itemQuantity').value) || 1;
+            const totalPriceEl = document.getElementById('totalPrice');
+
+            if (selectedExtraCharge) {
+                const total = selectedExtraCharge.unit_price * quantity;
+                totalPriceEl.textContent = total.toFixed(2);
+            } else {
+                totalPriceEl.textContent = '0.00';
+            }
+        }
+
+        function toggleAdditionalCosts(preserveExistingCosts = false) {
+            const requiresElement = document.getElementById('requiresAdditionalEquipment');
+            const requires = requiresElement.value;
+            const estimatedCostDiv = document.getElementById('estimatedCostDiv');
+            const costJustificationDiv = document.getElementById('costJustificationDiv');
+            const addCostBtn = document.getElementById('addCostBtn');
+
+            // Clear validation error when user makes a selection
+            if (requires) {
+                requiresElement.classList.remove('validation-error');
+            }
+
+            if (requires === 'true') {
+                estimatedCostDiv.classList.remove('hidden');
+                costJustificationDiv.classList.remove('hidden');
+                addCostBtn.style.display = 'inline-flex';
+            } else {
+                estimatedCostDiv.classList.add('hidden');
+                costJustificationDiv.classList.add('hidden');
+                addCostBtn.style.display = 'none';
+                // Clear any existing costs only if not preserving them (i.e., user interaction)
+                if (!preserveExistingCosts) {
+                    additionalCosts = [];
+                    renderAdditionalCosts();
+                    updateTotalCost();
+                }
+            }
+        }
+
+        async function showAddCostForm() {
+            // Load extra charges if not already loaded
+            if (availableExtraCharges.length === 0) {
+                await loadAvailableExtraCharges();
+            }
+
+            document.getElementById('addCostForm').classList.remove('hidden');
+
+            // Clear form
+            document.getElementById('extraChargeSelect').value = '';
+            document.getElementById('itemQuantity').value = '1';
+            document.getElementById('itemJustification').value = '';
+            document.getElementById('isRequired').checked = true;
+            document.getElementById('equipmentDetails').classList.add('hidden');
+            selectedExtraCharge = null;
+            updateTotalPrice();
+        }
+
+        function hideAddCostForm() {
+            document.getElementById('addCostForm').classList.add('hidden');
+        }
+
+        async function addCostItem() {
+            const extraChargeId = document.getElementById('extraChargeSelect').value;
+            const quantity = parseInt(document.getElementById('itemQuantity').value);
+            const justification = document.getElementById('itemJustification').value;
+            const isRequired = document.getElementById('isRequired').checked;
+
+            // Validation
+            if (!currentSurveyId) {
+                alert('No survey selected. Please select a survey first.');
+                return;
+            }
+
+            if (!extraChargeId) {
+                alert('Please select an equipment item');
+                return;
+            }
+
+            if (!quantity || quantity < 1) {
+                alert('Please enter a valid quantity');
+                return;
+            }
+
+            if (!justification.trim()) {
+                alert('Please provide a justification for this equipment');
+                return;
+            }
+
+            if (!selectedExtraCharge) {
+                alert('Selected equipment not found. Please try again.');
+                return;
+            }
+
+            // Debug logging
+            console.log('Adding cost item:', {
+                currentSurveyId,
+                extraChargeId,
+                quantity,
+                justification,
+                isRequired,
+                selectedExtraCharge
+            });
+
+            try {
+                const response = await fetch(URL_ADD_ADDITIONAL_COST, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: currentSurveyId,
+                        extra_charge_id: extraChargeId,
+                        quantity: quantity,
+                        is_required: isRequired,
+                        justification: justification
+                    })
+                });
+
+                console.log('Response status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    alert(`Server error (${response.status}): ${errorText.substring(0, 200)}...`);
+                    return;
+                }
+
+                const data = await response.json();
+                console.log('Response data:', data);
+
+                if (data.success) {
+                    // Calculate total price
+                    const totalPrice = selectedExtraCharge.unit_price * quantity;
+
+                    // Add to local array
+                    additionalCosts.push({
+                        id: data.cost_id,
+                        extra_charge: selectedExtraCharge,
+                        item_name: selectedExtraCharge.item_name,
+                        description: selectedExtraCharge.description,
+                        quantity: quantity,
+                        unit_price: selectedExtraCharge.unit_price,
+                        total_price: totalPrice,
+                        is_required: isRequired,
+                        justification: justification,
+                        cost_type: selectedExtraCharge.cost_type,
+                        cost_type_display: selectedExtraCharge.cost_type_display
+                    });
+
+                    // Update UI
+                    renderAdditionalCosts();
+                    updateTotalCost();
+                    hideAddCostForm();
+
+                    alert(`Equipment "${selectedExtraCharge.item_name}" added successfully!`);
+                } else {
+                    alert(`Error: ${data.message}`);
+                }
+
+            } catch (error) {
+                console.error('Error adding cost item:', error);
+                alert(`Network error: ${error.message}`);
+            }
+        }
+
+        function renderAdditionalCosts() {
+            const costsList = document.getElementById('additionalCostsList');
+
+            if (additionalCosts.length === 0) {
+                costsList.innerHTML = '<p class="text-gray-500 text-sm italic">No additional costs added yet</p>';
+                return;
+            }
+
+            costsList.innerHTML = additionalCosts.map(cost => `
+                <div class="bg-white border border-gray-200 rounded-lg p-4">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="font-medium text-gray-900">${cost.item_name}</span>
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">${cost.cost_type}</span>
+                                ${cost.is_required ? '<span class="text-xs bg-red-100 text-red-600 px-2 py-1 rounded">Required</span>' : ''}
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2">${cost.description}</p>
+                            <p class="text-sm text-gray-500 mb-2">${cost.justification}</p>
+                            <div class="flex items-center gap-4 text-sm">
+                                <span>Qty: ${cost.quantity}</span>
+                                <span>Unit: $${cost.unit_price.toFixed(2)}</span>
+                                <span class="font-medium text-green-600">Total: $${cost.total_price.toFixed(2)}</span>
+                            </div>
+                        </div>
+                        <button onclick="removeCostItem(${cost.id})" class="text-red-500 hover:text-red-700 p-2">
+                            <i class="fas fa-trash text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function removeCostItem(costId) {
+            if (!confirm('Are you sure you want to remove this cost item?')) return;
+
+            additionalCosts = additionalCosts.filter(cost => cost.id !== costId);
+            renderAdditionalCosts();
+            updateTotalCost();
+
+            // Automatically save the change
+            saveProgress();
+        }
+
+        function updateTotalCost() {
+            const total = additionalCosts.reduce((sum, cost) => sum + cost.total_price, 0);
+            document.getElementById('estimatedAdditionalCost').value = total.toFixed(2);
+        }
+
+        async function loadAdditionalCosts(surveyId) {
+            try {
+                const response = await fetch(URL_GET_ADDITIONAL_COSTS.replace('0', surveyId));
+                const data = await response.json();
+
+                if (data.success) {
+                    additionalCosts = data.costs;
+                    renderAdditionalCosts();
+                    updateTotalCost();
+
+                    // Update UI based on whether costs exist
+                    if (additionalCosts.length > 0) {
+                        document.getElementById('requiresAdditionalEquipment').value = 'true';
+                    }
+
+                    // Now call toggleAdditionalCosts to show/hide sections based on the final state
+                    // Use preserveExistingCosts=true to avoid clearing the costs we just loaded
+                    toggleAdditionalCosts(true);
+                }
+            } catch (error) {
+                console.error('Error loading additional costs:', error);
+            }
+        }
+
+        async function loadTechnicians() {
+            if (userRole === 'technician') return; // Technicians don't need to load other technicians
+
+            try {
+                const response = await fetch("/tech/technicians/api/");
+                const data = await response.json();
+                const techSelect = document.getElementById("assignTechnicianSelect");
+                techSelect.innerHTML = '<option value="">-- Select Technician --</option>';
+
+                if (data.technicians) {
+                    data.technicians.forEach(tech => {
+                        const option = document.createElement("option");
+                        option.value = tech.id;
+                        option.textContent = tech.name;
+                        techSelect.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error("Error loading technicians:", error);
+            }
+        }
+
+        function openAssignModal(surveyId, orderRef) {
+            if (userRole === 'technician') return; // Technicians can't assign
+
+            currentSurveyId = surveyId;
+            document.getElementById("assignModalOrderRef").textContent = orderRef;
+            document.getElementById("assignModal").classList.remove("hidden");
+
+            // Set default date to tomorrow
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            document.getElementById("assignDate").value = tomorrow.toISOString().split('T')[0];
+
+            loadTechnicians();
+        }
+
+
+
+
+        function closeAssignModal() {
+            document.getElementById("assignModal").classList.add("hidden");
+            currentSurveyId = null;
+            document.getElementById("assignTechnicianSelect").value = "";
+            document.getElementById("assignDate").value = "";
+        }
+
+        async function submitAssign() {
+            const technicianId = document.getElementById("assignTechnicianSelect").value;
+            const scheduledDate = document.getElementById("assignDate").value;
+
+            if (!technicianId || !scheduledDate || !currentSurveyId) {
+                alert("Please fill in all fields.");
+                return;
+            }
+
+            try {
+                const response = await fetch(URL_ASSIGN_TO_TECHNICIAN, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: currentSurveyId,
+                        technician_id: technicianId,
+                        scheduled_date: scheduledDate
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    console.log("Technician assigned successfully:", data.message);
+                    closeAssignModal();
+                    // Force a complete refresh with a small delay to ensure the database is updated
+                    setTimeout(() => {
+                        loadSurveys();
+                    }, 500);
+                } else {
+                    alert(data.message || "Failed to assign technician.");
+                }
+            } catch (error) {
+                console.error("Error assigning technician:", error);
+                alert("Something went wrong.");
+            }
+        }
+
+        function applyFilter() {
+            const selectedStatus = document.getElementById("statusFilter").value;
+            const filteredSurveys = selectedStatus === "All" ? allSurveys : allSurveys.filter(survey => survey.status === selectedStatus);
+            renderSurveys(filteredSurveys);
+        }
+
+        // Reassignment functions for rejected surveys
+        let currentReassignSurveyId = null;
+
+        function openReassignModal(surveyId, orderRef, currentTechnician) {
+            if (userRole === 'technician') return; // Technicians can't reassign
+
+            currentReassignSurveyId = surveyId;
+            document.getElementById("reassignModalOrderRef").textContent = orderRef;
+            document.getElementById("reassignModalCurrentTech").textContent = currentTechnician;
+            document.getElementById("reassignModal").classList.remove("hidden");
+
+            // Pre-fill the reason
+            document.getElementById("reassignReason").value = "Counter-expertise required to verify the initial rejection assessment";
+
+            loadReassignTechnicians();
+        }
+
+        function closeReassignModal() {
+            document.getElementById("reassignModal").classList.add("hidden");
+            currentReassignSurveyId = null;
+            document.getElementById("reassignTechnicianSelect").value = "";
+            document.getElementById("reassignReason").value = "";
+        }
+
+        async function loadReassignTechnicians() {
+            try {
+                const response = await fetch(URL_TECHNICIANS_LIST);
+                const data = await response.json();
+                const select = document.getElementById("reassignTechnicianSelect");
+
+                select.innerHTML = '<option value="">Select a technician...</option>';
+
+                if (data.technicians && data.technicians.length > 0) {
+                    data.technicians.forEach(tech => {
+                        const option = document.createElement("option");
+                        option.value = tech.id;
+                        option.textContent = `${tech.full_name || tech.username} (${tech.rejection_rate || 0}% rejection rate)`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    select.innerHTML = '<option value="">No technicians available</option>';
+                }
+            } catch (error) {
+                console.error("Error loading technicians:", error);
+                document.getElementById("reassignTechnicianSelect").innerHTML = '<option value="">Error loading technicians</option>';
+            }
+        }
+
+        async function confirmReassign() {
+            const newTechnicianId = document.getElementById("reassignTechnicianSelect").value;
+            const reason = document.getElementById("reassignReason").value.trim();
+
+            if (!newTechnicianId) {
+                alert("Please select a technician.");
+                return;
+            }
+
+            if (!reason) {
+                alert("Please provide a reason for reassignment.");
+                return;
+            }
+
+            if (!currentReassignSurveyId) {
+                alert("Survey ID not found.");
+                return;
+            }
+
+            try {
+                const response = await fetch(URL_REASSIGN_SURVEY, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        survey_id: currentReassignSurveyId,
+                        new_technician_id: newTechnicianId,
+                        reason: reason
+                    })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    alert("Survey reassigned successfully! Both technicians will be notified.");
+                    closeReassignModal();
+                    // Refresh the surveys list
+                    setTimeout(() => {
+                        loadSurveys();
+                    }, 500);
+                } else {
+                    alert(data.message || "Failed to reassign survey.");
+                }
+            } catch (error) {
+                console.error("Error reassigning survey:", error);
+                alert("Something went wrong during reassignment.");
+            }
+        }
+
+        function viewRejectionDetails(surveyId) {
+            // Redirect to the survey detail page to view rejection details
+            window.open(URL_SURVEY_DETAIL.replace('999999', surveyId), '_blank');
+        }
+
+        function renderSurveys(surveys) {
+            const tbody = document.getElementById("surveysTableBody");
+            const scheduledCount = document.getElementById("scheduledCount");
+            const inProgressCount = document.getElementById("inProgressCount");
+            const completedCount = document.getElementById("completedCount");
+            const approvedCount = document.getElementById("approvedCount");
+
+            tbody.innerHTML = "";
+            let index = 1;
+            let scheduled = 0, progress = 0, completed = 0, approved = 0;
+
+            surveys.forEach(survey => {
+                console.log("Processing survey:", survey); // Debug log
+                if (survey.status === "scheduled") scheduled++;
+                else if (survey.status === "in_progress") progress++;
+                else if (survey.status === "completed") completed++;
+                else if (survey.status === "approved") approved++;
+
+                const locationButtonHtml = locationButton(survey.latitude, survey.longitude);
+
+                let actionButtons = '';
+
+                if (userRole === 'technician') {
+                    // Technician view - different buttons based on survey status
+                    if (survey.status === "scheduled") {
+                        actionButtons = `
+                            <button onclick="startSurvey(${survey.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-blue-600 text-white text-xs font-semibold shadow-sm hover:bg-blue-700 transition-all"><i class="fas fa-play fa-fw"></i> Start Survey</button>
+                        `;
+                    } else if (survey.status === "in_progress") {
+                        actionButtons = `
+                            <button onclick="openConductSurveyModal(${survey.id}, '${survey.order_reference}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-semibold shadow-sm hover:bg-green-700 transition-all"><i class="fas fa-arrow-right-to-bracket fa-fw"></i> Continue</button>
+                        `;
+                    } else if (survey.status === "completed") {
+                        actionButtons = `
+                            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-100 text-gray-500 text-xs font-semibold"><i class="fas fa-check-double fa-fw"></i> Completed</span>
+                        `;
+                    }
+                } else {
+                    // Admin view - original logic
+                    if (survey.status === "completed") {
+                        if (survey.installation_feasible === false) {
+                            // Installation not feasible - disable approve button and show warning
+                            actionButtons = `
+                                <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-gray-300 text-white text-xs font-semibold cursor-not-allowed" disabled title="Cannot approve - installation marked as not feasible"><i class="fas fa-check fa-fw"></i> Approve</button>
+                                <button onclick="rejectSurvey(${survey.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-500 bg-white text-red-500 text-xs font-semibold shadow-sm hover:bg-red-50 transition-all"><i class="fas fa-times fa-fw"></i> Reject</button>
+                            `;
+                        } else {
+                            // Installation feasible - normal approve/reject buttons
+                            actionButtons = `
+                                <button onclick="approveSurvey(${survey.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-600 text-white text-xs font-semibold shadow-sm hover:bg-green-700 transition-all"><i class="fas fa-check fa-fw"></i> Approve</button>
+                                <button onclick="rejectSurvey(${survey.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-red-500 bg-white text-red-500 text-xs font-semibold shadow-sm hover:bg-red-50 transition-all"><i class="fas fa-times fa-fw"></i> Reject</button>
+                            `;
+                        }
+                    } else if (survey.status === "scheduled") {
+                        if (survey.technician === "Unassigned") {
+                            actionButtons = `
+                                <button onclick="openAssignModal(${survey.id}, '${survey.order_reference}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-xs font-semibold shadow-sm hover:bg-indigo-700 transition-all"><i class="fas fa-user-plus fa-fw"></i> Assign</button>
+                            `;
+                        } else {
+                            actionButtons = `
+                                <button onclick="openAssignModal(${survey.id}, '${survey.order_reference}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-amber-500 bg-white text-amber-600 text-xs font-semibold shadow-sm hover:bg-amber-50 transition-all"><i class="fas fa-user-edit fa-fw"></i> Reassign</button>
+                            `;
+                        }
+                    } else if (survey.status === "rejected") {
+                        // Survey rejected - show reassign button for counter-expertise
+                        actionButtons = `
+                             <button onclick="openReassignModal(${survey.id}, '${survey.order_reference}', '${survey.technician || 'Unknown'}')" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-orange-500 text-white text-xs font-semibold shadow-sm hover:bg-orange-600 transition-all"><i class="fas fa-users-viewfinder fa-fw"></i> Counter-Expertise</button>
+                             <button onclick="viewRejectionDetails(${survey.id})" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border border-gray-300 bg-white text-gray-600 text-xs font-semibold shadow-sm hover:bg-gray-50 transition-all"><i class="fas fa-file-alt fa-fw"></i> View Reason</button>
+                        `;
+                    }
+                }
+
+                const detailUrl = URL_SURVEY_DETAIL.replace('999999', survey.id);
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td class="px-4 py-2">${index++}</td>
+                    <td class="px-4 py-2 font-medium">${survey.order_reference}</td>
+                    <td class="px-4 py-2">${survey.technician || 'Unassigned'}</td>
+                    <td class="px-4 py-2">${survey.scheduled_at || '—'}</td>
+                    <td class="px-4 py-2 capitalize">${survey.status.replace('_', ' ')}</td>
+                    <td class="px-4 py-2">${locationButtonHtml}</td>
+                    <td class="px-4 py-2">
+                        <div class="flex items-center justify-end gap-2">
+                            ${actionButtons}
+                            <a href="${detailUrl}" class="inline-flex items-center justify-center h-8 w-8 rounded-md border border-gray-300 bg-white text-gray-500 text-xs font-semibold shadow-sm hover:bg-gray-50 transition-all" title="View Details"><i class="fas fa-eye"></i></a>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            scheduledCount.textContent = scheduled;
+            inProgressCount.textContent = progress;
+            completedCount.textContent = completed;
+            approvedCount.textContent = approved;
+        }
+
+        async function approveSurvey(surveyId) {
+            if (userRole === 'technician') return; // Technicians can't approve surveys
+
+            // Find the survey to check if installation is feasible
+            const survey = allSurveys.find(s => s.id === surveyId);
+            if (survey && survey.installation_feasible === false) {
+                alert("Cannot approve survey - technician marked installation as NOT feasible. Please reject instead.");
+                return;
+            }
+
+            if (!confirm("Are you sure you want to approve this survey?")) return;
+
+            try {
+                const detailUrl = URL_SURVEY_DETAIL.replace('999999', surveyId);
+                const res = await fetch(detailUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        action: "approve",
+                        approval_notes: "Approved via dashboard"
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert("Survey approved successfully!");
+                    loadSurveys(); // Refresh the surveys list
+                } else {
+                    alert(data.message || "Failed to approve survey.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong.");
+            }
+        }
+
+        async function rejectSurvey(surveyId) {
+            if (userRole === 'technician') return; // Technicians can't reject surveys
+            const reason = prompt("Please provide a reason for rejection:");
+            if (!reason) return;
+
+            try {
+                const detailUrl = URL_SURVEY_DETAIL.replace('999999', surveyId);
+                const res = await fetch(detailUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "X-CSRFToken": getCSRFToken()
+                    },
+                    body: JSON.stringify({
+                        action: "reject",
+                        rejection_reason: reason
+                    })
+                });
+
+                const data = await res.json();
+                if (data.success) {
+                    alert("Survey rejected.");
+                    loadSurveys(); // Refresh the surveys list
+                } else {
+                    alert(data.message || "Failed to reject survey.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Something went wrong.");
+            }
+        }
+
+        // Photo Upload Functionality
+        let selectedPhotos = [];
+
+        function handlePhotoDragOver(event) {
+            event.preventDefault();
+            document.getElementById('photoDropZone').classList.add('drag-over');
+        }
+
+        function handlePhotoDragEnter(event) {
+            event.preventDefault();
+            document.getElementById('photoDropZone').classList.add('drag-over');
+        }
+
+        function handlePhotoDragLeave(event) {
+            event.preventDefault();
+            if (!event.currentTarget.contains(event.relatedTarget)) {
+                document.getElementById('photoDropZone').classList.remove('drag-over');
+            }
+        }
+
+        function handlePhotoDrop(event) {
+            event.preventDefault();
+            document.getElementById('photoDropZone').classList.remove('drag-over');
+
+            const files = Array.from(event.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+            if (files.length > 0) {
+                handlePhotoFiles(files);
+            } else {
+                alert('Please drop only image files (JPG, PNG, WEBP).');
+            }
+        }
+
+        function handlePhotoSelect(event) {
+            const files = Array.from(event.target.files);
+            handlePhotoFiles(files);
+        }
+
+        function handlePhotoFiles(files) {
+            const validFiles = files.filter(file => {
+                if (!file.type.startsWith('image/')) {
+                    alert(`File ${file.name} is not an image.`);
+                    return false;
+                }
+                if (file.size > 10 * 1024 * 1024) { // 10MB limit
+                    alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+                    return false;
+                }
+                return true;
+            });
+
+            if (validFiles.length === 0) return;
+
+            validFiles.forEach(file => {
+                const photoItem = {
+                    file: file,
+                    id: Date.now() + Math.random(),
+                    type: 'other',
+                    description: ''
+                };
+                selectedPhotos.push(photoItem);
+            });
+
+            updatePhotoPreview();
+        }
+
+        function updatePhotoPreview() {
+            const previewArea = document.getElementById('photoPreviewArea');
+            const previewGrid = document.getElementById('photoPreviewGrid');
+            const photoCount = document.getElementById('photoCount');
+            const uploadBtn = document.getElementById('uploadPhotosBtn');
+
+            if (selectedPhotos.length === 0) {
+                previewArea.classList.add('hidden');
+                return;
+            }
+
+            previewArea.classList.remove('hidden');
+            previewGrid.innerHTML = '';
+
+            selectedPhotos.forEach(photo => {
+                const div = document.createElement('div');
+                div.className = 'relative bg-white border rounded-lg p-3 shadow-sm photo-preview-item';
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    div.innerHTML = `
+                        <div class="aspect-square bg-gray-100 rounded-lg mb-2 overflow-hidden relative">
+                            <img src="${e.target.result}" class="w-full h-full object-cover" alt="Preview">
+                            <span class="photo-type-badge" id="badge-${photo.id}">Other</span>
+                        </div>
+                        <div class="space-y-2">
+                            <select onchange="updatePhotoType('${photo.id}', this.value)"
+                                    class="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500">
+                                <option value="other">Other</option>
+                                <option value="site_overview">Site Overview</option>
+                                <option value="proposed_mounting">Proposed Mounting</option>
+                                <option value="obstructions">Obstructions</option>
+                                <option value="access_path">Access Path</option>
+                                <option value="power_source">Power Source</option>
+                                <option value="safety_concern">Safety Concern</option>
+                            </select>
+                            <input type="text" placeholder="Description (optional)"
+                                   onchange="updatePhotoDescription('${photo.id}', this.value)"
+                                   class="w-full text-xs border border-gray-300 rounded px-2 py-1 focus:ring-1 focus:ring-blue-500">
+                            <button onclick="removePhoto('${photo.id}')"
+                                    class="w-full text-xs bg-red-500 text-white rounded py-1 hover:bg-red-600 transition">
+                                <i class="fas fa-trash mr-1"></i>Remove
+                            </button>
+                        </div>
+                    `;
+                };
+                reader.readAsDataURL(photo.file);
+                previewGrid.appendChild(div);
+            });
+
+            photoCount.textContent = `${selectedPhotos.length} photo${selectedPhotos.length !== 1 ? 's' : ''} selected`;
+            uploadBtn.disabled = selectedPhotos.length === 0;
+        }
+
+        function updatePhotoType(photoId, type) {
+            const photo = selectedPhotos.find(p => p.id == photoId);
+            if (photo) {
+                photo.type = type;
+
+                // Update the badge
+                const badge = document.getElementById(`badge-${photoId}`);
+                if (badge) {
+                    const typeLabels = {
+                        'other': 'Other',
+                        'site_overview': 'Site Overview',
+                        'proposed_mounting': 'Mounting',
+                        'obstructions': 'Obstructions',
+                        'access_path': 'Access Path',
+                        'power_source': 'Power Source',
+                        'safety_concern': 'Safety'
+                    };
+                    badge.textContent = typeLabels[type] || 'Other';
+                }
+            }
+        }
+
+        function updatePhotoDescription(photoId, description) {
+            const photo = selectedPhotos.find(p => p.id == photoId);
+            if (photo) {
+                photo.description = description;
+            }
+        }
+
+        function removePhoto(photoId) {
+            selectedPhotos = selectedPhotos.filter(p => p.id != photoId);
+            updatePhotoPreview();
+        }
+
+        async function uploadSelectedPhotos() {
+            if (selectedPhotos.length === 0) {
+                alert('No photos selected to upload');
+                return;
+            }
+
+            if (!currentSurveyId) {
+                alert('No survey ID found. Please refresh the page and try again.');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('uploadPhotosBtn');
+            const originalText = uploadBtn.innerHTML;
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Uploading...';
+
+            try {
+                const formData = new FormData();
+
+                selectedPhotos.forEach((photo, index) => {
+                    formData.append('photos', photo.file);
+                    formData.append('photo_types', photo.type);
+                    formData.append('descriptions', photo.description);
+                    formData.append('latitudes', ''); // Can be enhanced with GPS
+                    formData.append('longitudes', ''); // Can be enhanced with GPS
+                });
+
+                const csrfToken = getCSRFToken();
+                const url = URL_UPLOAD_SURVEY_PHOTOS.replace('999999', currentSurveyId);
+
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+
+                // Check if response is OK first
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('Server error response:', errorText);
+                    throw new Error(`Server error (${response.status}): ${errorText}`);
+                }
+
+                // Try to parse JSON, but handle cases where response is empty or not JSON
+                let data;
+                const responseText = await response.text();
+
+                if (!responseText.trim()) {
+                    throw new Error('Server returned empty response');
+                }
+
+                try {
+                    data = JSON.parse(responseText);
+                } catch (jsonError) {
+                    console.error('Failed to parse JSON response:', responseText);
+                    throw new Error('Invalid JSON response from server');
+                }
+
+                if (data.success) {
+                    alert('Photos uploaded successfully!');
+                    selectedPhotos = [];
+                    updatePhotoPreview();
+
+                    // Clear photo validation error since we now have photos
+                    const photoSection = document.getElementById('photoUploadSection');
+                    if (photoSection) {
+                        photoSection.classList.remove('validation-error');
+                    }
+
+                    // Reload uploaded photos to show the new ones
+                    await loadUploadedPhotos();
+                } else {
+                    alert('Error uploading photos: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error('Upload error:', error);
+                alert('Error uploading photos: ' + error.message);
+            } finally {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = originalText;
+            }
+        }
+
+        async function loadUploadedPhotos() {
+            if (!currentSurveyId) return;
+
+            try {
+                // Create a simple API call to get photos
+                const response = await fetch(`/site-survey/surveys/${currentSurveyId}/`);
+                const text = await response.text();
+
+                // Parse HTML to find photos (this is a simple approach)
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+
+                // Look for photo elements in the survey detail page
+                const photoElements = doc.querySelectorAll('img[src*="site_survey_photos"]');
+
+                const uploadedArea = document.getElementById('uploadedPhotosArea');
+                const uploadedGrid = document.getElementById('uploadedPhotosGrid');
+
+                if (photoElements.length > 0) {
+                    uploadedArea.classList.remove('hidden');
+                    uploadedGrid.innerHTML = '';
+
+                    photoElements.forEach((img, index) => {
+                        const photoDiv = document.createElement('div');
+                        photoDiv.className = 'relative bg-white border rounded-lg overflow-hidden shadow-sm';
+                        photoDiv.innerHTML = `
+                            <div class="aspect-square">
+                                <img src="${img.src}" class="w-full h-full object-cover" alt="Uploaded photo ${index + 1}">
+                            </div>
+                            <div class="p-2 text-center">
+                                <span class="text-xs text-gray-600">Photo ${index + 1}</span>
+                            </div>
+                        `;
+                        uploadedGrid.appendChild(photoDiv);
+                    });
+                } else {
+                    uploadedArea.classList.add('hidden');
+                }
+            } catch (error) {
+                console.error('Error loading uploaded photos:', error);
+                // Don't show error to user as this is not critical
+            }
+        }
+
+        window.addEventListener("DOMContentLoaded", loadSurveys);
+    </script>
+{% endblock %}

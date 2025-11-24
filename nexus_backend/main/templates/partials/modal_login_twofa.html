@@ -1,0 +1,152 @@
+{% load i18n static %}
+
+{# ===== Login Modal ===== #}
+<div id="loginModal" class="hidden fixed inset-0 z-[100]">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-gray-950 backdrop-blur-sm"></div>
+
+  <div class="relative min-h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white/95 border border-gray-200 rounded-2xl shadow-2xl animate__animated animate__fadeInUp">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 pt-6">
+        <div class="flex items-center gap-3">
+          <img src="{% static 'images/logo/logo.png' %}" alt="NEXUS" class="h-8 w-auto">
+          <!-- <h3 class="text-lg font-bold text-gray-800">{% trans "Connexion" %}</h3> -->
+           <h3 class="text-lg font-bold text-gray-800">{% trans "Login" %}
+        </div>
+        <button type="button" class="p-2 rounded hover:bg-gray-100" onclick="closeLoginModal()" aria-label="{% trans 'Close' %}">
+          <i class="fa-solid fa-xmark text-gray-600"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 pb-6 pt-4">
+        <div id="login-alert-modal" class="hidden mb-4 px-4 py-2 rounded text-sm"></div>
+
+        <form id="loginFormModal" method="post" action="{% url 'login_request' %}" class="space-y-4">
+          {% csrf_token %}
+          <div>
+            <!-- <label for="login_username" class="block text-sm font-medium text-gray-700 mb-1">
+              {% trans "Nom d'utilisateur" %} / {% trans "Email" %}
+            </label> -->
+            <label for="login_username" class="block text-sm font-medium text-gray-700 mb-1">
+              {% trans "Username" %} / {% trans "Email" %}
+            </label>
+            <input id="login_username" name="username" type="text" required
+                   class="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div>
+            <label for="login_password" class="block text-sm font-medium text-gray-700 mb-1">
+              <!-- {% trans "Mot de passe" %} -->
+               {% trans "Password" %}
+            </label>
+            <input id="login_password" name="password" type="password" required
+                   class="w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <div class="flex items-center justify-between">
+            <label class="inline-flex items-center gap-2 text-sm text-gray-600">
+              <input type="checkbox" name="remember" class="rounded border-gray-300">
+              <!-- <span>{% trans "Se souvenir de moi" %}</span> -->
+               <span>{% trans "Remember me" %}</span>
+            </label>
+
+              <a href="#" class="text-sm text-blue-600 hover:text-blue-700" onclick="openResetPasswordModal(); return false;">
+                <!-- {% trans "Mot de passe oublié ?" %} -->
+                 {% trans "Forgotten password ?" %}
+              </a>
+          </div>
+
+          <button id="loginSubmitBtn" type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
+            <span class="inline-block" data-label>{% trans "Login" %}</span>
+            <span class="hidden" data-spinner>
+              <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </span>
+          </button>
+        </form>
+
+        <p class="mt-5 text-xs text-gray-500 leading-relaxed">
+          {% trans "By signing in, you agree to our Terms and Privacy Policy. We use industry-standard encryption and do not share your credentials." %}
+        </p>
+      <!-- login register toggle </div> -->
+<div class="dont_have_account flex items-center justify-center gap-2 text-sm mt-2">
+  Do not have an account? Please click on:
+  <button
+    class="register_button underline"
+    type="button"
+    onclick="document.getElementById('loginModal').classList.add('hidden'); document.getElementById('modal').classList.remove('hidden');">
+    Register 
+  </button>
+</div>
+      </div>
+    </div>
+  </div>
+  </div>
+
+{# ===== Two-Factor (2FA) Modal ===== #}
+<div id="twoFAModal" class="hidden fixed inset-0 z-[110]">
+  <!-- Backdrop -->
+  <div class="absolute inset-0 bg-gradient-to-b from-black/60 via-black/70 to-gray-950 backdrop-blur-sm"></div>
+
+  <div class="relative min-h-full flex items-center justify-center p-4">
+    <div class="w-full max-w-md bg-white/95 border border-gray-200 rounded-2xl shadow-2xl animate__animated animate__fadeInUp">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-6 pt-6">
+        <div class="flex items-center gap-3">
+          <div class="h-8 w-8 grid place-items-center rounded-full bg-blue-50 text-blue-700">
+            <i class="fa-solid fa-shield-halved"></i>
+          </div>
+          <h3 class="text-lg font-bold text-gray-800">{% trans "Vérification en deux étapes" %}</h3>
+        </div>
+        <button type="button" class="p-2 rounded hover:bg-gray-100" onclick="closeTwoFAModal()" aria-label="{% trans 'Close' %}">
+          <i class="fa-solid fa-xmark text-gray-600"></i>
+        </button>
+      </div>
+
+      <!-- Body -->
+      <div class="px-6 pb-6 pt-4">
+        <p id="twofa-helper" class="text-sm text-gray-600 mb-3">
+          {% trans "Entrez le code à 6 chiffres envoyé à votre appareil." %}
+        </p>
+
+        <div id="twofa-alert" class="hidden mb-3 px-4 py-2 rounded text-sm"></div>
+
+        <form id="twoFAForm" method="post" action="" class="space-y-4">
+          {% csrf_token %}
+          <input type="hidden" name="challenge_id" id="twofa_challenge_id">
+
+          <div>
+            <label for="twofa_code" class="block text-sm font-medium text-gray-700 mb-1">
+              {% trans "Code de sécurité" %}
+            </label>
+            <input id="twofa_code" name="code" inputmode="numeric" pattern="[0-9]*" maxlength="6" required
+                   class="tracking-widest text-center text-lg font-semibold w-full px-4 py-3 rounded-lg bg-white border border-gray-300 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </div>
+
+          <button id="twofaVerifyBtn" type="submit"
+                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2">
+            <span class="inline-block" data-label>{% trans "Vérifier" %}</span>
+            <span class="hidden" data-spinner>
+              <i class="fa-solid fa-circle-notch fa-spin"></i>
+            </span>
+          </button>
+
+          <div class="flex items-center justify-between text-sm">
+            <button id="twofaResendBtn" type="button" class="text-blue-600 hover:text-blue-700">
+              {% trans "Renvoyer le code" %}
+            </button>
+            <button id="twofaUseOtherBtn" type="button" class="text-gray-600 hover:text-gray-800">
+              {% trans "Utiliser une autre méthode" %}
+            </button>
+          </div>
+        </form>
+
+        <p class="mt-5 text-xs text-gray-500">
+          {% trans "Pour votre confidentialité, nous ne stockons jamais vos codes 2FA. Ils expirent rapidement." %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>

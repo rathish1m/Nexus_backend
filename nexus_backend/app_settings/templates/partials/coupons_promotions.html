@@ -1,0 +1,1120 @@
+{% load i18n %}
+
+{# ===================== COUPONS & PROMOTIONS (HTML + JS) ===================== #}
+
+<style>
+  .modal-scroll-area{
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  .pager-btn[disabled]{ opacity:.5; pointer-events:none; }
+</style>
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Coupons & Promotions" %}</h2>
+      <p class="text-sm text-gray-500">{% trans "Create coupon codes, run promos, and track redemptions." %}</p>
+    </div>
+    <div class="flex gap-2">
+      <button onclick="openCouponModal()"
+              class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+        <i class="fas fa-ticket-alt text-xs"></i> {% trans "New Coupon" %}
+      </button>
+{#      <button onclick="openBulkCouponModal()"#}
+{#              class="hidden sm:inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">#}
+{#        <i class="fas fa-layer-group text-xs"></i> {% trans "Bulk Generate" %}#}
+{#      </button>#}
+      <button onclick="openPromotionModal()"
+              class="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+        <i class="fas fa-bullhorn text-xs"></i> {% trans "New Promotion" %}
+      </button>
+    </div>
+  </div>
+
+  {# Tabs #}
+  <div class="flex border-b border-gray-200 mb-4">
+    <button id="tab-coupons" class="px-3 py-2 text-sm font-medium border-b-2 border-blue-600 text-blue-700"
+            onclick="switchPromoTab('coupons')">{% trans "Coupons" %}</button>
+    <button id="tab-promotions" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+            onclick="switchPromoTab('promotions')">{% trans "Promotions" %}</button>
+  </div>
+
+  {# Coupons Table #}
+  <div id="panel-coupons">
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+          <tr>
+            <th class="py-3 px-4">{% trans "Code" %}</th>
+            <th class="py-3 px-4">{% trans "Type" %}</th>
+            <th class="py-3 px-4">{% trans "Value" %}</th>
+            <th class="py-3 px-4">{% trans "Validity" %}</th>
+            <th class="py-3 px-4">{% trans "Usage" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody id="couponsTableBody" class="divide-y divide-gray-100 text-gray-800">
+          <tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{% trans "Loading..." %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="couponsPager" class="flex items-center justify-between mt-3"></div>
+  </div>
+
+  {# Promotions Table #}
+  <div id="panel-promotions" class="hidden">
+    <div class="overflow-x-auto rounded-xl border border-gray-200">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+          <tr>
+            <th class="py-3 px-4">{% trans "Name" %}</th>
+            <th class="py-3 px-4">{% trans "Scope" %}</th>
+            <th class="py-3 px-4">{% trans "Discount" %}</th>
+            <th class="py-3 px-4">{% trans "Validity" %}</th>
+            <th class="py-3 px-4">{% trans "Status" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody id="promotionsTableBody" class="divide-y divide-gray-100 text-gray-800">
+          <tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{% trans "Loading..." %}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div id="promotionsPager" class="flex items-center justify-between mt-3"></div>
+  </div>
+</section>
+
+{# ------------------------- Coupon Modal ------------------------- #}
+<div id="couponModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between p-5 border-b shrink-0">
+        <h3 class="text-lg font-semibold" id="couponModalTitle">{% trans "New Coupon" %}</h3>
+        <button class="text-gray-400 hover:text-gray-600" onclick="closeCouponModal()" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto modal-scroll-area grow">
+        <form id="couponForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <input type="hidden" id="coupon_id">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium">{% trans "Prefix (optional)" %}</label>
+            <input id="coupon_prefix" class="mt-1 w-full border rounded-md px-3 py-2" placeholder="NETX">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Code length" %}</label>
+            <input id="coupon_length" type="number" min="6" max="20" value="10" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Discount type" %}</label>
+            <select id="coupon_discount_type" class="mt-1 w-full border rounded-md px-3 py-2">
+              <option value="percent">{% trans "Percent" %}</option>
+              <option value="fixed">{% trans "Fixed (USD)" %}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Percent off" %}</label>
+            <input id="coupon_percent_off" type="number" step="0.01" placeholder="15" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Amount off (USD)" %}</label>
+            <input id="coupon_amount_off" type="number" step="0.01" placeholder="25" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Max redemptions" %}</label>
+            <input id="coupon_max_redemptions" type="number" min="1" value="1" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Per-user limit" %}</label>
+            <input id="coupon_per_user_limit" type="number" min="1" value="1" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid from" %}</label>
+            <input id="coupon_valid_from" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid to" %}</label>
+            <input id="coupon_valid_to" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium">{% trans "Notes" %}</label>
+            <input id="coupon_notes" class="mt-1 w-full border rounded-md px-3 py-2" placeholder="{% trans 'Optional note' %}">
+          </div>
+
+          {# ====== COUPON: Targets / Scope ====== #}
+          <div class="sm:col-span-2 mt-2 border-t pt-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">{% trans "Targets" %}</h4>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Applies to" %}</label>
+                <div class="flex flex-wrap gap-2">
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="coupon_apply_all" class="rounded"> <span>{% trans "All" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="coupon_apply_plan" class="rounded"> <span>{% trans "Subscription/Plan" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="coupon_apply_kit" class="rounded"> <span>{% trans "Hardware/Kit" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="coupon_apply_install" class="rounded"> <span>{% trans "Installation fee" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="coupon_apply_extra" class="rounded"> <span>{% trans "Extras" %}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Rules" %}</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <select id="coupon_stack_policy" class="w-full border rounded-md px-3 py-2">
+                      <option value="promo_then_coupon">{% trans "Promo first, then coupon" %}</option>
+                      <option value="coupon_then_promo">{% trans "Coupon first, then promo" %}</option>
+                      <option value="none">{% trans "No stacking" %}</option>
+                    </select>
+                    <p class="text-[11px] text-gray-500 mt-1">{% trans "How to stack with promos" %}</p>
+                  </div>
+                  <div>
+                    <input id="coupon_first_n_cycles" type="number" min="0" value="0" class="w-full border rounded-md px-3 py-2">
+                    <p class="text-[11px] text-gray-500 mt-1">{% trans "Limit discount to first N cycles (0 = unlimited)" %}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Plan types" %}</label>
+                <select id="coupon_target_plan_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="unlimited_standard">{% trans "Unlimited Standard Data" %}</option>
+                  <option value="limited_standard">{% trans "Limited Standard Data" %}</option>
+                  <option value="unlimited_with_priority">{% trans "Unlimited + Priority Data" %}</option>
+                  <option value="smart_education">{% trans "Smart Education Impact" %}</option>
+                  <option value="smart_health">{% trans "Smart Health / Community Impact" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Site types" %}</label>
+                <select id="coupon_target_site_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="fixed">{% trans "Fixed Site" %}</option>
+                  <option value="portable">{% trans "Portable Site" %}</option>
+                  <option value="flexible">{% trans "Flexible Site" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Specific plan IDs (CSV)" %}</label>
+                <input id="coupon_target_plan_ids" class="w-full border rounded-md px-3 py-2" placeholder="12,18,27">
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Kit types" %}</label>
+                <select id="coupon_target_kit_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="standard">{% trans "Standard Kit" %}</option>
+                  <option value="mini">{% trans "Mini Kit" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Extra charge types" %}</label>
+                <select id="coupon_target_extra_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="cable_15m">{% trans "15m Cable" %}</option>
+                  <option value="cable_45m">{% trans "45m Cable" %}</option>
+                  <option value="roof_mounting">{% trans "Roof Mounting" %}</option>
+                  <option value="installation">{% trans "Installation" %}</option>
+                  <option value="accessories">{% trans "Accessories" %}</option>
+                  <option value="router">{% trans "Router" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "New customers only?" %}</label>
+                <select id="coupon_new_customers_only" class="w-full border rounded-md px-3 py-2">
+                  <option value="false">{% trans "No" %}</option>
+                  <option value="true">{% trans "Yes" %}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="flex items-center justify-end gap-3 p-5 border-t shrink-0">
+        <button onclick="closeCouponModal()" class="px-4 py-2 text-sm bg-gray-100 rounded-md">{% trans "Cancel" %}</button>
+        <button onclick="saveCoupon()" class="px-4 py-2 text-sm bg-indigo-600 text-white rounded-md">{% trans "Save" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------------------- Bulk Coupon Modal ---------------------- #}
+<div id="bulkCouponModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between p-5 border-b shrink-0">
+        <h3 class="text-lg font-semibold">{% trans "Bulk Generate Coupons" %}</h3>
+        <button class="text-gray-400 hover:text-gray-600" onclick="closeBulkCouponModal()" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto modal-scroll-area grow">
+        <form id="bulkCouponForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium">{% trans "Count" %}</label>
+            <input id="bulk_count" type="number" min="1" value="50" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Length" %}</label>
+            <input id="bulk_length" type="number" min="6" max="20" value="10" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium">{% trans "Prefix (optional)" %}</label>
+            <input id="bulk_prefix" class="mt-1 w-full border rounded-md px-3 py-2" placeholder="Q4">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Discount type" %}</label>
+            <select id="bulk_discount_type" class="mt-1 w-full border rounded-md px-3 py-2">
+              <option value="percent">{% trans "Percent" %}</option>
+              <option value="fixed">{% trans "Fixed (USD)" %}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Percent off" %}</label>
+            <input id="bulk_percent_off" type="number" step="0.01" placeholder="10" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Amount off (USD)" %}</label>
+            <input id="bulk_amount_off" type="number" step="0.01" placeholder="20" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Max redemptions" %}</label>
+            <input id="bulk_max_redemptions" type="number" min="1" value="1" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Per-user limit" %}</label>
+            <input id="bulk_per_user_limit" type="number" min="1" value="1" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid from" %}</label>
+            <input id="bulk_valid_from" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid to" %}</label>
+            <input id="bulk_valid_to" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+
+          {# ====== BULK COUPON: Targets / Scope ====== #}
+          <div class="sm:col-span-2 mt-2 border-t pt-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">{% trans "Targets" %}</h4>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Applies to" %}</label>
+                <div class="flex flex-wrap gap-2">
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="bulk_apply_all" class="rounded"> <span>{% trans "All" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="bulk_apply_plan" class="rounded"> <span>{% trans "Subscription/Plan" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="bulk_apply_kit" class="rounded"> <span>{% trans "Hardware/Kit" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="bulk_apply_install" class="rounded"> <span>{% trans "Installation fee" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="bulk_apply_extra" class="rounded"> <span>{% trans "Extras" %}</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Stacking policy" %}</label>
+                <select id="bulk_stack_policy" class="w-full border rounded-md px-3 py-2">
+                  <option value="promo_then_coupon">{% trans "Promo first, then coupon" %}</option>
+                  <option value="coupon_then_promo">{% trans "Coupon first, then promo" %}</option>
+                  <option value="none">{% trans "No stacking" %}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Plan types" %}</label>
+                <select id="bulk_target_plan_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="unlimited_standard">{% trans "Unlimited Standard Data" %}</option>
+                  <option value="limited_standard">{% trans "Limited Standard Data" %}</option>
+                  <option value="unlimited_with_priority">{% trans "Unlimited + Priority Data" %}</option>
+                  <option value="smart_education">{% trans "Smart Education Impact" %}</option>
+                  <option value="smart_health">{% trans "Smart Health / Community Impact" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Site types" %}</label>
+                <select id="bulk_target_site_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="fixed">{% trans "Fixed Site" %}</option>
+                  <option value="portable">{% trans "Portable Site" %}</option>
+                  <option value="flexible">{% trans "Flexible Site" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Specific plan IDs (CSV)" %}</label>
+                <input id="bulk_target_plan_ids" class="w-full border rounded-md px-3 py-2" placeholder="12,18,27">
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Kit types" %}</label>
+                <select id="bulk_target_kit_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="standard">{% trans "Standard Kit" %}</option>
+                  <option value="mini">{% trans "Mini Kit" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Extra charge types" %}</label>
+                <select id="bulk_target_extra_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="cable_15m">{% trans "15m Cable" %}</option>
+                  <option value="cable_45m">{% trans "45m Cable" %}</option>
+                  <option value="roof_mounting">{% trans "Roof Mounting" %}</option>
+                  <option value="installation">{% trans "Installation" %}</option>
+                  <option value="accessories">{% trans "Accessories" %}</option>
+                  <option value="router">{% trans "Router" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "New customers only?" %}</label>
+                <select id="bulk_new_customers_only" class="w-full border rounded-md px-3 py-2">
+                  <option value="false">{% trans "No" %}</option>
+                  <option value="true">{% trans "Yes" %}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mt-3">
+              <label class="block text-xs text-gray-500 mb-1">{% trans "First N cycles (0 = unlimited)" %}</label>
+              <input id="bulk_first_n_cycles" type="number" min="0" value="0" class="w-full border rounded-md px-3 py-2">
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="flex items-center justify-end gap-3 p-5 border-t shrink-0">
+        <button onclick="closeBulkCouponModal()" class="px-4 py-2 text-sm bg-gray-100 rounded-md">{% trans "Cancel" %}</button>
+        <button onclick="saveBulkCoupons()" class="px-4 py-2 text-sm bg-purple-600 text-white rounded-md">{% trans "Generate" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ----------------------- Promotion Modal ----------------------- #}
+<div id="promotionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 overflow-y-auto" role="dialog" aria-modal="true">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
+      <div class="flex items-center justify-between p-5 border-b shrink-0">
+        <h3 class="text-lg font-semibold" id="promotionModalTitle">{% trans "New Promotion" %}</h3>
+        <button class="text-gray-400 hover:text-gray-600" onclick="closePromotionModal()" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="p-5 overflow-y-auto modal-scroll-area grow">
+        <form id="promotionForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <input type="hidden" id="promotion_id">
+          <div class="sm:col-span-2">
+            <label class="block text-sm font-medium">{% trans "Promo Name" %}</label>
+            <input id="promo_name" class="mt-1 w-full border rounded-md px-3 py-2" placeholder="{% trans 'Back to School' %}">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Discount type" %}</label>
+            <select id="promo_discount_type" class="mt-1 w-full border rounded-md px-3 py-2">
+              <option value="percent">{% trans "Percent" %}</option>
+              <option value="fixed">{% trans "Fixed (USD)" %}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Percent off" %}</label>
+            <input id="promo_percent_off" type="number" step="0.01" placeholder="20" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Amount off (USD)" %}</label>
+            <input id="promo_amount_off" type="number" step="0.01" placeholder="30" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid from" %}</label>
+            <input id="promo_valid_from" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+          <div>
+            <label class="block text-sm font-medium">{% trans "Valid to" %}</label>
+            <input id="promo_valid_to" type="datetime-local" class="mt-1 w-full border rounded-md px-3 py-2">
+          </div>
+
+          <div class="sm:col-span-2 mt-2 border-t pt-4">
+            <h4 class="text-sm font-semibold text-gray-900 mb-2">{% trans "Targets" %}</h4>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Applies to" %}</label>
+                <div class="flex flex-wrap gap-2">
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="promo_apply_all" class="rounded"> <span>{% trans "All" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="promo_apply_plan" class="rounded"> <span>{% trans "Subscription/Plan" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="promo_apply_kit" class="rounded"> <span>{% trans "Hardware/Kit" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="promo_apply_install" class="rounded"> <span>{% trans "Installation fee" %}</span>
+                  </label>
+                  <label class="inline-flex items-center gap-2">
+                    <input type="checkbox" id="promo_apply_extra" class="rounded"> <span>{% trans "Extras" %}</span>
+                  </label>
+                </div>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Stacking policy" %}</label>
+                <select id="promo_stack_policy" class="w-full border rounded-md px-3 py-2">
+                  <option value="promo_then_coupon">{% trans "Promo first, then coupon" %}</option>
+                  <option value="coupon_then_promo">{% trans "Coupon first, then promo" %}</option>
+                  <option value="none">{% trans "No stacking" %}</option>
+                </select>
+                <p class="text-[11px] text-gray-500 mt-1">{% trans "How to stack with coupon" %}</p>
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Plan types" %}</label>
+                <select id="promo_target_plan_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="unlimited_standard">{% trans "Unlimited Standard Data" %}</option>
+                  <option value="limited_standard">{% trans "Limited Standard Data" %}</option>
+                  <option value="unlimited_with_priority">{% trans "Unlimited + Priority Data" %}</option>
+                  <option value="smart_education">{% trans "Smart Education Impact" %}</option>
+                  <option value="smart_health">{% trans "Smart Health / Community Impact" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Site types" %}</label>
+                <select id="promo_target_site_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="fixed">{% trans "Fixed Site" %}</option>
+                  <option value="portable">{% trans "Portable Site" %}</option>
+                  <option value="flexible">{% trans "Flexible Site" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Specific plan IDs (CSV)" %}</label>
+                <input id="promo_target_plan_ids" class="w-full border rounded-md px-3 py-2" placeholder="12,18,27">
+              </div>
+            </div>
+
+            <div class="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Kit types" %}</label>
+                <select id="promo_target_kit_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="standard">{% trans "Standard Kit" %}</option>
+                  <option value="mini">{% trans "Mini Kit" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "Extra charge types" %}</label>
+                <select id="promo_target_extra_types" multiple class="w-full border rounded-md px-3 py-2 h-28">
+                  <option value="cable_15m">{% trans "15m Cable" %}</option>
+                  <option value="cable_45m">{% trans "45m Cable" %}</option>
+                  <option value="roof_mounting">{% trans "Roof Mounting" %}</option>
+                  <option value="installation">{% trans "Installation" %}</option>
+                  <option value="accessories">{% trans "Accessories" %}</option>
+                  <option value="router">{% trans "Router" %}</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs text-gray-500 mb-1">{% trans "New customers only?" %}</label>
+                <select id="promo_new_customers_only" class="w-full border rounded-md px-3 py-2">
+                  <option value="false">{% trans "No" %}</option>
+                  <option value="true">{% trans "Yes" %}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="flex items-center justify-end gap-3 p-5 border-t shrink-0">
+        <button onclick="closePromotionModal()" class="px-4 py-2 text-sm bg-gray-100 rounded-md">{% trans "Cancel" %}</button>
+        <button onclick="savePromotion()" class="px-4 py-2 text-sm bg-green-600 text-white rounded-md">{% trans "Save" %}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ----------------- Django URL templates ----------------- */
+/* Promotions (already working) */
+const PROMO_LIST_URL    = "{% url 'promotion_list' %}";
+const PROMO_CREATE_URL  = "{% url 'promotion_create' %}";
+const PROMO_DETAIL_TPL  = "{% url 'promotion_detail'  promotion_id=0 %}";
+const PROMO_UPDATE_TPL  = "{% url 'promotion_update'  promotion_id=0 %}";
+const PROMO_TOGGLE_TPL  = "{% url 'promotion_toggle'  promotion_id=0 %}";
+const PROMO_DELETE_TPL  = "{% url 'promotion_delete'  promotion_id=0 %}";
+/* Coupons (now using the same pattern) */
+const COUPON_LIST_URL        = "{% url 'coupon_list' %}";
+const COUPON_CREATE_URL      = "{% url 'coupon_create' %}";
+const COUPON_BULK_CREATE_URL = "{% url 'coupon_bulk_create' %}";
+const COUPON_TOGGLE_TPL      = "{% url 'coupon_toggle' coupon_id=0 %}";
+const COUPON_DELETE_TPL      = "{% url 'coupon_delete' coupon_id=0 %}";
+
+function urlWithId(tpl, realId) { const enc = encodeURIComponent(realId); return tpl.replace(/\/0(?=\/|$)/, '/' + enc); }
+
+/* ----------------------------- Pagination State ----------------------------- */
+const PAGE_SIZE = 5;
+let couponsData = [];
+let promotionsData = [];
+let couponsPage = 1;
+let promotionsPage = 1;
+
+/* ----------------------------- Utils ----------------------------- */
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+  return '';
+}
+function jsonOrText(res) {
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) return res.json();
+  return res.text().then(t => { throw new Error(t || `HTTP ${res.status}`); });
+}
+function escapeHTML(s) {
+  return (s || '')
+    .replaceAll('&','&amp;').replaceAll('<','&lt;')
+    .replaceAll('>','&gt;').replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+function getMultiSelectValues(id) {
+  const el = document.getElementById(id);
+  return Array.from(el?.selectedOptions || []).map(o => o.value);
+}
+function setMultiSelectValues(id, values) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const set = new Set(values || []);
+  Array.from(el.options).forEach(o => { o.selected = set.has(o.value); });
+}
+function getCsvInts(id) {
+  const v = (document.getElementById(id)?.value || '').trim();
+  if (!v) return [];
+  return v.split(',').map(s => s.trim()).filter(Boolean).map(Number).filter(n => !Number.isNaN(n));
+}
+function setCsvFromArray(id, arr) {
+  document.getElementById(id).value = (arr || []).join(',');
+}
+
+/* ---------------- Applies <-> Scopes helpers ---------------- */
+function getAppliesTo(prefix) {
+  const ALL = document.getElementById(`${prefix}_apply_all`)?.checked;
+  const res = {
+    all: !!ALL,
+    plan: !!document.getElementById(`${prefix}_apply_plan`)?.checked,
+    kit: !!document.getElementById(`${prefix}_apply_kit`)?.checked,
+    install: !!document.getElementById(`${prefix}_apply_install`)?.checked,
+    extra: !!document.getElementById(`${prefix}_apply_extra`)?.checked,
+  };
+  if (ALL) Object.keys(res).forEach(k => res[k] = true);
+  return res;
+}
+function setAppliesTo(prefix, obj) {
+  const v = obj || {};
+  ['all','plan','kit','install','extra'].forEach(k => {
+    const el = document.getElementById(`${prefix}_apply_${k}`);
+    if (el) el.checked = !!v[k];
+  });
+}
+function appliesToToScopes(applies){
+  if (!applies) return ["any"];
+  const { all, plan, kit, install, extra } = applies;
+  if (all) return ["any"];
+  const scopes = [];
+  if (plan)    scopes.push("plan");
+  if (kit)     scopes.push("kit");
+  if (install) scopes.push("install");
+  if (extra)   scopes.push("extra");
+  return scopes.length ? scopes : ["any"];
+}
+function scopesToApplies(scopes){
+  const s = new Set((scopes || []).map(x => String(x).toLowerCase()));
+  const all = s.has("any") || s.size === 0;
+  return { all, plan: all || s.has("plan"), kit: all || s.has("kit"), install: all || s.has("install"), extra: all || s.has("extra") };
+}
+
+/* ------------------------------ Tabs ------------------------------ */
+function switchPromoTab(which) {
+  const c = document.getElementById('panel-coupons');
+  const p = document.getElementById('panel-promotions');
+  const tc = document.getElementById('tab-coupons');
+  const tp = document.getElementById('tab-promotions');
+  if (which === 'promotions') {
+    c.classList.add('hidden'); p.classList.remove('hidden');
+    tc.classList.remove('border-b-2','border-blue-600','text-blue-700'); tc.classList.add('text-gray-600');
+    tp.classList.add('border-b-2','border-blue-600','text-blue-700'); tp.classList.remove('text-gray-600');
+    if (promotionsData.length) { renderPromotionsPage(promotionsPage); } else { loadPromotions(); }
+  } else {
+    p.classList.add('hidden'); c.classList.remove('hidden');
+    tp.classList.remove('border-b-2','border-blue-600','text-blue-700'); tp.classList.add('text-gray-600');
+    tc.classList.add('border-b-2','border-blue-600','text-blue-700'); tc.classList.remove('text-gray-600');
+    if (couponsData.length) { renderCouponsPage(couponsPage); } else { loadCoupons(); }
+  }
+}
+document.addEventListener('DOMContentLoaded', () => { loadCoupons(); });
+
+/* ---------------------- Pagination Renderer ---------------------- */
+function renderPager(containerId, current, total, onPrev, onNext) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  if (total <= 1) { el.innerHTML = ''; return; }
+  el.innerHTML = `
+    <div class="text-xs text-gray-600">${current} / ${total}</div>
+    <div class="flex items-center gap-2">
+      <button class="pager-btn inline-flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-gray-50"
+              ${current<=1?'disabled':''}
+              onclick="${onPrev}">
+        <i class="fas fa-chevron-left text-xs"></i> {% trans "Prev" %}
+      </button>
+      <button class="pager-btn inline-flex items-center gap-1 px-3 py-1.5 rounded border text-sm hover:bg-gray-50"
+              ${current>=total?'disabled':''}
+              onclick="${onNext}">
+        {% trans "Next" %} <i class="fas fa-chevron-right text-xs"></i>
+      </button>
+    </div>
+  `;
+}
+
+/* ---------------------------- Coupons ---------------------------- */
+function openCouponModal() {
+  document.getElementById('couponModal').classList.remove('hidden');
+  document.getElementById('couponModalTitle').textContent = '{{ _("New Coupon") }}';
+  document.getElementById('couponForm').reset();
+  document.getElementById('coupon_id').value = '';
+  setAppliesTo('coupon', {plan:true});
+  setMultiSelectValues('coupon_target_plan_types', []);
+  setMultiSelectValues('coupon_target_site_types', []);
+  document.getElementById('coupon_target_plan_ids').value = '';
+  setMultiSelectValues('coupon_target_kit_types', []);
+  setMultiSelectValues('coupon_target_extra_types', []);
+  document.getElementById('coupon_new_customers_only').value = 'false';
+  document.getElementById('coupon_stack_policy').value = 'promo_then_coupon';
+  document.getElementById('coupon_first_n_cycles').value = '0';
+}
+function closeCouponModal(){ document.getElementById('couponModal').classList.add('hidden'); }
+function openBulkCouponModal(){ document.getElementById('bulkCouponModal').classList.remove('hidden'); }
+function closeBulkCouponModal(){ document.getElementById('bulkCouponModal').classList.add('hidden'); }
+
+function loadCoupons() {
+  const tbody = document.getElementById('couponsTableBody');
+  tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{{ _("Loading...") }}</td></tr>`;
+  fetch(COUPON_LIST_URL, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+  })
+  .then(res => jsonOrText(res).then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    couponsData = (ok && data.success) ? (data.coupons || []) : [];
+    couponsPage = 1;
+    renderCouponsPage(couponsPage);
+  })
+  .catch(() => {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-red-500 text-center">{{ _("Failed to load coupons.") }}</td></tr>`;
+  });
+}
+
+function renderCouponsPage(page){
+  const tbody = document.getElementById('couponsTableBody');
+  tbody.innerHTML = '';
+  const total = couponsData.length;
+  if (!total) {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{{ _("No coupons yet.") }}</td></tr>`;
+    renderPager('couponsPager', 1, 1, '', '');
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  couponsPage = Math.min(Math.max(1, page), totalPages);
+  const start = (couponsPage - 1) * PAGE_SIZE;
+  const slice = couponsData.slice(start, start + PAGE_SIZE);
+
+  slice.forEach(c => {
+    const validity = `${c.valid_from || '—'} → ${c.valid_to || '—'}`;
+    const value = c.discount_type === 'percent' ? (c.percent_off + '%') : (`$${c.amount_off}`);
+    const usage = `${c.redemptions || 0}/${c.max_redemptions || '∞'}`;
+    const activeBadge = c.is_active
+      ? '<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800">{{ _("Active") }}</span>'
+      : '<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">{{ _("Inactive") }}</span>';
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr class="hover:bg-gray-50">
+        <td class="py-3 px-4 font-mono">${escapeHTML(c.code)}</td>
+        <td class="py-3 px-4">${escapeHTML(c.discount_type)}</td>
+        <td class="py-3 px-4">${value}</td>
+        <td class="py-3 px-4">${validity}</td>
+        <td class="py-3 px-4">${usage}</td>
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center gap-2 justify-end">
+            ${activeBadge}
+            <button class="px-3 py-1 rounded hover:bg-blue-50 text-blue-700" onclick="toggleCoupon('${c.id}')">
+              <i class="fas ${c.is_active ? 'fa-pause' : 'fa-play'} text-xs"></i>
+            </button>
+            <button class="px-3 py-1 rounded hover:bg-red-50 text-red-700" onclick="deleteCoupon('${c.id}', '${escapeHTML(c.code)}')">
+              <i class="fas fa-trash-alt text-xs"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `);
+  });
+
+  renderPager(
+    'couponsPager',
+    couponsPage,
+    totalPages,
+    'event.preventDefault(); renderCouponsPage(couponsPage-1)',
+    'event.preventDefault(); renderCouponsPage(couponsPage+1)'
+  );
+}
+
+function saveCoupon() {
+  const applies = getAppliesTo('coupon');
+  const scopes  = appliesToToScopes(applies);
+
+  const body = {
+    prefix: document.getElementById('coupon_prefix').value.trim(),
+    length: parseInt(document.getElementById('coupon_length').value || '10', 10),
+    discount_type: document.getElementById('coupon_discount_type').value === 'fixed' ? 'amount' : 'percent',
+    percent_off: document.getElementById('coupon_percent_off').value || null,
+    amount_off: document.getElementById('coupon_amount_off').value || null,
+    max_redemptions: parseInt(document.getElementById('coupon_max_redemptions').value || '1', 10),
+    per_user_limit: parseInt(document.getElementById('coupon_per_user_limit').value || '1', 10),
+    valid_from: document.getElementById('coupon_valid_from').value || null,
+    valid_to: document.getElementById('coupon_valid_to').value || null,
+    notes: document.getElementById('coupon_notes').value || '',
+    scopes: scopes,
+    target_plan_types: getMultiSelectValues('coupon_target_plan_types'),
+    target_site_types: getMultiSelectValues('coupon_target_site_types'),
+    target_plan_ids: getCsvInts('coupon_target_plan_ids'),
+    target_kit_types: getMultiSelectValues('coupon_target_kit_types'),
+    target_extra_charge_types: getMultiSelectValues('coupon_target_extra_types'),
+    new_customers_only: document.getElementById('coupon_new_customers_only').value === 'true',
+    stack_policy: document.getElementById('coupon_stack_policy').value,
+    applies_to_first_n_cycles: parseInt(document.getElementById('coupon_first_n_cycles').value || '0', 10),
+  };
+  fetch(COUPON_CREATE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest', 'Accept':'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(res => jsonOrText(res))
+  .then(d => {
+    if (!d.success) { alert(d.message || '{{ _("Failed to create coupon") }}'); return; }
+    alert('{{ _("Coupon created") }}: ' + d.code);
+    closeCouponModal();
+    loadCoupons();
+  })
+  .catch(() => alert('{{ _("Error creating coupon") }}'));
+}
+
+function saveBulkCoupons() {
+  const applies = {
+    all: !!document.getElementById('bulk_apply_all')?.checked,
+    plan: !!document.getElementById('bulk_apply_plan')?.checked,
+    kit: !!document.getElementById('bulk_apply_kit')?.checked,
+    install: !!document.getElementById('bulk_apply_install')?.checked,
+    extra: !!document.getElementById('bulk_apply_extra')?.checked,
+  };
+  const scopes = appliesToToScopes(applies);
+
+  const body = {
+    count: parseInt(document.getElementById('bulk_count').value || '50', 10),
+    length: parseInt(document.getElementById('bulk_length').value || '10', 10),
+    prefix: document.getElementById('bulk_prefix').value || '',
+    discount_type: document.getElementById('bulk_discount_type').value === 'fixed' ? 'amount' : 'percent',
+    percent_off: document.getElementById('bulk_percent_off').value || null,
+    amount_off: document.getElementById('bulk_amount_off').value || null,
+    max_redemptions: parseInt(document.getElementById('bulk_max_redemptions').value || '1', 10),
+    per_user_limit: parseInt(document.getElementById('bulk_per_user_limit').value || '1', 10),
+    valid_from: document.getElementById('bulk_valid_from').value || null,
+    valid_to: document.getElementById('bulk_valid_to').value || null,
+    scopes: scopes,
+    target_plan_types: getMultiSelectValues('bulk_target_plan_types'),
+    target_site_types: getMultiSelectValues('bulk_target_site_types'),
+    target_plan_ids: getCsvInts('bulk_target_plan_ids'),
+    target_kit_types: getMultiSelectValues('bulk_target_kit_types'),
+    target_extra_charge_types: getMultiSelectValues('bulk_target_extra_types'),
+    new_customers_only: document.getElementById('bulk_new_customers_only').value === 'true',
+    stack_policy: document.getElementById('bulk_stack_policy').value,
+    applies_to_first_n_cycles: parseInt(document.getElementById('bulk_first_n_cycles').value || '0', 10),
+  };
+  fetch(COUPON_BULK_CREATE_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest', 'Accept':'application/json' },
+    body: JSON.stringify(body)
+  })
+  .then(res => jsonOrText(res))
+  .then(d => {
+    if (!d.success) { alert(d.message || '{{ _("Failed to generate coupons") }}'); return; }
+    alert('{{ _("Generated") }} ' + (d.count || 0) + ' {{ _("coupons") }}');
+    closeBulkCouponModal();
+    loadCoupons();
+  })
+  .catch(() => alert('{{ _("Error generating coupons") }}'));
+}
+
+async function toggleCoupon(id) {
+  const url = urlWithId(COUPON_TOGGLE_TPL, id);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    });
+    const data = await jsonOrText(res);
+    if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+    loadCoupons();
+  } catch (err) {
+    alert(`{{ _("Failed to toggle coupon") }}: ${err.message || ''}`);
+  }
+}
+
+async function deleteCoupon(id, code) {
+  if (!confirm(`{{ _("Delete coupon") }} ${code}?`)) return;
+  const url = urlWithId(COUPON_DELETE_TPL, id);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    });
+    const data = await jsonOrText(res);
+    if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+    loadCoupons();
+  } catch (err) {
+    alert(`{{ _("Failed to delete coupon") }}: ${err.message || ''}`);
+  }
+}
+
+/* --------------------------- Promotions --------------------------- */
+function openPromotionModal(){
+  document.getElementById('promotionModal').classList.remove('hidden');
+  document.getElementById('promotionForm').reset();
+  document.getElementById('promotion_id').value = '';
+  document.getElementById('promotionModalTitle').textContent = '{{ _("New Promotion") }}';
+  setAppliesTo('promo', {plan:true});
+  setMultiSelectValues('promo_target_plan_types', []);
+  setMultiSelectValues('promo_target_site_types', []);
+  document.getElementById('promo_target_plan_ids').value = '';
+  setMultiSelectValues('promo_target_kit_types', []);
+  setMultiSelectValues('promo_target_extra_types', []);
+  document.getElementById('promo_new_customers_only').value = 'false';
+  document.getElementById('promo_stack_policy').value = 'promo_then_coupon';
+}
+function closePromotionModal(){ document.getElementById('promotionModal').classList.add('hidden'); }
+
+function loadPromotions() {
+  const tbody = document.getElementById('promotionsTableBody');
+  tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{{ _("Loading...") }}</td></tr>`;
+  fetch(PROMO_LIST_URL, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+  })
+  .then(res => jsonOrText(res).then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    promotionsData = (ok && data.success) ? (data.promotions || []) : [];
+    promotionsPage = 1;
+    renderPromotionsPage(promotionsPage);
+  })
+  .catch(() => {
+    tbody.innerHTML =
+      `<tr><td colspan="6" class="py-4 px-4 text-red-500 text-center">{{ _("Failed to load promotions.") }}</td></tr>`;
+  });
+}
+
+function renderPromotionsPage(page){
+  const tbody = document.getElementById('promotionsTableBody');
+  tbody.innerHTML = '';
+  const total = promotionsData.length;
+  if (!total) {
+    tbody.innerHTML = `<tr><td colspan="6" class="py-4 px-4 text-gray-500 text-center">{{ _("No promotions yet.") }}</td></tr>`;
+    renderPager('promotionsPager', 1, 1, '', '');
+    return;
+  }
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  promotionsPage = Math.min(Math.max(1, page), totalPages);
+  const start = (promotionsPage - 1) * PAGE_SIZE;
+  const slice = promotionsData.slice(start, start + PAGE_SIZE);
+
+  slice.forEach(p => {
+    const validity = `${p.valid_from || '—'} → ${p.valid_to || '—'}`;
+    const value = p.discount_type === 'percent'
+      ? ((p.percent_off ?? 0) + '%')
+      : (`$${p.amount_off ?? 0}`);
+    const scope = p.scope_display || p.scope || '—';
+    const statusBadge = p.active
+      ? '<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800">{{ _("Active") }}</span>'
+      : '<span class="inline-block px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-800">{{ _("Inactive") }}</span>';
+    const toggleIcon = p.active ? 'fa-pause' : 'fa-play';
+
+    tbody.insertAdjacentHTML('beforeend', `
+      <tr class="hover:bg-gray-50">
+        <td class="py-3 px-4 font-medium">${escapeHTML(p.name || '')}</td>
+        <td class="py-3 px-4">${escapeHTML(scope)}</td>
+        <td class="py-3 px-4">${value}</td>
+        <td class="py-3 px-4">${validity}</td>
+        <td class="py-3 px-4">${statusBadge}</td>
+        <td class="py-3 px-4 text-right">
+          <div class="flex items-center gap-2 justify-end">
+            <button class="px-3 py-1 rounded hover:bg-blue-50 text-blue-700" onclick="editPromotion('${p.id}')">
+              <i class="fas fa-edit text-xs"></i>
+            </button>
+            <button class="px-3 py-1 rounded hover:bg-yellow-50 text-yellow-700" onclick="togglePromotion('${p.id}')">
+              <i class="fas ${toggleIcon} text-xs"></i>
+            </button>
+            <button class="px-3 py-1 rounded hover:bg-red-50 text-red-700" onclick="deletePromotion('${p.id}', '${escapeHTML(p.name || "")}')">
+              <i class="fas fa-trash-alt text-xs"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `);
+  });
+
+  renderPager(
+    'promotionsPager',
+    promotionsPage,
+    totalPages,
+    'event.preventDefault(); renderPromotionsPage(promotionsPage-1)',
+    'event.preventDefault(); renderPromotionsPage(promotionsPage+1)'
+  );
+}
+
+/* ------------------------ Promotion CRUD ------------------------ */
+function collectPromotionPayload() {
+  const applies = getAppliesTo('promo');
+  const scopes  = appliesToToScopes(applies);
+  return {
+    name: document.getElementById('promo_name').value.trim(),
+    discount_type: document.getElementById('promo_discount_type').value === 'fixed' ? 'amount' : 'percent',
+    percent_off: document.getElementById('promo_percent_off').value || null,
+    amount_off: document.getElementById('promo_amount_off').value || null,
+    valid_from: document.getElementById('promo_valid_from').value || null,
+    valid_to: document.getElementById('promo_valid_to').value || null,
+    scopes: scopes,
+    target_plan_types: getMultiSelectValues('promo_target_plan_types'),
+    target_site_types: getMultiSelectValues('promo_target_site_types'),
+    target_plan_ids: getCsvInts('promo_target_plan_ids'),
+    target_kit_types: getMultiSelectValues('promo_target_kit_types'),
+    target_extra_charge_types: getMultiSelectValues('promo_target_extra_types'),
+    new_customers_only: document.getElementById('promo_new_customers_only').value === 'true',
+    stack_policy: document.getElementById('promo_stack_policy').value,
+    max_redemptions: parseInt(document.getElementById('promo_max_redemptions')?.value || '0', 10),
+    status: document.getElementById('promo_status')?.value || 'inactive'
+  };
+}
+
+function savePromotion() {
+  const id = document.getElementById('promotion_id').value;
+  const body = collectPromotionPayload();
+  const url = id ? urlWithId(PROMO_UPDATE_TPL, id) : PROMO_CREATE_URL;
+
+  fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': 'application/json'
+    },
+    body: JSON.stringify(body)
+  })
+  .then(res => jsonOrText(res).then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (!ok || !data.success) throw new Error(data.message || 'Failed to save promotion');
+    alert('{{ _("Promotion saved") }}');
+    closePromotionModal();
+    loadPromotions();
+  })
+  .catch(err => alert('{{ _("Error saving promotion") }}: ' + (err.message || '')));
+}
+
+function editPromotion(id) {
+  const url = urlWithId(PROMO_DETAIL_TPL, id);
+  fetch(url, {
+    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+  })
+  .then(res => jsonOrText(res).then(data => ({ ok: res.ok, data })))
+  .then(({ ok, data }) => {
+    if (!ok || !data.success) throw new Error(data.message || 'Failed to load promotion');
+    const p = data.promotion || {};
+
+    openPromotionModal();
+    document.getElementById('promotionModalTitle').textContent = '{{ _("Edit Promotion") }}';
+    document.getElementById('promotion_id').value = p.id || '';
+    document.getElementById('promo_name').value = p.name || '';
+    document.getElementById('promo_discount_type').value = (p.discount_type === 'amount' ? 'fixed' : 'percent');
+    document.getElementById('promo_percent_off').value = p.percent_off ?? '';
+    document.getElementById('promo_amount_off').value = p.amount_off ?? '';
+
+    const vf = (p.valid_from_local || p.valid_from || '').replace(' ', 'T');
+    const vt = (p.valid_to_local || p.valid_to || '').replace(' ', 'T');
+    document.getElementById('promo_valid_from').value = vf;
+    document.getElementById('promo_valid_to').value = vt;
+
+    const applies = scopesToApplies(p.scopes || p.applies_to || []);
+    setAppliesTo('promo', applies);
+
+    setMultiSelectValues('promo_target_plan_types', p.target_plan_types || []);
+    setMultiSelectValues('promo_target_site_types', p.target_site_types || []);
+    setCsvFromArray('promo_target_plan_ids', p.target_plan_ids || []);
+    setMultiSelectValues('promo_target_kit_types', p.target_kit_types || []);
+    setMultiSelectValues('promo_target_extra_types', p.target_extra_charge_types || p.target_extra_types || []);
+    document.getElementById('promo_new_customers_only').value = (p.new_customers_only ? 'true' : 'false');
+    document.getElementById('promo_stack_policy').value = p.stack_policy || 'promo_then_coupon';
+
+    if (document.getElementById('promo_max_redemptions')) {
+      document.getElementById('promo_max_redemptions').value = p.max_redemptions || 0;
+    }
+    if (document.getElementById('promo_status')) {
+      document.getElementById('promo_status').value = p.active ? 'active' : 'inactive';
+    }
+  })
+  .catch(err => alert(`{{ _("Failed to load promotion") }}: ${err.message || ''}`));
+}
+
+async function togglePromotion(id) {
+  const url = urlWithId(PROMO_TOGGLE_TPL, id);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    });
+    const data = await jsonOrText(res);
+    if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+    loadPromotions();
+  } catch (err) {
+    alert(`{{ _("Failed to toggle promotion") }}: ${err.message || ''}`);
+  }
+}
+
+async function deletePromotion(id, name) {
+  if (!confirm(`{{ _("Delete promotion") }} "${name}"?`)) return;
+  const url = urlWithId(PROMO_DELETE_TPL, id);
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    });
+    const data = await jsonOrText(res);
+    if (!res.ok || !data.success) throw new Error(data.message || `HTTP ${res.status}`);
+    loadPromotions();
+  } catch (err) {
+    alert(`{{ _("Failed to delete promotion") }}: ${err.message || ''}`);
+  }
+}
+</script>

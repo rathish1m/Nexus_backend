@@ -1,0 +1,909 @@
+{% extends 'backoffice/dispatch_console_base.html' %}
+{% load static i18n %}
+
+{% block content %}
+<div class="w-full px-6 py-6">
+
+  <!-- ========== HEADER AVEC NAVIGATION ========== -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-6 shadow-lg text-white mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-white/15 ring-1 ring-white/20">
+          <i class="fas fa-file-alt text-2xl"></i>
+        </span>
+        <div>
+          <div class="flex items-center gap-2 mb-1">
+            <a href="{% url 'completed_installations' %}"
+               class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-colors">
+              <i class="fas fa-arrow-left"></i>
+              {% trans "Back to installations" %}
+            </a>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">
+            {% trans "Installation Report" %}
+          </h1>
+          <p class="text-indigo-100 text-sm mt-1">
+            {% trans "Order" %} {{ installation.order.order_reference }} - {{ installation.order.user.get_full_name }}
+          </p>
+        </div>
+      </div>
+      <div class="flex flex-col items-end gap-2">
+        {% comment %} <div class="text-white/90 text-sm">
+          <i class="fas fa-calendar-check mr-2"></i>
+          {% trans "Terminé le" %} {{ installation.completed_at|date:"d/m/Y à H:i" }}
+        </div> {% endcomment %}
+        <div class="text-white/90 text-sm">
+          <i class="fas fa-paper-plane mr-2"></i>
+          {% trans "Report submitted on " %} {{ installation.submitted_at|date:"d/m/Y H:i" }}
+        </div>
+        {% if installation.customer_rating %}
+        <div class="flex items-center gap-1 text-yellow-300">
+          <i class="fas fa-star"></i>
+          <span class="font-semibold">{{ installation.customer_rating }}/5</span>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== EN-TÊTE POUR IMPRESSION ========== -->
+  <div class="print-header" style="display: none;">
+    <h1>{% trans "INSTALLATION REPORT" %}</h1>
+    <p class="subtitle">NEXUS TELECOMS - {% trans "Starlink Internet Solutions" %}</p>
+    <div class="order-info">
+      {% trans "Order" %}: {{ installation.order.order_reference }}
+    </div>
+    <div class="order-info">
+      {% trans "Customer" %}: {{ installation.order.user.get_full_name }}
+    </div>
+    {% if installation.submitted_at %}
+    <p class="subtitle">
+      {% trans "Report generated on" %} {{ installation.submitted_at|date:"d F Y" }}
+    </p>
+    {% endif %}
+  </div>
+
+  <!-- ========== GRID PRINCIPAL ========== -->
+  <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+    <!-- COLONNE PRINCIPALE (2/3) -->
+    <div class="xl:col-span-2 space-y-6">
+
+      <!-- 🏢 INFORMATIONS SITE -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200 print-section print-no-break">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-map-marker-alt text-green-600"></i>
+            {% trans "Installation site" %}
+          </h3>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Arrival on site" %}</label>
+                <p class="text-gray-900">{{ installation.on_site_arrival|date:"d/m/Y H:i"|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Access level" %}</label>
+                <p class="text-gray-900">{{ installation.get_access_level_display|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Power available" %}</label>
+                <p class="text-gray-900">{{ installation.power_availability|default:"—" }}</p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Site address" %}</label>
+                <p class="text-gray-900">{{ installation.site_address|default:"—" }}</p>
+              </div>
+              {% if installation.site_latitude and installation.site_longitude %}
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "GPS coordinates" %}</label>
+                <p class="text-gray-900">{{ installation.site_latitude }}, {{ installation.site_longitude }}</p>
+                <a href="https://www.openstreetmap.org/?mlat={{ installation.site_latitude }}&mlon={{ installation.site_longitude }}&zoom=15"
+                   target="_blank"
+                   class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm mt-1">
+                  <i class="fas fa-external-link-alt"></i>
+                  {% trans "View on map" %}
+                </a>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          {% if installation.site_notes %}
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Site notes" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.site_notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- 📡 ÉQUIPEMENT -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200 print-section print-no-break">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-satellite-dish text-purple-600"></i>
+            {% trans "Installed equipment" %}
+          </h3>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- CPE Details -->
+            <div class="space-y-4">
+              <h4 class="font-medium text-gray-900 border-b pb-2">{% trans "CPE details" %}</h4>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Dish serial number" %}</label>
+                <p class="text-gray-900 font-mono">{{ installation.dish_serial_number|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Router serial number" %}</label>
+                <p class="text-gray-900 font-mono">{{ installation.router_serial_number|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Firmware version" %}</label>
+                <p class="text-gray-900">{{ installation.firmware_version|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Power source" %}</label>
+                <p class="text-gray-900">{{ installation.power_source|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Cable length (m)" %}</label>
+                <p class="text-gray-900">{{ installation.cable_length|default:"—" }}</p>
+              </div>
+            </div>
+
+            <!-- Network Configuration -->
+            <div class="space-y-4">
+              <h4 class="font-medium text-gray-900 border-b pb-2">{% trans "Network configuration" %}</h4>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "SSID Wi-Fi" %}</label>
+                <p class="text-gray-900">{{ installation.wifi_ssid|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "IP LAN" %}</label>
+                <p class="text-gray-900 font-mono">{{ installation.lan_ip|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "DHCP range" %}</label>
+                <p class="text-gray-900">{{ installation.dhcp_range|default:"—" }}</p>
+              </div>
+              {% if installation.splices_connectors %}
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Splices/Connectors" %}</label>
+                <p class="text-gray-900">{{ installation.splices_connectors }}</p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 🔧 MONTAGE & ALIGNEMENT -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200 print-section print-no-break">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-tools text-orange-600"></i>
+            {% trans "Mount & Alignment" %}
+          </h3>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Mount type" %}</label>
+                <p class="text-gray-900">{{ installation.mount_type|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Height (m)" %}</label>
+                <p class="text-gray-900">{{ installation.mount_height|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Grounding" %}</label>
+                <p class="text-gray-900">{{ installation.grounding|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Weatherproofing" %}</label>
+                <p class="text-gray-900">{{ installation.weatherproofing|default:"—" }}</p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "% obstruction" %}</label>
+                <p class="text-gray-900">{{ installation.obstruction_percentage|default:"—" }}{% if installation.obstruction_percentage %}%{% endif %}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Elevation angle" %}</label>
+                <p class="text-gray-900">{{ installation.elevation_angle|default:"—" }}{% if installation.elevation_angle %}°{% endif %}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Azimuth angle" %}</label>
+                <p class="text-gray-900">{{ installation.azimuth_angle|default:"—" }}{% if installation.azimuth_angle %}°{% endif %}</p>
+              </div>
+            </div>
+          </div>
+          {% if installation.mounting_notes %}
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Mounting notes" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.mounting_notes }}</div>
+          </div>
+          {% endif %}
+          {% if installation.obstruction_notes %}
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Obstruction notes" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.obstruction_notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- 📊 TESTS DE CONNECTIVITÉ -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200 print-section print-no-break">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-signal text-blue-600"></i>
+            {% trans "Connectivity tests" %}
+          </h3>
+        </div>
+        <div class="p-6">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "SNR (dB)" %}</label>
+                <p class="text-gray-900 text-lg font-semibold">{{ installation.snr_db|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Latency (ms)" %}</label>
+                <p class="text-gray-900 text-lg font-semibold">{{ installation.latency_ms|default:"—" }}</p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Download speed" %}</label>
+                <p class="text-gray-900 text-lg font-semibold">{{ installation.speed_download_mbps|default:"—" }}{% if installation.speed_download_mbps %} Mbps{% endif %}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Upload speed" %}</label>
+                <p class="text-gray-900 text-lg font-semibold">{{ installation.speed_upload_mbps|default:"—" }}{% if installation.speed_upload_mbps %} Mbps{% endif %}</p>
+              </div>
+            </div>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Test tool" %}</label>
+                <p class="text-gray-900">{{ installation.test_tool|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Public IP" %}</label>
+                <p class="text-gray-900 font-mono">{{ installation.public_ip|default:"—" }}</p>
+              </div>
+            </div>
+          </div>
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "QoS/VLAN" %}</label>
+                <p class="text-gray-900">{{ installation.qos_vlan|default:"—" }}</p>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Final link status" %}</label>
+                <p class="text-gray-900">{{ installation.final_link_status|default:"—" }}</p>
+              </div>
+            </div>
+          </div>
+          {% if installation.test_notes %}
+          <div class="mt-4 pt-4 border-t border-gray-200">
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Test notes" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.test_notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+    </div>
+
+    <!-- COLONNE LATÉRALE (1/3) -->
+    <div class="space-y-6">
+
+      <!-- 👤 TECHNICIEN -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-hard-hat text-blue-600"></i>
+            {% trans "Technician" %}
+          </h3>
+        </div>
+        <div class="p-6">
+          <div class="text-center">
+            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <i class="fas fa-user text-blue-600 text-2xl"></i>
+            </div>
+            <h4 class="font-semibold text-gray-900">{{ installation.technician.get_full_name|default:"—" }}</h4>
+            <p class="text-gray-600 text-sm">{{ installation.technician.email|default:"—" }}</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ✅ VALIDATION CLIENT -->
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-user-check text-green-600"></i>
+            {% trans "Customer validation" %}
+          </h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Full name" %}</label>
+            <p class="text-gray-900">{{ installation.customer_full_name|default:"—" }}</p>
+          </div>
+          {% if installation.customer_id_document %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "ID document" %}</label>
+            <p class="text-gray-900">{{ installation.customer_id_document }}</p>
+          </div>
+          {% endif %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Acceptance" %}</label>
+            {% if installation.customer_acceptance %}
+              <span class="inline-flex items-center gap-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                <i class="fas fa-check-circle"></i>
+                {% trans "Confirmed" %}
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-2 px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm">
+                <i class="fas fa-times-circle"></i>
+                {% trans "Not confirmed" %}
+              </span>
+            {% endif %}
+          </div>
+          {% if installation.customer_signoff_at %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Signed on" %}</label>
+            <p class="text-gray-900">{{ installation.customer_signoff_at|date:"d/m/Y at H:i" }}</p>
+          </div>
+          {% endif %}
+          {% if installation.customer_rating %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Installation rating" %}</label>
+            <div class="flex items-center gap-2">
+              {% for i in "12345" %}
+                <i class="fas fa-star {% if forloop.counter <= installation.customer_rating %}text-yellow-500{% else %}text-gray-300{% endif %}"></i>
+              {% endfor %}
+              <span class="font-semibold text-gray-900">{{ installation.customer_rating }}/5</span>
+            </div>
+          </div>
+          {% endif %}
+          {% if installation.customer_comments %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Comments" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.customer_comments }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+
+      <!-- 🛡️ SÉCURITÉ -->
+      {% if installation.weather_conditions or installation.hazards_noted or installation.safety_helmet or installation.safety_harness %}
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-shield-alt text-yellow-600"></i>
+            {% trans "Safety & Environment" %}
+          </h3>
+        </div>
+        <div class="p-6 space-y-4">
+          {% if installation.weather_conditions %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Weather conditions" %}</label>
+            <p class="text-gray-900">{{ installation.weather_conditions }}</p>
+          </div>
+          {% endif %}
+
+          <!-- EPI Utilisés -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "PPE used" %}</label></label>
+            <div class="flex flex-wrap gap-2">
+              {% if installation.safety_helmet %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                  <i class="fas fa-hard-hat"></i> {% trans "Helmet" %}
+                </span>
+              {% endif %}
+              {% if installation.safety_harness %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                  <i class="fas fa-vest"></i> {% trans "Harness" %}
+                </span>
+              {% endif %}
+              {% if installation.safety_gloves %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                  <i class="fas fa-mitten"></i> {% trans "Gloves" %}
+                </span>
+              {% endif %}
+              {% if installation.safety_ladder %}
+                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                  <i class="fas fa-ladder"></i> {% trans "Ladder" %}
+                </span>
+              {% endif %}
+            </div>
+          </div>
+
+          {% if installation.hazards_noted %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Hazards noted" %}</label>
+            <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+              <div class="flex items-start gap-2">
+                <i class="fas fa-exclamation-triangle text-yellow-600 mt-1"></i>
+                <p class="text-yellow-800">{{ installation.hazards_noted }}</p>
+              </div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 🤝 REVENDEUR -->
+      {% if installation.reseller_name %}
+      <section class="bg-white rounded-2xl shadow-md border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gray-50 rounded-t-2xl">
+          <h3 class="text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <i class="fas fa-handshake text-purple-600"></i>
+            {% trans "Reseller" %}
+          </h3>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Name" %}</label>
+            <p class="text-gray-900">{{ installation.reseller_name }}</p>
+          </div>
+          {% if installation.reseller_id %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Reseller ID" %}</label>
+            <p class="text-gray-900 font-mono">{{ installation.reseller_id }}</p>
+          </div>
+          {% endif %}
+          {% if installation.sla_tier %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "SLA level" %}</label>
+            <p class="text-gray-900">{{ installation.sla_tier }}</p>
+          </div>
+          {% endif %}
+          {% if installation.reseller_notes %}
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Notes" %}</label>
+            <div class="bg-gray-50 rounded-lg p-3 text-gray-900">{{ installation.reseller_notes }}</div>
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+    </div>
+  </div>
+
+  <!-- ========== SIGNATURES POUR IMPRESSION ========== -->
+  <div class="print-signatures" style="display: none;">
+    <div class="print-signature-box">
+      <div class="print-signature-title">{% trans "Technician" %}</div>
+      <div style="margin: 30px 0;">
+        {% if installation.technician %}
+          <strong>{{ installation.technician.get_full_name }}</strong><br>
+          <small>{{ installation.technician.email }}</small>
+        {% else %}
+          ____________________________
+        {% endif %}
+      </div>
+      <div class="print-signature-line">
+        {% trans "Date and Signature" %}
+      </div>
+    </div>
+
+    <div class="print-signature-box">
+      <div class="print-signature-title">{% trans "Customer" %}</div>
+      <div style="margin: 30px 0;">
+        <strong>{{ installation.order.user.get_full_name }}</strong><br>
+        <small>{{ installation.order.user.email }}</small>
+      </div>
+      {% if installation.customer_signature %}
+      <div style="margin: 10px 0;">
+        <img src="{{ installation.customer_signature }}" alt="Customer signature" style="max-width: 280px; max-height: 120px; object-fit: contain; border: 1px solid #e5e7eb; padding: 6px; background: #fff;" />
+      </div>
+      {% endif %}
+      <div class="print-signature-line">
+        {% trans "Date and Signature" %}
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== ACTIONS FOOTER ========== -->
+  <div class="mt-8 flex justify-between items-center no-print">
+    <a href="{% url 'completed_installations' %}"
+       class="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors no-print">
+      <i class="fas fa-arrow-left"></i>
+      {% trans "Back to list" %}
+    </a>
+
+    <div class="flex gap-3">
+      <a href="{% url 'installation_report_pdf' installation.id %}"
+         class="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium no-print">
+        <i class="fas fa-file-pdf text-lg"></i>
+        {% trans "Download PDF" %}
+      </a>
+      <!-- Bouton d'impression optimisé pour PDF -->
+      <button type="button" onclick="window.print()"
+              class="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl font-medium no-print">
+        <i class="fas fa-print text-lg"></i>
+        {% trans "Print PDF" %}
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ========== PIED DE PAGE POUR IMPRESSION ========== -->
+<div class="print-footer" style="display: none;">
+  <div style="text-align: center;">
+    <strong>NEXUS TELECOMS</strong> - {% trans "Professional Starlink Installation Services" %}<br>
+    {% trans "Report generated on" %} {% now "d F Y \a\t H:i" %} | {% trans "Order" %}: {{ installation.order.order_reference }}
+  </div>
+</div>
+
+<style>
+@media print {
+  /* ========== CONFIGURATION GÉNÉRALE ========== */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    color: #1a1a1a !important;
+    background: white !important;
+    margin: 0 !important;
+    padding: 15mm !important;
+  }
+
+  /* ========== MASQUER ÉLÉMENTS NON IMPRIMABLES ========== */
+  .no-print,
+  header,
+  nav,
+  .bg-gradient-to-r,
+  button,
+  .hover\\:bg-gray-50,
+  .hover\\:bg-blue-700,
+  .transition-colors,
+  .shadow-lg,
+  .shadow-md,
+  .rounded-2xl,
+  .rounded-xl,
+  .rounded-lg {
+    display: none !important;
+  }
+
+  /* ========== EN-TÊTE DU RAPPORT ========== */
+  .print-header {
+    display: block !important;
+    text-align: center;
+    border-bottom: 2px solid #2563eb;
+    padding-bottom: 15px;
+    margin-bottom: 25px;
+  }
+
+  .print-header h1 {
+    font-size: 24px !important;
+    font-weight: bold !important;
+    color: #1e40af !important;
+    margin: 0 0 8px 0 !important;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .print-header .subtitle {
+    font-size: 14px !important;
+    color: #64748b !important;
+    margin: 0 !important;
+  }
+
+  .print-header .order-info {
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: #0f172a !important;
+    margin: 10px 0 5px 0 !important;
+  }
+
+  /* ========== SECTIONS PRINCIPALES ========== */
+  .print-section {
+    page-break-inside: avoid;
+    margin-bottom: 25px !important;
+    border: 1px solid #e2e8f0;
+    padding: 15px;
+    background: #fafafa !important;
+  }
+
+  .print-section h2 {
+    font-size: 16px !important;
+    font-weight: bold !important;
+    color: #1e40af !important;
+    margin: 0 0 12px 0 !important;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #cbd5e1;
+    text-transform: uppercase;
+  }
+
+  .print-section h3 {
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    margin: 15px 0 8px 0 !important;
+  }
+
+  /* ========== INFORMATIONS GÉNÉRALES ========== */
+  .print-info-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 15px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .print-info-item {
+    display: flex !important;
+    flex-direction: column !important;
+    padding: 8px 12px;
+    background: white !important;
+    border: 1px solid #e5e7eb;
+  }
+
+  .print-info-label {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: #6b7280 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px !important;
+  }
+
+  .print-info-value {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: #111827 !important;
+  }
+
+  /* ========== TABLEAUX ========== */
+  .print-table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin: 15px 0 !important;
+    font-size: 11px !important;
+  }
+
+  .print-table th {
+    background: #f1f5f9 !important;
+    border: 1px solid #cbd5e1 !important;
+    padding: 8px 6px !important;
+    text-align: left !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    font-size: 10px !important;
+    text-transform: uppercase;
+  }
+
+  .print-table td {
+    border: 1px solid #e2e8f0 !important;
+    padding: 6px !important;
+    vertical-align: top !important;
+    color: #1f2937 !important;
+  }
+
+  .print-table tr:nth-child(even) {
+    background: #f8fafc !important;
+  }
+
+  /* ========== SIGNATURES ET VALIDATIONS ========== */
+  .print-signatures {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 30px !important;
+    margin-top: 40px !important;
+    page-break-inside: avoid;
+  }
+
+  .print-signature-box {
+    border: 1px solid #d1d5db;
+    padding: 20px;
+    text-align: center;
+    background: white !important;
+  }
+
+  .print-signature-title {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: #374151 !important;
+    margin-bottom: 30px !important;
+    text-transform: uppercase;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 8px;
+  }
+
+  .print-signature-line {
+    border-top: 1px solid #9ca3af;
+    margin-top: 40px;
+    padding-top: 8px;
+    font-size: 10px !important;
+    color: #6b7280 !important;
+  }
+
+  /* ========== NOTES ET COMMENTAIRES ========== */
+  .print-notes {
+    background: #f9fafb !important;
+    border-left: 4px solid #3b82f6;
+    padding: 15px;
+    margin: 15px 0;
+    font-size: 11px !important;
+    line-height: 1.5 !important;
+  }
+
+  .print-notes h4 {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    margin: 0 0 8px 0 !important;
+    color: #1e40af !important;
+  }
+
+  /* ========== GESTION DES SAUTS DE PAGE ========== */
+  .print-break {
+    page-break-before: always !important;
+  }
+
+  .print-no-break {
+    page-break-inside: avoid !important;
+  }
+
+  /* ========== STATUS ET BADGES ========== */
+  .print-status {
+    display: inline-block !important;
+    padding: 4px 8px !important;
+    border-radius: 0 !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .print-status.success {
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    border: 1px solid #16a34a;
+  }
+
+  .print-status.warning {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #f59e0b;
+  }
+
+  .print-status.danger {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border: 1px solid #ef4444;
+  }
+
+  /* ========== ÉQUIPEMENTS ET MATÉRIEL ========== */
+  .print-equipment-grid {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    gap: 12px !important;
+    margin: 15px 0 !important;
+  }
+
+  .print-equipment-item {
+    border: 1px solid #d1d5db;
+    padding: 12px;
+    background: white !important;
+  }
+
+  .print-equipment-name {
+    font-weight: 600 !important;
+    color: #111827 !important;
+    font-size: 12px !important;
+    margin-bottom: 6px !important;
+  }
+
+  .print-equipment-details {
+    font-size: 10px !important;
+    color: #6b7280 !important;
+    line-height: 1.4 !important;
+  }
+
+  /* ========== MESURES ET RÉSULTATS ========== */
+  .print-measurement {
+    display: grid !important;
+    grid-template-columns: 1fr auto auto !important;
+    gap: 10px !important;
+    align-items: center !important;
+    padding: 8px 12px;
+    border: 1px solid #e5e7eb;
+    margin-bottom: 8px;
+    background: white !important;
+  }
+
+  .print-measurement-label {
+    font-weight: 500 !important;
+    color: #374151 !important;
+    font-size: 11px !important;
+  }
+
+  .print-measurement-value {
+    font-weight: 600 !important;
+    color: #111827 !important;
+    font-size: 12px !important;
+    text-align: right;
+  }
+
+  .print-measurement-unit {
+    font-size: 10px !important;
+    color: #6b7280 !important;
+    text-align: right;
+  }
+
+  /* ========== PIED DE PAGE ========== */
+  .print-footer {
+    position: fixed;
+    bottom: 10mm;
+    left: 15mm;
+    right: 15mm;
+    border-top: 1px solid #d1d5db;
+    padding-top: 10px;
+    font-size: 9px !important;
+    color: #6b7280 !important;
+    text-align: center;
+  }
+
+  /* ========== AJUSTEMENTS RESPONSIFS ========== */
+  @page {
+    size: A4;
+    margin: 15mm;
+  }
+
+  /* Force les couleurs d'arrière-plan */
+  .bg-white,
+  .bg-gray-50,
+  .bg-blue-50,
+  .bg-green-50,
+  .bg-yellow-50,
+  .bg-red-50,
+  .bg-indigo-50 {
+    background: white !important;
+  }
+
+  /* Supprime les ombres */
+  .shadow,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl {
+    box-shadow: none !important;
+  }
+
+  /* Ajuste les espacements */
+  .p-6, .px-6, .py-6 {
+    padding: 12px !important;
+  }
+
+  .p-4, .px-4, .py-4 {
+    padding: 8px !important;
+  }
+
+  .mb-8 { margin-bottom: 20px !important; }
+  .mb-6 { margin-bottom: 15px !important; }
+  .mb-4 { margin-bottom: 12px !important; }
+  .gap-6 { gap: 15px !important; }
+  .gap-4 { gap: 12px !important; }
+}
+</style>
+{% endblock %}

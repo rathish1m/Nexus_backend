@@ -1,0 +1,829 @@
+{% load static i18n %}
+
+<!-- ============== Professional Pay Method Modal ============== -->
+<div id="payMethodModal"
+     role="dialog" aria-modal="true" aria-labelledby="payMethodTitle"
+     class="fixed inset-0 z-50 hidden items-end sm:items-center justify-center bg-slate-900/70 p-0 sm:p-6">
+
+  <!-- Sheet on mobile, centered card on desktop -->
+  <div class="relative w-full sm:w-[640px] h-[92vh] sm:h-auto sm:max-h-[86vh] bg-white rounded-t-2xl sm:rounded-3xl shadow-2xl overflow-hidden">
+
+    <!-- Header -->
+    <header class="flex items-start justify-between px-5 sm:px-6 py-4 border-b border-slate-200/70 bg-white/80 backdrop-blur">
+      <div class="min-w-0">
+        <div class="flex items-center gap-2 text-slate-500 text-xs uppercase tracking-[0.14em]">
+          <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a2 2 0 012-2h6l2 2h4a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V4z"/></svg>
+          {% trans "Payment" %}
+        </div>
+        <h3 id="payMethodTitle" class="mt-1 text-lg sm:text-xl font-semibold text-slate-900">
+          {% trans "Pay invoice" %}
+        </h3>
+      </div>
+
+      <button type="button"
+              class="inline-flex items-center justify-center w-9 h-9 rounded-xl hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              aria-label="{% trans 'Close' %}"
+              onclick="closePayMethodModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-600" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Scroll body -->
+    <div class="overflow-y-auto px-5 sm:px-6 pb-24 sm:pb-20 pt-5 space-y-5 bg-slate-50/50">
+
+      <!-- Reference / Amount card -->
+      <section class="relative overflow-hidden rounded-2xl p-5 sm:p-6 bg-gradient-to-br from-indigo-600 via-indigo-600 to-indigo-700 text-white shadow-lg ring-1 ring-white/10">
+        <!-- soft highlight -->
+        <div class="pointer-events-none absolute -right-16 -top-16 h-44 w-44 rounded-full blur-3xl bg-white/20"></div>
+
+        <div class="relative flex items-start justify-between gap-4">
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 text-white/80 text-[11px] uppercase tracking-[.16em]">
+              <span class="inline-grid h-8 w-8 place-items-center rounded-lg bg-white/10 ring-1 ring-white/20">
+                <svg class="h-4.5 w-4.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <path d="M3 5a2 2 0 0 1 2-2h6l2 2h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5Zm3 4h12v2H6V9Zm0 4h8v2H6v-2Z"/>
+                </svg>
+              </span>
+              {% trans "Order reference" %}
+            </div>
+
+            <div class="mt-2 flex items-center flex-wrap gap-2">
+              <strong id="payRefBadge"
+                      class="inline-flex items-center rounded-xl border border-white/25 bg-white/10 px-3 py-1.5 font-semibold text-white text-lg sm:text-xl tracking-wide">
+                —
+              </strong>
+              <span id="payAmountBadge"
+                    class="hidden inline-flex items-center rounded-xl bg-black/20 ring-1 ring-white/15 px-2.5 py-1 text-[12px] font-medium">
+                <!-- JS can reveal & fill amount -->
+              </span>
+            </div>
+          </div>
+
+          <span class="relative inline-flex items-center gap-1 rounded-full bg-black/20 text-white px-2.5 py-1 text-[11px] ring-1 ring-white/15">
+            <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M5 8V6a5 5 0 1 1 10 0v2h1a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1h1Zm2-2a3 3 0 1 1 6 0v2H7V6Z"/></svg>
+            {% trans "Secure" %}
+          </span>
+        </div>
+
+        <p class="relative mt-3 text-[12px] text-white/90">
+          {% trans "You’ll confirm payment with your provider before it’s finalized." %}
+        </p>
+      </section>
+
+      <!-- Methods -->
+      <section class="bg-white rounded-2xl border border-slate-200/70 shadow-sm">
+        <div class="px-5 sm:px-6 pt-5 pb-4">
+          <h4 class="text-[13px] font-semibold text-slate-900 tracking-wide">
+            {% trans "Choose a payment method" %}
+          </h4>
+          <p class="mt-1 text-xs text-slate-500">
+            {% trans "Select a method to continue. You can add or change methods in your account settings." %}
+          </p>
+        </div>
+
+        <div class="px-4 sm:px-5 pb-5">
+          <div id="methodList" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <!-- JS injects radio method cards here -->
+          </div>
+
+          <!-- Optional: skeleton if loading -->
+          <template id="methodSkeleton">
+            <div class="animate-pulse rounded-xl border border-slate-200 bg-slate-50 h-16"></div>
+          </template>
+        </div>
+
+        <div class="border-t border-slate-200/70 px-5 sm:px-6 py-3 bg-slate-50/50 text-[12px] text-slate-600">
+          <div class="flex items-center gap-2">
+            <svg class="h-4 w-4 text-indigo-600" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 1116 0 8 8 0 01-16 0zm9-3H9v5h4v-2h-2V7z"/></svg>
+            <span>{% trans "Some methods may require additional verification (e.g., 3-D Secure or wallet PIN)." %}</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Mobile Money details -->
+      <section id="extraMobile" class="hidden bg-white rounded-2xl border border-slate-200/70 shadow-sm">
+        <div class="px-5 sm:px-6 pt-5 pb-4">
+          <div class="flex items-center gap-2">
+            <span class="inline-grid w-9 h-9 place-items-center rounded-lg bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/></svg>
+            </span>
+            <div class="text-sm font-medium text-slate-900">{% trans "Mobile Money details" %}</div>
+          </div>
+
+          <label class="block text-sm text-slate-700 mt-4 mb-1" for="mobileNumber">{% trans "Mobile number (without country code)" %}</label>
+
+          <div class="flex rounded-xl border border-slate-300 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 overflow-hidden bg-white">
+            <span id="mobileCc"
+                  class="inline-flex items-center px-3 bg-slate-100 text-slate-600 border-r border-slate-300 select-none">+243</span>
+            <input id="mobileNumber"
+                   data-cc="+243"
+                   type="tel"
+                   inputmode="numeric"
+                   pattern="[0-9 ]{7,12}"
+                   autocomplete="tel-national"
+                   class="w-full h-11 px-3 outline-none placeholder:text-slate-400"
+                   placeholder="97 000 0000"
+                   aria-describedby="mobileHelp">
+          </div>
+
+          <p id="mobileHelp" class="mt-2 text-[12px] text-slate-500">
+            {% trans "Enter the local number only. We add +243 automatically." %}
+          </p>
+
+          <div class="mt-4 flex items-center gap-3 opacity-90">
+            <img class="h-4" src="{% static 'payments/mpesa.png' %}" alt="M-Pesa" title="M-Pesa">
+            <img class="h-4" src="{% static 'payments/airtelmoney.png' %}" alt="Airtel Money" title="Airtel Money">
+            <img class="h-4" src="{% static 'payments/orangemoney.png' %}" alt="Orange Money" title="Orange Money">
+          </div>
+        </div>
+      </section>
+
+      <!-- Card details -->
+      <section id="extraCard" class="hidden bg-white rounded-2xl border border-slate-200/70 shadow-sm">
+        <div class="px-5 sm:px-6 pt-5 pb-5">
+          <div class="flex items-center gap-2">
+            <span class="inline-grid w-9 h-9 place-items-center rounded-lg bg-indigo-50 text-indigo-600 ring-1 ring-indigo-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75ZM5 9h14V7.25a.75.75 0 0 0-.75-.75H5.75A.75.75 0 0 0 5 7.25V9Z"/>
+              </svg>
+            </span>
+            <div class="text-sm font-medium text-slate-900">{% trans "Card receipt & verification" %}</div>
+          </div>
+
+          <label class="block text-sm text-slate-700 mt-4 mb-1" for="cardEmail">
+            {% trans "Receipt email" %}
+          </label>
+          <input id="cardEmail" type="email" inputmode="email" autocomplete="email"
+                 class="w-full h-11 rounded-xl border border-slate-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 px-3 bg-white placeholder:text-slate-400"
+                 placeholder="you@example.com">
+          <p class="mt-2 text-[12px] text-slate-500">
+            {% trans "Used for the receipt and 3-D Secure verification." %}
+          </p>
+
+          <div class="mt-4 flex items-center gap-3 opacity-90">
+            <img class="h-4" src="{% static 'payments/visa.jpeg' %}" alt="Visa" title="Visa">
+            <img class="h-4" src="{% static 'payments/mastercard.jpg' %}" alt="Mastercard" title="Mastercard">
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Sticky Footer -->
+    <footer class="absolute left-0 right-0 bottom-0 border-t border-slate-200 bg-white/90 backdrop-blur px-5 sm:px-6 py-3">
+      <div class="flex items-center justify-between gap-3">
+        <div class="hidden sm:flex items-center gap-2 text-[12px] text-slate-500">
+          <svg class="h-4 w-4 text-emerald-600" viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 1 1 16 0A8 8 0 0 1 2 10zm9-3H9v5h4v-2h-2V7z"/></svg>
+          <span>{% trans "You can safely close this window after payment is confirmed." %}</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 w-full sm:w-auto">
+          <button type="button"
+                  class="col-span-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700"
+                  onclick="closePayMethodModal()">
+            {% trans "Cancel" %}
+          </button>
+          <button id="payConfirm" type="button"
+                  class="col-span-1 inline-flex items-center justify-center px-4 py-2.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed">
+            <svg class="h-4 w-4 mr-2" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path d="M10 2a4 4 0 00-4 4v2H5a2 2 0 00-2 2v4a4 4 0 004 4h6a4 4 0 004-4v-4a2 2 0 00-2-2h-1V6a4 4 0 00-4-4z"/>
+            </svg>
+            {% trans "Pay securely" %}
+          </button>
+        </div>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<!-- ========= Request / Verify / Result modals (unchanged structure) ========= -->
+<div id="pfMobileRequestModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/70 p-4">
+  <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="pfReqTitle">
+    <div class="px-5 py-4 border-b border-slate-200">
+      <h3 id="pfReqTitle" class="text-lg font-semibold text-slate-900">
+        {% trans "Approval sent to your phone" %}
+      </h3>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-full grid place-items-center shadow bg-emerald-100">
+          <div class="h-5 w-5 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></div>
+        </div>
+        <div class="text-sm text-slate-700">
+          <div class="font-semibold">{% trans "Please approve the Mobile Money request on your phone." %}</div>
+          <div class="text-[12px] text-slate-500">{% trans "If prompted, enter your PIN to confirm the payment." %}</div>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+        <div class="text-xs text-slate-600">{% trans "Time remaining" %}</div>
+        <div class="mt-1 text-xl font-bold tracking-wide text-slate-900">
+          <span id="pfReqTimer">05:00</span>
+        </div>
+      </div>
+
+      <div class="text-[12px] text-slate-500">
+        {% trans "Do not close this window while we wait for your confirmation." %}
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+      <button type="button" id="pfReqCancel" class="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700">
+        {% trans "Cancel" %}
+      </button>
+      <button type="button" id="pfReqDone" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+        {% trans "Payment done" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="pfVerifyModal" class="fixed inset-0 z-[60] hidden items-center justify-center bg-slate-900/70 p-4">
+  <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="pfVerTitle">
+    <div class="px-5 py-4 border-b border-slate-200">
+      <h3 id="pfVerTitle" class="text-lg font-semibold text-slate-900">
+        {% trans "Verifying payment" %}
+      </h3>
+    </div>
+    <div class="p-5 space-y-4">
+      <div class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-full grid place-items-center shadow bg-amber-100">
+          <div class="h-5 w-5 rounded-full border-2 border-amber-400 border-t-transparent animate-spin"></div>
+        </div>
+        <div class="text-sm text-slate-700">
+          <div class="font-semibold">{% trans "We are checking your payment status…" %}</div>
+          <div class="text-[12px] text-slate-500">{% trans "Please do not close this window while we verify." %}</div>
+        </div>
+      </div>
+
+      <div class="rounded-xl bg-slate-50 border border-slate-200 p-3 flex items-center justify-between">
+        <div>
+          <div class="text-xs text-slate-600">{% trans "Time remaining" %}</div>
+          <div class="mt-1 text-xl font-bold tracking-wide text-slate-900"><span id="pfVerTimer">02:00</span></div>
+        </div>
+        <div class="text-xs text-slate-500">{% trans "Probing every 5 seconds" %}</div>
+      </div>
+
+      <div id="pfVerHint" class="text-[12px] text-slate-500">
+        {% trans "Hang tight—this usually takes under a minute." %}
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+      <button type="button" id="pfVerClose" class="px-4 py-2 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-700 hidden">
+        {% trans "Dismiss" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="pfResultModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/70 p-4">
+  <div class="relative w-full max-w-md rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="pfResTitle">
+    <div class="px-5 py-4 border-b border-slate-200">
+      <h3 id="pfResTitle" class="text-lg font-semibold text-slate-900">—</h3>
+    </div>
+    <div class="p-5 space-y-3">
+      <div id="pfResIcon" class="h-12 w-12 rounded-full grid place-items-center text-white shadow"></div>
+      <div id="pfResMsg" class="text-sm text-slate-700">—</div>
+      <div id="pfResMeta" class="text-xs text-slate-500"></div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+      <button type="button" id="pfResDismiss" class="px-4 py-2 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+        {% trans "Dismiss" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============== Modal-scoped styles (refined) ============== -->
+<style>
+/* Unify card appearance and hover */
+#payMethodModal .pm-card{
+  position:relative; display:flex; align-items:center; gap:.9rem; cursor:pointer;
+  border:1px solid #e5e7eb; background:#fff; border-radius:14px;
+  padding:.85rem 1rem; transition:box-shadow .2s, border-color .2s, transform .06s, background .2s;
+}
+#payMethodModal .pm-card:hover{
+  border-color:#c7d2fe; box-shadow:0 10px 30px rgba(2,6,23,.08);
+  transform: translateY(-1px);
+}
+#payMethodModal .method-card input:checked + .pm-card{
+  border-color:#6366f1;
+  box-shadow:0 0 0 3px rgba(99,102,241,.18), 0 10px 30px rgba(2,6,23,.08);
+}
+#payMethodModal .pm-lefticon{
+  display:grid; place-items:center; width:44px; height:44px; border-radius:12px;
+  background:#f8fafc; border:1px solid #e2e8f0; color:#334155; flex:0 0 44px;
+}
+#payMethodModal .pm-title{ font-weight:700; color:#0f172a; line-height:1.15; }
+#payMethodModal .pm-sub{ font-size:12px; color:#64748b; }
+#payMethodModal .pm-logos{ margin-left:auto; display:flex; align-items:center; gap:.55rem; }
+#payMethodModal .pm-logos img{ height:16px; opacity:.95; filter:saturate(.9); transition:opacity .2s, transform .2s; }
+#payMethodModal .pm-logos img:hover{ opacity:1; transform:translateY(-1px); }
+
+/* Kind tint */
+#payMethodModal .pm-card[data-kind="card"]  .pm-lefticon{ background:#EEF2FF; border-color:#E0E7FF; color:#4338CA; }
+#payMethodModal .pm-card[data-kind="mobile"] .pm-lefticon{ background:#ECFDF5; border-color:#D1FAE5; color:#047857; }
+
+/* Selected fallback */
+.method-option.selected{
+  background:#f5f7ff; border-color:#6366f1; box-shadow:0 0 0 2px rgba(99,102,241,.35);
+}
+
+/* Snack (notice) if you use it) */
+.app-notice {
+  position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+  z-index: 60; display: flex; align-items: center; gap: .6rem;
+  max-width: 92vw; padding: .75rem .9rem; border-radius: .875rem;
+  background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 10px 30px rgba(2,6,23,.12);
+  font-size: .925rem; color: #0f172a;
+}
+.app-notice[data-type="success"] { border-color: #86efac; }
+.app-notice[data-type="info"]    { border-color: #93c5fd; }
+.app-notice[data-type="error"]   { border-color: #fda4af; }
+.app-notice__icon { width: 18px; height: 18px; flex: 0 0 18px; }
+.app-notice__close { margin-left: .25rem; border: 0; background: transparent; cursor: pointer; color: #64748b; padding: .2rem; border-radius: .5rem; }
+.app-notice__close:hover { background: #f1f5f9; color:#0f172a; }
+.app-notice-enter { animation: noticeIn .22s ease-out both; }
+.app-notice-leave { animation: noticeOut .18s ease-in both; }
+@keyframes noticeIn { from{ transform: translate(-50%, 12px); opacity: 0 } to{ transform:translate(-50%,0); opacity:1 } }
+@keyframes noticeOut{ to{ transform: translate(-50%, 8px); opacity: 0 } }
+
+/* Modal pop-in */
+#pfMobileRequestModal .relative, #pfVerifyModal .relative, #pfResultModal .relative { animation: pfIn .22s ease-out both; }
+@keyframes pfIn { from { transform: translateY(8px); opacity:.0 } to { transform:none; opacity:1 } }
+</style>
+
+<script>
+/* ====================== TRANSLATIONS ====================== */
+const payModalTranslations = {
+  card: "{{ _('CARD')|escapejs }}",
+  mobileMoney: "{{ _('Mobile Money')|escapejs }}"
+};
+
+/* ====================== SAFE HELPERS ====================== */
+if (typeof window.$ !== "function"){
+  window.$ = function $(id){ return document.getElementById(id); };
+}
+if (typeof window.toggleElement !== "function"){
+  window.toggleElement = function toggleElement(id, show = true){
+    const el = $(id);
+    if (el) el.classList.toggle("hidden", !show);
+  };
+}
+if (typeof window.getCSRFToken !== "function"){
+  window.getCSRFToken = function getCSRFToken(){
+    const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (input) return input.value;
+    const name = 'csrftoken=';
+    return (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name)) || "").slice(name.length);
+  };
+}
+
+/* ====================== ENDPOINTS ====================== */
+window.PM_URLS = window.PM_URLS || {
+  get_methods: "{% url 'get_payment_methods' %}",
+  mobile_initiate: "{% url 'mobile_payment' %}",
+  card_initiate: "{% url 'initiate_card_payment' %}",
+  probe_status: "{% url 'mobile_probe' %}",
+  cancel_now: "{% url 'cancel_order_now' %}"
+};
+
+/* ====================== BASIC RESULT MODAL (fallback) ====================== */
+if (typeof window.openPaymentResultModal !== "function"){
+  window.openPaymentResultModal = function openPaymentResultModal({
+    status='success', title='', message='', amount=null, reference='',
+    onRetry=null
+  } = {}){
+    const ok  = String(status).toLowerCase()==='success' || String(status).toLowerCase()==='paid';
+    const hdr = ok ? (title || `{% trans 'Payment Successful' %}`) : (title || `{% trans 'Payment Failed' %}`);
+    const msg = message || (ok
+      ? `{% trans 'Your payment was confirmed successfully.' %}`
+      : `{% trans 'Your payment did not go through. Please try again.' %}`);
+    const amountHtml = Number.isFinite(Number(amount)) && Number(amount) > 0
+      ? `<div class="text-sm text-gray-700">{% trans 'Amount' %}: <strong>$${Number(amount).toFixed(2)}</strong></div>` : '';
+    const refHtml = reference ? `<div class="text-xs text-gray-500">{% trans 'Reference' %}: ${reference}</div>` : '';
+    const html = `<div class="flex items-center gap-3">
+               <div class="rounded-full ${ok?'bg-emerald-500':'bg-rose-500'} h-12 w-12 grid place-items-center text-white shadow">
+                 <svg viewBox="0 0 20 20" class="h-6 w-6" fill="currentColor"><path d="${ok ? 'M16.707 5.293a1 1 0 0 1 0 1.414l-7.25 7.25a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414l2.293 2.293 6.543-6.543a1 1 0 0 1 1.414 0z' : 'M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm2.828-11.172a1 1 0 0 0-1.414 0L10 8.243 8.586 6.828a1 1 0 1 0-1.414 1.414L8.586 9.657 7.172 11.07a1 1 0 1 0 1.414 1.414L10 11.071l1.414 1.414a1 1 0 0 0 1.414-1.414L11.414 9.657l1.414-1.415a1 1 0 0 0 0-1.414Z' }"/></svg>
+               </div>
+               <div><div class="font-semibold text-gray-900">${msg}</div>${amountHtml}${refHtml}</div>
+             </div>`;
+    openInlineResultModal(ok, hdr, html);
+  };
+}
+
+/* ====================== ICONS & NORMALIZERS (robust) ====================== */
+const PF_Icons = {
+  card:   `<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M3 6.75A2.75 2.75 0 0 1 5.75 4h12.5A2.75 2.75 0 0 1 21 6.75v10.5A2.75 2.75 0 0 1 18.25 20H5.75A2.75 2.75 0 0 1 3 17.25V6.75Z"/></svg>`,
+  mobile: `<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M7 3a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2Z"/></svg>`,
+  other:  `<svg class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M5 4h14v2H5v14H3V6a2 2 0 0 1 2-2Z"/></svg>`
+};
+function pfNormalize(str=""){
+  return String(str || "").trim().toUpperCase().replace(/[^A-Z0-9]+/g, "_");
+}
+function pfKindGuess(norm, rawLabel=""){
+  const t = norm || pfNormalize(rawLabel);
+  const cardTokens = [
+    "CARD","CREDIT_CARD","DEBIT_CARD","BANK_CARD",
+    "VISA","MASTERCARD","MASTER_CARD","AMEX","AMERICAN_EXPRESS","DISCOVER","CB","STRIPE_CARD",
+    "APPLE_PAY","GOOGLE_PAY"
+  ];
+  if (cardTokens.some(k => t.includes(k))) return "card";
+  const mobileTokens = [
+    "MOBILE_MONEY","MOBILE","MOMO","MPESA","M_PESA",
+    "AIRTEL_MONEY","ORANGE_MONEY","MTN_MOMO","MTN","VODACOM_MPESA","VODACOM","AIRTEL","ORANGE"
+  ];
+  if (mobileTokens.some(k => t.includes(k))) return "mobile";
+  return "other";
+}
+function pfHumanizeType(m){
+  const norm = pfNormalize(m?.type || m?.name || m?.code || m?.label);
+  const guessed = pfKindGuess(norm, m?.label || m?.name || m?.type || m?.code);
+  const title = (guessed === "card")
+      ? `{% trans "CARD" %}`
+      : (guessed === "mobile")
+      ? `{% trans "Mobile Money" %}`
+      : (m?.label || m?.name || m?.type || "Other");
+  return { title, kind: guessed };
+}
+function pfMethodMeta(m){
+  const { title, kind } = pfHumanizeType(m);
+  const logos = kind === "card"
+    ? `<img src="{% static 'payments/visa.svg' %}" alt="Visa"><img src="{% static 'payments/mastercard.svg' %}" alt="Mastercard">`
+    : kind === "mobile"
+    ? `<img src="{% static 'payments/mpesa.svg' %}" alt="M-Pesa"><img src="{% static 'payments/airtel-money.svg' %}" alt="Airtel Money"><img src="{% static 'payments/orange-money.svg' %}" alt="Orange Money">`
+    : "";
+  return { kind, title, logos };
+}
+
+/* ====================== NOTICE (snackbar) ====================== */
+if (typeof window.showNotice !== "function"){
+  window.showNotice = function showNotice(message, type = 'info', {timeout = 4500} = {}){
+    document.querySelectorAll('.app-notice').forEach(n => n.remove());
+    const wrap = document.createElement('div');
+    wrap.className = 'app-notice app-notice-enter';
+    wrap.dataset.type = type;
+    const icons = {
+      success: '<svg class="app-notice__icon" viewBox="0 0 20 20" fill="#10b981"><path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.25 7.25a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414l2.293 2.293 6.543-6.543a1 1 0 0 1 1.414 0z"/></svg>',
+      info:    '<svg class="app-notice__icon" viewBox="0 0 20 20" fill="#3b82f6"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm1-11a1 1 0 1 0-2 0 1 1 0 0 0 2 0Zm-2 3a1 1 0 1 0 0 2h1v3a1 1 0 1 0 2 0v-4a1 1 0 0 0-1-1h-2Z"/></svg>',
+      error:   '<svg class="app-notice__icon" viewBox="0 0 20 20" fill="#ef4444"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm2.828-11.172a1 1 0 0 0-1.414 0L10 8.243 8.586 6.828a1 1 0 1 0-1.414 1.414L8.586 9.657 7.172 11.07a1 1 0 1 0 1.414 1.414L10 11.071l1.414 1.414a1 1 0 0 0 1.414-1.414L11.414 9.657l1.414-1.415a1 1 0 0 0 0-1.414Z"/></svg>'
+    };
+    wrap.innerHTML = `${icons[type] || icons.info}<span class="app-notice__text"></span><button class="app-notice__close" aria-label="Close">&times;</button>`;
+    wrap.querySelector('.app-notice__text').textContent = message;
+    wrap.querySelector('.app-notice__close').addEventListener('click', () => {
+      wrap.classList.remove('app-notice-enter'); wrap.classList.add('app-notice-leave'); setTimeout(() => wrap.remove(), 160);
+    });
+    document.body.appendChild(wrap);
+    if (timeout > 0){
+      setTimeout(() => {
+        if (!document.body.contains(wrap)) return;
+        wrap.classList.remove('app-notice-enter'); wrap.classList.add('app-notice-leave'); setTimeout(() => wrap.remove(), 160);
+      }, timeout);
+    }
+  };
+}
+
+/* ====================== SELECTION HELPERS (robust) ====================== */
+function resolveKindFromUI(lbl){
+  let kind = (lbl?.dataset?.kind || "").trim();
+  if (kind && kind !== "unknown" && kind !== "other") return kind;
+
+  const text = (lbl?.textContent || "").trim();
+  const guessed = pfKindGuess(null, text);
+  if (guessed !== "other") return guessed;
+
+  const mobVisible  = !document.getElementById('extraMobile')?.classList.contains('hidden');
+  const cardVisible = !document.getElementById('extraCard')?.classList.contains('hidden');
+  if (mobVisible)  return "mobile";
+  if (cardVisible) return "card";
+
+  return "other";
+}
+function getSelectedKind(){
+  const sel = document.querySelector('#methodList input[name="pay-method"]:checked');
+  if (sel){
+    const lbl = document.querySelector(`label[for="${sel.id}"]`);
+    return resolveKindFromUI(lbl);
+  }
+  const card = document.querySelector('#methodList .pm-card.method-option.selected');
+  if (card) return resolveKindFromUI(card);
+  return "unknown";
+}
+function updateMethodUI(inp){
+  document.querySelectorAll('#methodList .pm-card').forEach(l=>l.classList.remove('method-option','selected'));
+  const lbl = inp ? document.querySelector(`label[for="${inp.id}"]`) : null;
+  if (lbl){
+    lbl.classList.add('method-option','selected');
+    const kind = resolveKindFromUI(lbl);
+    toggleElement('extraMobile', kind==='mobile');
+    toggleElement('extraCard',   kind==='card');
+  }else{
+    toggleElement('extraMobile', false);
+    toggleElement('extraCard',   false);
+  }
+}
+
+/* ====================== LOAD METHODS ====================== */
+async function loadSavedMethods(){
+  const list = $('methodList');
+  if (!list) return;
+
+  try{
+    const res = await fetch(PM_URLS.get_methods, { headers: { "X-Requested-With":"XMLHttpRequest" }, cache: "no-cache" });
+    const j   = await res.json().catch(()=>({}));
+    const methods = Array.isArray(j.methods) ? j.methods : [];
+
+    if (!methods.length){
+      list.innerHTML = `
+        <div class="rounded-lg border p-3 text-sm">
+          <p class="text-slate-800 font-medium mb-1">{% trans "No saved methods" %}</p>
+          <p class="text-slate-500">{% trans "Please add a payment method in your account settings." %}</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = methods.map((m,i)=>{
+      const meta = pfMethodMeta(m);
+      const mask = m.masked || m.last4 ? `•••• ${m.last4 || ''}` : (m.mask || '');
+      const leftIcon = PF_Icons[meta.kind] || PF_Icons.other;
+      return `
+        <div class="method-card">
+          <input id="method-${i}" type="radio" name="pay-method" value="${i}" class="hidden" />
+          <label for="method-${i}" class="pm-card" data-kind="${meta.kind}">
+            <span class="pm-lefticon">${leftIcon}</span>
+            <div class="min-w-0">
+              <div class="pm-title">${meta.title}</div>
+              <div class="pm-sub">${mask || ''}</div>
+            </div>
+            <div class="pm-logos">${meta.logos}</div>
+            <svg class="ml-2 h-4 w-4 text-slate-400 shrink-0" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+              <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 0 1 0-1.414L10.586 10 7.293 6.707a1 1 0 0 1 1.414-1.414l4 4a1 1 0 0 1 0 1.414l-4 4a1 1 0 0 1-1.414 0z" clip-rule="evenodd"/>
+            </svg>
+          </label>
+        </div>`;
+    }).join("");
+
+    // Normalize visible titles
+    document.querySelectorAll('#methodList .pm-title').forEach(el => {
+      const t = el.textContent.trim().toUpperCase().replace(/\s+/g,'_');
+      if (t === 'CREDIT_CARD' || /(^|_)CARD($|_)/.test(t)) el.textContent = payModalTranslations.card;
+      if (t === 'MOBILE_MONEY' || /MOBILE|MOMO|MPESA|ORANGE_MONEY|AIRTEL/.test(t)) el.textContent = payModalTranslations.mobileMoney;
+    });
+
+    // Ensure label click checks radio + updates UI; also handle change
+    const radios = document.querySelectorAll('#methodList input[name="pay-method"]');
+    radios.forEach((inp)=>{
+      const lbl = document.querySelector(`label[for="${inp.id}"]`);
+      if (lbl){
+        lbl.addEventListener('click', ()=>{
+          inp.checked = true;
+          updateMethodUI(inp);
+        });
+      }
+      inp.addEventListener('change', ()=> updateMethodUI(inp));
+    });
+
+    // Container-level click delegation for robustness
+    if (!list.dataset.clickBound){
+      list.addEventListener('click', (e)=>{
+        const lbl = e.target.closest('label.pm-card');
+        if (lbl && list.contains(lbl)){
+          const forId = lbl.getAttribute('for');
+          if (forId){
+            const inp = document.getElementById(forId);
+            if (inp){ inp.checked = true; updateMethodUI(inp); }
+          }
+        }
+      });
+      list.dataset.clickBound = '1';
+    }
+
+    // Auto-select first method
+    if (radios.length){
+      radios[0].checked = true;
+      updateMethodUI(radios[0]);
+    }
+
+  }catch(e){
+    list.innerHTML = `<div class="rounded-lg border p-3 text-sm text-red-600">{% trans "Failed to load methods." %}</div>`;
+  }
+}
+
+/* ====================== PROBE HELPERS ====================== */
+async function probeOnce({ order_reference='', order_number=null }={}){
+  try{
+    const r = await fetch(PM_URLS.probe_status, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
+      body: JSON.stringify({ order_reference, order_number })
+    });
+    const j = await r.json().catch(()=>({}));
+    const st = String(j?.status||'').toLowerCase();
+    const ok = (st==='paid');
+    const failed = (st==='failed');
+    return { ok, failed, raw:j };
+  }catch(_){ return { ok:false, failed:false, raw:{} }; }
+}
+
+/* ====================== CANCEL (idempotent) ====================== */
+let _pfCancelInFlight = false;
+async function cancelOrderSoft(reason='payment_failed'){
+  if (_pfCancelInFlight) return;
+  _pfCancelInFlight = true;
+  try{
+    const ref = ($('payRefBadge')?.textContent || '').trim();
+    const num = (window._activeOrderNumber || null);
+    await fetch(PM_URLS.cancel_now, {
+      method: 'POST',
+      headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
+      body: JSON.stringify({ order_reference: ref, order_number: num, reason })
+    });
+  }catch(_){/* no-op */}
+  finally{ setTimeout(()=>{ _pfCancelInFlight=false; }, 800); }
+}
+
+/* ====================== REQUEST (5 min) & VERIFY (2 min) MODALS ====================== */
+const reqModal = $('pfMobileRequestModal');
+const verModal = $('pfVerifyModal');
+const resModal = $('pfResultModal');
+
+function show(el){ el.classList.remove('hidden'); el.classList.add('flex'); }
+function hide(el){ el.classList.add('hidden'); el.classList.remove('flex'); }
+function fmt(ms){ const s=Math.max(0,Math.ceil(ms/1000)); const m=Math.floor(s/60), r=s%60; return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`; }
+
+let _reqTimerInt=null, _verTimerInt=null, _probeInt=null;
+
+function openMobileRequestModal(){
+  $('pfReqTimer').textContent = '05:00';
+  show(reqModal);
+  const end = Date.now() + 5*60*1000;
+  clearInterval(_reqTimerInt);
+  _reqTimerInt = setInterval(()=>{
+    const remaining = end - Date.now();
+    $('pfReqTimer').textContent = fmt(remaining);
+    if (remaining <= 0){
+      clearInterval(_reqTimerInt);
+      closeMobileRequestModal();
+      const reference = ($('payRefBadge')?.textContent || '').trim();
+      openVerifyModalAndProbe({ kind:'mobile', order_reference: reference });
+    }
+  }, 1000);
+}
+function closeMobileRequestModal(){
+  clearInterval(_reqTimerInt);
+  hide(reqModal);
+}
+
+function openVerifyModalAndProbe({ kind='unknown', order_reference='' }={}){
+  $('pfVerTimer').textContent = '02:00';
+  $('pfVerClose').classList.add('hidden');
+  $('pfVerHint').classList.remove('hidden');
+  show(verModal);
+
+  const end = Date.now() + 2*60*1000;
+  let finalStatus = 'pending'; // 'paid' | 'failed' | 'pending'
+  clearInterval(_verTimerInt);
+  _verTimerInt = setInterval(()=>{
+    const remaining = end - Date.now();
+    $('pfVerTimer').textContent = fmt(remaining);
+    if (remaining <= 0){
+      clearInterval(_verTimerInt);
+      stopProbing();
+      (async ()=>{
+        if (finalStatus === 'paid'){
+          openPaymentResultModal({ status: 'success', reference: order_reference });
+        } else {
+          try { await cancelOrderSoft('payment_check_failed_2min'); } catch(_){ }
+          openPaymentResultModal({ status: 'failed', reference: order_reference });
+        }
+      })();
+    }
+  }, 1000);
+
+  startProbing({ order_reference, intervalMs:5000, onResult:(ok)=>{
+    if (ok) {
+      finalStatus = 'paid';
+    } else {
+      finalStatus = (finalStatus === 'paid') ? 'paid' : 'failed';
+    }
+  }});
+}
+function closeVerifyModal(){
+  clearInterval(_verTimerInt);
+  hide(verModal);
+}
+
+function startProbing({ order_reference='', intervalMs=5000, onResult }){
+  stopProbing();
+  _probeInt = setInterval(async ()=>{
+    const r = await probeOnce({ order_reference });
+    if (r.ok || r.failed){
+      typeof onResult === 'function' && onResult(!!r.ok);
+    }
+  }, intervalMs);
+}
+function stopProbing(){
+  if (_probeInt){ clearInterval(_probeInt); _probeInt = null; }
+}
+
+/* Result modal (inline implementation) */
+function openInlineResultModal(ok, title, innerHtml){
+  const icon = $('pfResIcon'), h = $('pfResTitle'), msg = $('pfResMsg');
+  h.textContent = title || (ok ? "{% trans 'Payment completed' %}" : "{% trans 'Payment failed' %}");
+  msg.innerHTML = innerHtml || (ok ? "{% trans 'Your payment was confirmed successfully.' %}" : "{% trans 'Your payment did not go through. Please try again.' %}");
+  icon.className = `h-12 w-12 rounded-full grid place-items-center text-white shadow ${ok?'bg-emerald-500':'bg-rose-500'}`;
+  icon.innerHTML = ok
+    ? '<svg viewBox="0 0 20 20" class="h-6 w-6" fill="currentColor"><path d="M16.707 5.293a1 1 0 0 1 0 1.414l-7.25 7.25a1 1 0 0 1-1.414 0l-3-3a1 1 0 1 1 1.414-1.414l2.293 2.293 6.543-6.543a1 1 0 0 1 1.414 0z"/></svg>'
+    : '<svg viewBox="0 0 20 20" class="h-6 w-6" fill="currentColor"><path d="M10 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16Zm2.828-11.172a1 1 0 0 0-1.414 0L10 8.243 8.586 6.828a1 1 0 1 0-1.414 1.414L8.586 9.657 7.172 11.07a1 1 0 1 0 1.414 1.414L10 11.071l1.414 1.414a1 1 0 0 0 1.414-1.414L11.414 9.657l1.414-1.415a1 1 0 0 0 0-1.414Z"/></svg>';
+  const ref = ($('payRefBadge')?.textContent || '').trim();
+  $('pfResMeta').textContent = ref ? (`{% trans 'Reference' %}: `+ref) : '';
+  show(resModal);
+}
+$('pfResDismiss').addEventListener('click', ()=>{ hide(resModal); try{ window.location.reload(); }catch(_){ location.href = location.href; }});
+
+/* Wire request-modal buttons */
+$('pfReqCancel').addEventListener('click', async ()=>{
+  closeMobileRequestModal();
+  await cancelOrderSoft('user_cancelled_request');
+});
+$('pfReqDone').addEventListener('click', ()=>{
+  closeMobileRequestModal();
+  const reference = ($('payRefBadge')?.textContent || '').trim();
+  openVerifyModalAndProbe({ kind:'mobile', order_reference: reference });
+});
+
+/* ====================== PAY SECURELY BTN (uses robust getter) ====================== */
+const btnPay = $('payConfirm');
+btnPay?.addEventListener('click', async ()=>{
+  btnPay.disabled = true;
+  btnPay.classList.add('opacity-50','cursor-not-allowed');
+
+  let kind = getSelectedKind();
+  const reference = ($('payRefBadge')?.textContent || '').trim();
+
+  // If mapper returned 'other', try visible sections to decide
+  if (kind === 'other'){
+    const mobVisible  = !document.getElementById('extraMobile')?.classList.contains('hidden');
+    const cardVisible = !document.getElementById('extraCard')?.classList.contains('hidden');
+    if (mobVisible)  kind = 'mobile';
+    if (cardVisible) kind = 'card';
+  }
+
+  try{
+    if (kind === 'mobile'){
+      const msisdn = ($('mobileNumber')?.value || '').trim();
+      const cc     = ($('mobileCc')?.textContent || '+243').trim();
+      if (!msisdn){
+        showNotice("{% trans 'Please enter your mobile number.' %}", 'error');
+        throw new Error('no-msisdn');
+      }
+
+      const r = await fetch(PM_URLS.mobile_initiate, {
+        method: 'POST',
+        headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
+        body: JSON.stringify({ order_reference: reference, msisdn: (cc+msisdn).replace(/\s+/g,'') })
+      });
+
+      if (r.ok){
+        try {
+          const j = await r.json().catch(()=>({}));
+          if (j && j.order_number) { window._activeOrderNumber = j.order_number; }
+        } catch(_e) {}
+        openMobileRequestModal();
+      }else{
+        await cancelOrderSoft('mobile_initiate_failed');
+        openInlineResultModal(false, "{% trans 'Payment failed' %}", "{% trans 'We could not initiate the Mobile Money request. Please try again.' %}");
+      }
+    } else if (kind === 'card'){
+      const email = ($('cardEmail')?.value || '').trim();
+      const r = await fetch(PM_URLS.card_initiate, {
+        method: 'POST',
+        headers:{ 'Content-Type':'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With':'XMLHttpRequest' },
+        body: JSON.stringify({ order_reference: reference, email })
+      });
+      const j = await r.json().catch(()=>({}));
+
+      if (j?.redirect_url){ window.open(j.redirect_url, '_blank'); }
+      openVerifyModalAndProbe({ kind:'card', order_reference: reference });
+    } else {
+      showNotice("{% trans 'Please choose a payment method first.' %}", 'error');
+      btnPay.disabled = false;
+      btnPay.classList.remove('opacity-50','cursor-not-allowed');
+    }
+  }catch(_){
+    btnPay.disabled = false;
+    btnPay.classList.remove('opacity-50','cursor-not-allowed');
+  }
+});
+
+/* ====================== INIT ====================== */
+document.addEventListener('DOMContentLoaded', loadSavedMethods);
+
+/* ======= Exposed close handler, if you use it elsewhere ======= */
+function closePayMethodModal(){
+  const modal = $('payMethodModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+</script>

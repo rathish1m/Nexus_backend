@@ -1,0 +1,638 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+{% block orders %}
+
+<!-- ========== Invoice Modal (responsive) ========== -->
+<div id="invoiceModal" class="fixed inset-0 z-50 hidden bg-black/60 items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full h-full sm:h-auto sm:w-[95vw] sm:max-w-3xl rounded-none sm:rounded-lg shadow-xl p-4 sm:p-6 relative overflow-y-auto">
+    <button onclick="closeInvoiceModal()"
+            class="absolute top-2 right-2 sm:top-3 sm:right-3 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="{% trans 'Close' %}">
+      <span class="text-2xl leading-none text-gray-700">&times;</span>
+    </button>
+    <h2 class="text-xl sm:text-2xl font-semibold mb-4 text-gray-800 flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6 text-blue-500" fill="none" viewBox="0 0 24 24"
+        stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m2 0h.01M7 17h.01M12 11V7m-6 4h12" />
+      </svg>
+      {% trans "Invoice Details" %}
+    </h2>
+    <div id="invoiceContent" class="text-sm sm:text-base text-gray-700 space-y-3">
+      <p class="animate-pulse">{% trans "Loading invoice..." %}</p>
+    </div>
+  </div>
+</div>
+
+<!-- ========== Payment Modal (responsive) ========== -->
+<div id="paymentModal"
+     class="fixed inset-0 z-50 hidden bg-black/60 flex items-center justify-center p-0 sm:p-4">
+  <div class="bg-white w-full h-full sm:h-auto sm:w-[95vw] sm:max-w-2xl rounded-none sm:rounded-lg shadow-xl p-4 sm:p-6 relative overflow-y-auto">
+    <button onclick="closePaymentModal()"
+            class="absolute top-2 right-2 sm:top-3 sm:right-3 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="{% trans 'Close' %}">
+      <span class="text-2xl leading-none text-gray-700">&times;</span>
+    </button>
+
+    <h2 class="text-lg sm:text-xl font-semibold mb-4 text-gray-800">{% trans "Choose Payment Method" %}</h2>
+
+    <form id="paymentForm" method="post" class="space-y-4">
+      {% csrf_token %}
+      <input type="hidden" name="order_id" id="hiddenOrderId">
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Payment Method" %}</label>
+        <select id="paymentMethodSelect" name="payment_method" onchange="handlePaymentMethodChange(this.value)"
+                class="block w-full border px-4 py-3 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 bg-white">
+          <option value="">{% trans "-- Select Payment Method --" %}</option>
+        </select>
+      </div>
+
+      <div id="mobilePhoneField" class="hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Phone Number" %}</label>
+        <input type="tel" name="phone_number" id="phoneNumberInput"
+               class="w-full border px-3 py-2 rounded text-sm focus:ring focus:border-blue-300"
+               placeholder="243...">
+      </div>
+
+      <div id="cardEmailField" class="hidden">
+        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Email Address" %}</label>
+        <input type="email" name="email" id="emailInput"
+               class="w-full border px-3 py-2 rounded text-sm focus:ring focus:border-blue-300"
+               placeholder="you@example.com">
+      </div>
+
+      <button type="submit" onclick="updatePaymentFormAction()"
+              class="bg-green-600 text-white w-full py-3 rounded-lg hover:bg-green-700 font-semibold">
+        {% trans "Proceed to Payment" %}
+      </button>
+    </form>
+  </div>
+</div>
+<!-- ========== Orders Card ========== -->
+<div class="bg-gradient-to-br from-white to-gray-50 rounded-xl shadow-xl p-4 sm:p-6 border border-gray-200">
+  <h2 class="text-xl sm:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+    <i class="fas fa-shopping-cart text-blue-500"></i>
+    {% trans "My Orders" %}
+  </h2>
+
+  <!-- Payment-only filter -->
+  <div class="mb-4 bg-white border border-gray-200 rounded-lg p-3">
+    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 items-end">
+      <div class="md:col-span-1">
+        <label for="filterPayment" class="block text-xs font-medium text-gray-600 mb-1">{% trans "Payment status" %}</label>
+        <select id="filterPayment" class="w-full border rounded px-3 py-2 text-sm">
+          <option value="">{% trans "Any payment" %}</option>
+          <option value="unpaid">{% trans "Unpaid" %}</option>
+          <option value="awaiting_confirmation">{% trans "Awaiting confirmation" %}</option>
+          <option value="paid">{% trans "Paid" %}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Unpaid summary alert -->
+  <div id="ordersSummaryAlert" class="hidden mb-4 p-4 rounded-lg border text-sm"></div>
+
+  <!-- Desktop table -->
+  <div class="mt-2 overflow-x-auto rounded-lg shadow-md border border-gray-200 hidden md:block">
+    <table class="min-w-full text-sm text-left text-gray-700">
+      <thead class="bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 uppercase text-xs font-semibold tracking-wider">
+        <tr>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Order ID" %}</th>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Total (USD)" %}</th>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Created On" %}</th>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Order Status" %}</th>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Payment Status" %}</th>
+          <th class="px-6 py-3 whitespace-nowrap">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="ordersTableBody" class="bg-white divide-y divide-gray-100">
+        <tr>
+          <td colspan="6" class="text-center px-6 py-8 text-gray-400 text-sm animate-pulse">
+            {% trans "Loading orders..." %}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Mobile card list -->
+  <div id="ordersListMobile" class="md:hidden space-y-3 mt-2">
+    <div class="rounded-lg border border-gray-200 p-4 text-gray-500 text-sm text-center animate-pulse">
+      {% trans "Loading orders..." %}
+    </div>
+  </div>
+
+  <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mt-6 px-1 text-xs sm:text-sm text-gray-500">
+    <span class="flex items-center gap-1">
+      <i class="fas fa-info-circle text-blue-400"></i>
+      {% trans "Showing recent orders" %}
+    </span>
+    <nav id="paginationContainer" class="inline-flex flex-wrap gap-1"></nav>
+  </div>
+</div>
+
+<style>
+tbody tr:hover { box-shadow: inset 0 0 0 rgba(0,0,0,0), 0 4px 12px rgba(59,130,246,.15); transform: scale(1.01); }
+tbody tr { transition: all .25s ease-in-out; }
+</style>
+
+<!-- ========== JavaScript ========== -->
+<script>
+const orderTranslations = {
+  cancelOrderConfirm: "{{ _('Are you sure you want to cancel this order?')|escapejs }}",
+  unableToCancelOrder: "{{ _('Unable to cancel order.')|escapejs }}",
+  failedToCancelOrder: "{{ _('Failed to cancel order.')|escapejs }}"
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  const ordersTableBody = document.getElementById("ordersTableBody");   // desktop
+  const ordersListMobile = document.getElementById("ordersListMobile"); // mobile
+  const paginationContainer = document.getElementById("paginationContainer");
+  const summaryAlert = document.getElementById("ordersSummaryAlert");
+  const filterPayment = document.getElementById("filterPayment");
+  let currentPage = 1;
+
+  const FEEDBACK_LABELS = {
+    new: "{% trans 'Give Feedback' %}",
+    edit: "{% trans 'Edit Feedback' %}",
+    view: "{% trans 'View Feedback' %}"
+  };
+
+  function fmtMoney(v) {
+    const n = parseFloat(v);
+    if (Number.isNaN(n)) return "$0.00";
+    return "$" + n.toFixed(2);
+  }
+
+  function buildQuery(page=1) {
+    const p = new URLSearchParams({ page });
+    const pay = filterPayment?.value;
+    if (pay) p.set("payment_status", pay);
+    return p.toString();
+  }
+
+  function renderUnpaidSummary(orders) {
+    const unpaid = orders.filter(o => {
+      const ps = (o.payment_status || "").toLowerCase();
+      return ps === "unpaid" || ps === "awaiting_confirmation";
+    });
+    const count = unpaid.length;
+    const total = unpaid.reduce((sum, o) => sum + (parseFloat(o.total_price) || 0), 0);
+
+    if (count > 0) {
+      summaryAlert.className = "mb-4 p-4 rounded-lg border text-sm bg-red-50 border-red-200 text-red-800";
+      summaryAlert.innerHTML = `
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-exclamation-circle"></i>
+            <span><strong>${count}</strong> {% trans "unpaid invoice(s)" %} — {% trans "Total due" %}: <strong>${fmtMoney(total)}</strong></span>
+          </div>
+          <span class="text-xs text-red-600">{% trans "Please settle your unpaid orders to avoid delays." %}</span>
+        </div>`;
+      summaryAlert.classList.remove("hidden");
+    } else {
+      summaryAlert.className = "mb-4 p-4 rounded-lg border text-sm bg-green-50 border-green-200 text-green-800";
+      summaryAlert.innerHTML = `
+        <div class="flex items-center gap-2">
+          <i class="fas fa-check-circle"></i>
+          <span>{% trans "All invoices are paid. You're all set!" %}</span>
+        </div>`;
+      summaryAlert.classList.remove("hidden");
+    }
+  }
+
+  function renderMobileCard(order){
+    const ps = (order.payment_status || "").toLowerCase();
+    const st = (order.status || "").toLowerCase();
+    const isCancelled = st === "cancelled";
+
+    const payBtn = (ps === "unpaid")
+      ? `<button onclick="initiatePayment('${order.order_reference}')"
+            class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg shadow hover:bg-green-700">
+           <i class="fas fa-credit-card"></i> <span class="font-semibold">{% trans "Pay Now" %}</span>
+         </button>` : "";
+
+    const invoiceBtn = (ps !== "unpaid")
+      ? `<button onclick="openInvoiceModal('${order.order_reference}')"
+            class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
+           <i class="fas fa-file-invoice"></i> <span class="font-semibold">{% trans "View Invoice" %}</span>
+         </button>` : "";
+
+    const cancelBtn = (ps === "unpaid" || ps === "awaiting_confirmation")
+      ? `<button onclick="cancelOrder('${order.order_reference}', this)"
+            class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 bg-rose-600 text-white rounded-lg shadow hover:bg-rose-700">
+           <i class="fas fa-ban"></i> <span class="font-semibold">{% trans "Cancel" %}</span>
+         </button>` : "";
+
+    let feedbackBtn = "";
+    if (!isCancelled && order.feedback_url) {
+      const label = order.feedback_exists
+        ? (order.feedback_locked ? FEEDBACK_LABELS.view : FEEDBACK_LABELS.edit)
+        : FEEDBACK_LABELS.new;
+      const btnClass = order.feedback_locked
+        ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+        : "bg-amber-500 text-white hover:bg-amber-600";
+      const icon = order.feedback_locked ? "fa-eye" : "fa-comment-dots";
+      feedbackBtn = `<a href="${order.feedback_url}"
+                          class="w-full inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg shadow ${btnClass}">
+                        <i class="fas ${icon}"></i> <span class="font-semibold">${label}</span>
+                      </a>`;
+    }
+
+    const actionsArray = [payBtn, invoiceBtn, cancelBtn, feedbackBtn].filter(Boolean);
+    const actions = isCancelled ? "" : actionsArray.join('<div class="h-2"></div>');
+
+    return `
+      <article class="rounded-lg border border-gray-200 p-4 bg-white">
+        <div class="flex items-start justify-between gap-3">
+          <div class="text-sm">
+            <div class="font-semibold text-blue-600 break-all">${order.order_reference}</div>
+            <div class="text-gray-500 text-xs mt-1">{% trans "Created On" %}: ${order.order_date}</div>
+          </div>
+          <div class="text-right">
+            <div class="text-sm font-semibold">${fmtMoney(order.total_price)}</div>
+            <div class="text-xs text-gray-500 capitalize">${order.payment_status}</div>
+          </div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div class="text-gray-500">{% trans "Order Status" %}</div><div class="capitalize">${order.status}</div>
+        </div>
+        ${actions ? `<div class="mt-3">${actions}</div>` : ``}
+      </article>`;
+  }
+
+  function fetchOrders(page = 1) {
+    const qs = buildQuery(page);
+    fetch(`/client/orders/list/?${qs}`, {
+        headers: {"X-Requested-With": "XMLHttpRequest"},
+        credentials: "same-origin"
+      })
+      .then(res => res.json())
+      .then(data => {
+        ordersTableBody.innerHTML = "";
+        ordersListMobile.innerHTML = "";
+
+        if (!data.orders.length) {
+          ordersTableBody.innerHTML = `
+            <tr>
+              <td colspan="6" class="text-center px-6 py-8 text-gray-500">{% trans "No orders found." %}</td>
+            </tr>`;
+          ordersListMobile.innerHTML = `
+            <div class="rounded-lg border border-gray-200 p-4 text-gray-500 text-sm text-center">
+              {% trans "No orders found." %}
+            </div>`;
+          summaryAlert.classList.add("hidden");
+          paginationContainer.innerHTML = "";
+          return;
+        }
+
+        renderUnpaidSummary(data.orders);
+
+        // Render desktop table rows
+        data.orders.forEach(order => {
+          const ps = (order.payment_status || "").toLowerCase();
+          const st = (order.status || "").toLowerCase();
+          const isCancelled = st === "cancelled";
+
+          const payBtn = (ps === "unpaid")
+            ? `<button onclick="initiatePayment('${order.order_reference}')"
+                class="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-full shadow hover:bg-green-700">
+                 <i class="fas fa-credit-card"></i> <span class="font-semibold">{% trans "Pay Now" %}</span>
+               </button>`
+            : "";
+
+          const invoiceBtn = (ps !== "unpaid")
+            ? `<button onclick="openInvoiceModal('${order.order_reference}')"
+                class="inline-flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-full shadow hover:bg-blue-700">
+                 <i class="fas fa-file-invoice"></i> <span class="font-semibold">{% trans "View Invoice" %}</span>
+               </button>`
+            : "";
+
+          {#const cancelBtn = (ps === "unpaid" || ps === "awaiting_confirmation")#}
+          {#  ? `<button onclick="cancelOrder('${order.order_reference}', this)"#}
+          {#      class="inline-flex items-center gap-2 px-3 py-2 bg-rose-600 text-white rounded-full shadow hover:bg-rose-700">#}
+          {#       <i class="fas fa-ban"></i> <span class="font-semibold">{% trans "Cancel" %}</span>#}
+          {#     </button>`#}
+          {#  : "";#}
+
+          let feedbackBtn = "";
+          if (!isCancelled && order.feedback_url) {
+            const label = order.feedback_exists
+              ? (order.feedback_locked ? FEEDBACK_LABELS.view : FEEDBACK_LABELS.edit)
+              : FEEDBACK_LABELS.new;
+            const btnClass = order.feedback_locked
+              ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              : "bg-amber-500 text-white hover:bg-amber-600";
+            const icon = order.feedback_locked ? "fa-eye" : "fa-comment-dots";
+            feedbackBtn = `<a href="${order.feedback_url}"
+                                class="inline-flex items-center gap-2 px-3 py-2 rounded-full shadow ${btnClass}">
+                              <i class="fas ${icon}"></i> <span class="font-semibold">${label}</span>
+                            </a>`;
+          }
+
+          const actionItems = [payBtn, invoiceBtn, feedbackBtn].filter(Boolean).join(" ");
+          const actionsHtml = isCancelled ? "" : actionItems;
+          {#const actionsHtml = isCancelled ? "" : `${payBtn} ${invoiceBtn} ${cancelBtn}`;#}
+
+          ordersTableBody.innerHTML += `
+            <tr class="hover:bg-gray-50">
+              <td class="px-6 py-3 font-medium text-blue-600 break-all">${order.order_reference}</td>
+              <td class="px-6 py-3">${fmtMoney(order.total_price)}</td>
+              <td class="px-6 py-3">${order.order_date}</td>
+              <td class="px-6 py-3 capitalize">${order.status}</td>
+              <td class="px-6 py-3 capitalize">${order.payment_status}</td>
+              <td class="px-6 py-3">
+                <div class="flex flex-wrap gap-2 items-center">
+                  ${actionsHtml}
+                </div>
+              </td>
+            </tr>`;
+        });
+
+        // Render mobile cards
+        data.orders.forEach(order => {
+          ordersListMobile.insertAdjacentHTML("beforeend", renderMobileCard(order));
+        });
+
+        renderPagination(data.page, data.total_pages, data.has_previous, data.has_next);
+        currentPage = data.page;
+      })
+      .catch(err => {
+        console.error("Error loading orders:", err);
+        ordersTableBody.innerHTML = `
+          <tr>
+            <td colspan="6" class="text-center px-6 py-8 text-red-500">{% trans "Failed to load orders." %}</td>
+          </tr>`;
+        ordersListMobile.innerHTML = `
+          <div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 text-sm text-center">
+            {% trans "Failed to load orders." %}
+          </div>`;
+        summaryAlert.classList.add("hidden");
+        paginationContainer.innerHTML = "";
+      });
+  }
+
+  function renderPagination(page, totalPages, hasPrev, hasNext) {
+    paginationContainer.innerHTML = "";
+
+    if (hasPrev) {
+      paginationContainer.innerHTML += `
+        <button onclick="fetchOrders(${page - 1})" class="px-3 py-1 border rounded hover:bg-gray-100">
+          &laquo; {% trans "Prev" %}
+        </button>`;
+    }
+
+    const visiblePages = 5;
+    let start = Math.max(1, page - Math.floor(visiblePages / 2));
+    let end = Math.min(totalPages, start + visiblePages - 1);
+    if (end - start < visiblePages - 1) start = Math.max(1, end - visiblePages + 1);
+
+    for (let i = start; i <= end; i++) {
+      paginationContainer.innerHTML += `
+        <button onclick="fetchOrders(${i})"
+                class="px-3 py-1 border rounded ${i === page ? 'bg-blue-600 text-white' : 'hover:bg-gray-100'}">
+          ${i}
+        </button>`;
+    }
+
+    if (hasNext) {
+      paginationContainer.innerHTML += `
+        <button onclick="fetchOrders(${page + 1})" class="px-3 py-1 border rounded hover:bg-gray-100">
+          {% trans "Next" %} &raquo;
+        </button>`;
+    }
+  }
+
+  // Auto-apply when payment filter changes
+  filterPayment?.addEventListener("change", () => fetchOrders(1));
+
+  // initial load + expose
+  window.fetchOrders = fetchOrders;
+  window._ordersFetchPage = () => fetchOrders(currentPage);
+  fetchOrders(currentPage);
+});
+
+/* ========= Payment Modal Utilities (unchanged core, responsive ready) ========= */
+document.addEventListener("DOMContentLoaded", function () {
+  const form = document.getElementById("paymentForm");
+  const methodSelect = document.getElementById("paymentMethodSelect");
+  const phoneInput = document.getElementById("phoneNumberInput");
+  const emailInput = document.getElementById("emailInput");
+  const orderIdInput = document.getElementById("hiddenOrderId");
+
+  const methodUrlMap = {
+    mobile: "{% url 'mobile_payment' %}",
+    card: "{% url 'initiate_card_payment' %}"
+  };
+
+  function getSelectedEndpoint() {
+    const method = methodSelect.value;
+    return methodUrlMap[method] || "{% url 'mobile_payment' %}";
+  }
+
+  function updatePaymentFormAction() {
+    const phone = phoneInput?.value || "";
+    const email = emailInput?.value || "";
+    const orderId = orderIdInput.value;
+    const endpoint = getSelectedEndpoint();
+    form.action = `${endpoint}?order_id=${orderId}&phone=${encodeURIComponent(phone)}&email=${encodeURIComponent(email)}`;
+  }
+  window.updatePaymentFormAction = updatePaymentFormAction;
+
+  window.handlePaymentMethodChange = function (method) {
+    document.getElementById("mobilePhoneField").classList.toggle("hidden", !method.includes("mobile"));
+    document.getElementById("cardEmailField").classList.toggle("hidden", !method.includes("card"));
+    updatePaymentFormAction();
+  };
+
+  methodSelect.addEventListener("change", updatePaymentFormAction);
+  phoneInput?.addEventListener("input", updatePaymentFormAction);
+  emailInput?.addEventListener("input", updatePaymentFormAction);
+
+  form.addEventListener("submit", function (e) {
+    e.preventDefault();
+
+    const method = methodSelect.value;
+    const endpoint = getSelectedEndpoint();
+
+    const payload = {
+      order_id: orderIdInput.value,
+      payment_method: method,
+      phone_number: phoneInput?.value || "",
+      email: emailInput?.value || ""
+    };
+
+    fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": document.querySelector("[name=csrfmiddlewaretoken]").value
+      },
+      body: JSON.stringify(payload)
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.url) {
+            // Open FlexPay in a new tab
+          window.open(data.url, "_blank", "noopener,noreferrer");
+          // Close the modal (assuming you already have this function)
+          closePaymentModal();
+          // Refresh the current page
+          window.location.reload();
+        } else {
+          alert("Error: " + (data.message || "Something went wrong."));
+        }
+      })
+      .catch(err => {
+        console.error("Payment error:", err);
+        alert("An error occurred while processing the payment.");
+      });
+  });
+
+  fetchPaymentMethods();
+});
+
+function openPaymentModal(orderId = null) {
+  document.getElementById("paymentModal").classList.remove("hidden");
+  document.getElementById("hiddenOrderId").value = orderId || window.selectedOrderId;
+}
+function closePaymentModal() { document.getElementById("paymentModal").classList.add("hidden"); }
+
+function fetchPaymentMethods() {
+  fetch("{% url 'get_payment_methods' %}", {
+    headers: { "X-Requested-With": "XMLHttpRequest" },
+    credentials: "same-origin"
+  })
+    .then(res => res.json())
+    .then(data => {
+      const select = document.getElementById("paymentMethodSelect");
+      select.innerHTML = `<option value="">{% trans "-- Select Payment Method --" %}</option>`;
+      if (data.success) {
+        data.methods.forEach(method => {
+          const name = method.name.toLowerCase();
+          if (name.includes("mobile")) select.innerHTML += `<option value="mobile">${method.name}</option>`;
+          else if (name.includes("card")) select.innerHTML += `<option value="card">${method.name}</option>`;
+        });
+      }
+    });
+}
+
+function initiatePayment(orderId) {
+  window.selectedOrderId = orderId;
+  openPaymentModal(orderId);
+  setTimeout(() => { document.getElementById("paymentModal")?.scrollIntoView({ behavior: 'smooth' }); }, 100);
+}
+
+/* ========= Invoice ========= */
+function openInvoiceModal(orderRef) {
+  const modal = document.getElementById("invoiceModal");
+  const content = document.getElementById("invoiceContent");
+
+  modal.classList.remove("hidden");
+  modal.classList.add("flex");
+  content.innerHTML = `<p class="animate-pulse">{% trans "Loading invoice..." %}</p>`;
+
+  fetch("{% url 'get_invoice_details' order_ref='__ORDER_REF__' %}".replace("__ORDER_REF__", orderRef) + "?format=json")
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        const invoice = data.invoice;
+        const itemsHTML = (invoice.items || []).map(item => `
+          <tr class="text-sm text-gray-700">
+            <td class="py-1">${item.name}</td>
+            <td class="py-1 text-center">${item.qty}</td>
+            <td class="py-1 text-right">$${Number(item.price).toFixed(2)}</td>
+          </tr>
+        `).join("");
+
+        content.innerHTML = `
+          <div class="text-sm sm:text-base text-gray-800 space-y-2">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <p><strong>{% trans "Order ID" %}:</strong> ${invoice.order_id}</p>
+              <p><strong>{% trans "Customer" %}:</strong> ${invoice.customer_name}</p>
+              <p><strong>{% trans "Email" %}:</strong> ${invoice.customer_email || "-"}</p>
+              <p><strong>{% trans "Type" %}:</strong> ${invoice.customer_type === "business" ? "Business" : "Personal"}</p>
+              <p class="sm:col-span-2"><strong>{% trans "Address" %}:</strong> ${invoice.address}</p>
+            </div>
+
+            <hr class="my-2 border-gray-300">
+
+            <div class="overflow-x-auto rounded border border-gray-200">
+              <table class="w-full text-left">
+                <thead class="text-xs text-gray-500 border-b">
+                  <tr>
+                    <th class="py-2 px-3">{% trans "Item" %}</th>
+                    <th class="py-2 px-3 text-center">{% trans "Qty" %}</th>
+                    <th class="py-2 px-3 text-right">{% trans "Price" %}</th>
+                  </tr>
+                </thead>
+                <tbody>${itemsHTML || `<tr><td colspan="3" class="py-3 px-3 text-center text-gray-500">{% trans "No items" %}</td></tr>`}</tbody>
+              </table>
+            </div>
+
+            <div class="text-right space-y-1">
+              <p><strong>{% trans "VAT" %}:</strong> $${Number(invoice.vat).toFixed(2)}</p>
+              <p><strong>{% trans "Excise" %}:</strong> $${Number(invoice.excise).toFixed(2)}</p>
+              <p class="text-lg font-bold"><strong>{% trans "Total Due" %}:</strong> $${Number(invoice.total).toFixed(2)}</p>
+            </div>
+
+            <div class="mt-4 flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <a href="/client/orders/details/${orderRef}/print/" target="_blank"
+                 class="inline-flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg shadow hover:bg-blue-700">
+                <i class="fas fa-download"></i> {% trans "Download PDF" %}
+              </a>
+              <button onclick="closeInvoiceModal()"
+                      class="inline-flex items-center justify-center gap-2 px-4 py-3 border rounded-lg hover:bg-gray-50">
+                {% trans "Close" %}
+              </button>
+            </div>
+          </div>
+        `;
+      } else {
+        content.innerHTML = `<p class="text-red-500">{% trans "Failed to load invoice." %}</p>`;
+      }
+    })
+    .catch(() => {
+      content.innerHTML = `<p class="text-red-500">{% trans "Error loading invoice." %}</p>`;
+    });
+}
+
+function closeInvoiceModal() { document.getElementById("invoiceModal").classList.add("hidden"); }
+
+/* ========= CSRF Helper ========= */
+function getCookie(name) {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return "";
+}
+
+/* ========= Cancel Order ========= */
+function cancelOrder(orderRef, btn = null) {
+  if (!confirm(orderTranslations.cancelOrderConfirm)) return;
+
+  const csrf = document.querySelector("[name=csrfmiddlewaretoken]")?.value || getCookie("csrftoken");
+  const url = "{% url 'cancel_order' order_ref='__REF__' %}".replace("__REF__", encodeURIComponent(orderRef));
+
+  if (btn) { btn.disabled = true; btn.classList.add("opacity-60","pointer-events-none"); }
+
+  fetch(url, {
+    method: "POST",
+    headers: { "X-CSRFToken": csrf, "X-Requested-With": "XMLHttpRequest" }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      if (window._ordersFetchPage) window._ordersFetchPage(); else location.reload();
+    } else {
+      alert(data.error || orderTranslations.unableToCancelOrder);
+    }
+  })
+  .catch(() => { alert(orderTranslations.failedToCancelOrder); })
+  .finally(() => { if (btn) { btn.disabled = false; btn.classList.remove("opacity-60","pointer-events-none"); } });
+}
+</script>
+
+{% endblock %}

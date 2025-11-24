@@ -1,0 +1,41 @@
+{% load i18n %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% trans "Ticket" %} #{{ ticket.id }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tailwind or your CSS bundle should already be globally available; keep this minimal -->
+  <style>
+    body{font-family:ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial; color:#111827;}
+    .ring{box-shadow: 0 0 0 1px rgb(229 231 235);}
+  </style>
+</head>
+<body class="bg-white">
+  <article class="max-w-3xl mx-auto p-4 sm:p-6">
+    <header class="mb-4">
+      <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">
+        {% trans "Ticket" %} #{{ ticket.id }} — {{ ticket.subject }}
+      </h1>
+      <div class="mt-2 text-sm text-gray-600 flex flex-wrap items-center gap-2">
+        <span class="inline-block rounded-full px-2 py-0.5 text-[11px] ring {{ status_badge_classes }} capitalize">
+          {{ ticket.status }}
+        </span>
+        <span>•</span>
+        <span>{% trans "Created" %}: {{ ticket.created_at|date:"Y-m-d H:i" }}</span>
+        <span>•</span>
+        <span>{% trans "Updated" %}: {{ ticket.updated_at|date:"Y-m-d H:i" }}</span>
+        <span>•</span>
+        <span class="capitalize">{% trans "Priority" %}: {{ ticket.priority }}</span>
+        <span>•</span>
+        <span class="capitalize">{% trans "Category" %}: {{ ticket.category }}</span>
+      </div>
+    </header>
+
+    <section class="prose max-w-none text-gray-800">
+      <h2 class="text-base font-semibold mb-2">{% trans "Description" %}</h2>
+      <div class="rounded-lg ring bg-white p-3 whitespace-pre-wrap">{{ ticket.message }}</div>
+    </section>
+  </article>
+</body>
+</html>

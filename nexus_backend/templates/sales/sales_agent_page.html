@@ -1,0 +1,117 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% trans "Nexus | Sales" %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+  <style>
+    /* slide-in for mobile sidebar (keep your include placement intact) */
+    .sidebar-slide { transform: translateX(100%); transition: transform .3s ease-in-out; }
+    .sidebar-slide.open { transform: translateX(0); }
+
+    /* make content area behave nicely on small screens */
+    main { min-width: 0; }
+    /* iOS notch safe area */
+    :root { --safe-bottom: env(safe-area-inset-bottom, 0px); }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+  <!-- Mobile Topbar -->
+  <div class="bg-white px-4 py-3 flex justify-between items-center shadow md:hidden sticky top-0 z-50">
+    <img src="{% static 'images/logo/logo.png' %}" class="h-8 w-auto" alt="Logo" />
+    <button onclick="toggleMobileSidebar()" class="p-2 rounded hover:bg-gray-100 text-gray-700" aria-label="Open menu">
+      <i class="fas fa-bars fa-lg"></i>
+    </button>
+  </div>
+
+  <div class="flex flex-1 w-full">
+    <!-- Desktop Sidebar (unchanged placement) -->
+    {% include 'menus/desktop_client/desktop_menus.html' %}
+
+    <!-- Mobile Sidebar Overlay (doesn't change menu disposition) -->
+    <div id="mobile-overlay"
+         class="fixed inset-0 bg-black/40 hidden z-40 md:hidden"
+         onclick="toggleMobileSidebar()"></div>
+
+    <!-- Mobile Sidebar (unchanged include placement) -->
+    {% include 'menus/desktop_client/desktop_mobile_menus.html' %}
+
+    <!-- Page Content -->
+    <main id="main" class="flex-1 w-full p-4 sm:p-6 lg:p-8">
+      {% block content %}
+      <!-- Example toolbar that wraps on mobile -->
+      <div class="flex flex-wrap gap-3 mb-6">
+        <button onclick="openRegistrationModal()"
+                class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <i class="fas fa-user-plus"></i>
+          <span class="whitespace-nowrap">{% trans "Register Customer" %}</span>
+        </button>
+      </div>
+
+      <!-- Example responsive card grid -->
+      <section class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+        <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-2">{% trans "Quick Stat" %}</h3>
+          <p class="text-sm text-gray-600">{% trans "Mobile-friendly content goes here." %}</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-2">{% trans "Another Card" %}</h3>
+          <p class="text-sm text-gray-600">{% trans "Scales across breakpoints." %}</p>
+        </article>
+        <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-5">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900 mb-2">{% trans "Insights" %}</h3>
+          <p class="text-sm text-gray-600">{% trans "Keep content concise on mobile." %}</p>
+        </article>
+      </section>
+      {% endblock %}
+    </main>
+  </div>
+
+  <!-- Footer --><!-- Footer -->
+  <footer class="bg-white border-t text-center py-4 text-sm text-gray-500 mt-auto"
+          style="padding-bottom: calc(1rem + var(--safe-bottom));">
+    <p>&copy; 2025 Nexus Telecom — {% trans "All rights reserved." %}</p>
+  </footer>
+
+  <!-- Sidebar Script (no disposition change) -->
+  <script>
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('mobileSidebar'); // ensure your mobile include has id="mobileSidebar"
+      const overlay = document.getElementById('mobile-overlay');
+      const body = document.body;
+
+      const isHidden = sidebar.classList.contains('hidden');
+      if (isHidden) {
+        overlay.classList.remove('hidden');
+        sidebar.classList.remove('hidden');
+        // lock body scroll on mobile
+        body.style.overflow = 'hidden';
+        requestAnimationFrame(() => sidebar.classList.add('open'));
+      } else {
+        sidebar.classList.remove('open');
+        overlay.classList.add('hidden');
+        // restore body scroll after transition
+        setTimeout(() => {
+          sidebar.classList.add('hidden');
+          body.style.overflow = '';
+        }, 250);
+      }
+    }
+
+    // Close with ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const sidebar = document.getElementById('mobileSidebar');
+        if (sidebar && !sidebar.classList.contains('hidden')) toggleMobileSidebar();
+      }
+    });
+  </script>
+</body>
+</html>

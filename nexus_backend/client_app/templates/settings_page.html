@@ -1,0 +1,981 @@
+{# templates/client/settings_sidebar_clean.html #}
+{% extends 'client/settings_client_main.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<main class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+
+  <!-- Page Header -->
+  <header class="mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">{% trans "Settings" %}</h1>
+    <p class="text-sm text-gray-600">{% trans "Manage your account, security, and preferences." %}</p>
+  </header>
+
+  <!-- Layout -->
+  <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <!-- Sidebar -->
+    <aside class="lg:col-span-3">
+      <nav id="settingsNav" aria-label="{% trans 'Settings Sections' %}"
+           class="bg-white border rounded-lg shadow-sm p-2">
+        <button data-target="profile"
+                class="settings-link w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 text-left">
+          <i class="fas fa-user text-gray-500 w-5"></i>
+          <span class="text-sm font-medium text-gray-800">{% trans "Profile" %}</span>
+        </button>
+
+        {# SECURITY (2FA) REMOVED PER REQUEST #}
+
+        <button data-target="notify"
+                class="settings-link w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 text-left">
+          <i class="fas fa-bell text-gray-500 w-5"></i>
+          <span class="text-sm font-medium text-gray-800">{% trans "Notifications" %}</span>
+        </button>
+
+        <button data-target="kyc"
+                class="settings-link w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 text-left">
+          <i class="fas fa-id-card text-gray-500 w-5"></i>
+          <span class="text-sm font-medium text-gray-800">{% trans "KYC" %}</span>
+        </button>
+
+        <button data-target="billing"
+                class="settings-link w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 text-left">
+          <i class="fas fa-file-invoice-dollar text-gray-500 w-5"></i>
+          <span class="text-sm font-medium text-gray-800">{% trans "Billing" %}</span>
+        </button>
+
+        <!-- NEW: Password tab -->
+        <button data-target="password"
+                class="settings-link w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-gray-50 text-left">
+          <i class="fas fa-key text-gray-500 w-5"></i>
+          <span class="text-sm font-medium text-gray-800">{% trans "Password" %}</span>
+        </button>
+      </nav>
+    </aside>
+
+    <!-- Content -->
+    <div class="lg:col-span-9 space-y-6">
+
+      <!-- Profile -->
+      <section id="panel-profile" class="settings-panel">
+        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "Profile" %}</h2>
+            <p class="text-xs text-gray-500">{% trans "Update your personal information and contact details." %}</p>
+          </div>
+
+          <div class="px-5 py-5">
+            <form id="profileForm" class="grid grid-cols-1 gap-4 sm:grid-cols-2" enctype="multipart/form-data" method="post" action="{% url 'settings_profile_update' %}">
+              {% csrf_token %}
+
+              <!-- Avatar -->
+              <div class="sm:col-span-2">
+                <label class="block text-xs text-gray-600 mb-2">{% trans "Avatar" %}</label>
+                <div class="flex items-center gap-4">
+                  <img id="avatarPreview"
+                       src="{{ profile.avatar_url|default:'/static/icons/account_avatar.png' }}"
+                       alt="{% trans 'Avatar' %}"
+                       class="w-16 h-16 rounded-full object-cover border">
+                  <div class="flex items-center gap-3">
+                    <input id="avatarInput" name="avatar" type="file" accept="image/*" class="text-sm">
+                    <input type="hidden" id="removeAvatar" name="remove_avatar" value="0">
+                    <button type="button" id="avatarRemoveBtn"
+                            class="text-xs px-3 py-1 rounded border hover:bg-gray-50">
+                      <i class="fas fa-trash-alt mr-1"></i>{% trans "Remove" %}
+                    </button>
+                  </div>
+                </div>
+                <p class="text-[11px] text-gray-500 mt-2">{% trans "PNG/JPG up to 5MB." %}</p>
+              </div>
+
+              <div>
+                <label for="first_name" class="block text-xs text-gray-600 mb-1">{% trans "First name" %}</label>
+                <input id="first_name" name="first_name" type="text" value="{{ profile.first_name }}"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       autocomplete="given-name" required>
+              </div>
+
+              <div>
+                <label for="last_name" class="block text-xs text-gray-600 mb-1">{% trans "Last name" %}</label>
+                <input id="last_name" name="last_name" type="text" value="{{ profile.last_name }}"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       autocomplete="family-name" required>
+              </div>
+
+              <div class="sm:col-span-2">
+                <label for="email" class="block text-xs text-gray-600 mb-1">{% trans "Email" %}</label>
+                <input id="email" name="email" type="email" value="{{ profile.email }}"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       autocomplete="email" required>
+              </div>
+
+              <!-- DRC Phone with formatting -->
+              <div class="sm:col-span-2">
+                <label for="phone" class="block text-xs text-gray-600 mb-1">{% trans "Phone (optional)" %}</label>
+                <input id="phone" name="phone" type="tel" value="{{ profile.phone }}"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                       inputmode="tel" autocomplete="tel" placeholder="+243 9XX XXX XXX">
+                <p id="phoneHelp" class="text-[11px] text-gray-500 mt-1">
+                  {% trans "DRC format (E.164): +243 9XX XXX XXX — local numbers like 0991234567 will be normalized." %}
+                </p>
+              </div>
+
+              <div class="sm:col-span-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex justify-center px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500">
+                  {% trans "Save changes" %}
+                </button>
+                <span id="profileHint" class="text-xs text-gray-500 sm:ml-1"></span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- Notifications -->
+      <section id="panel-notify" class="settings-panel hidden">
+        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "Notifications" %}</h2>
+          </div>
+
+          <div class="px-5 py-5">
+            <form id="notifyForm" class="space-y-4" method="post" action="{% url 'settings_notifications_update' %}">
+              {% csrf_token %}
+              <label class="flex items-start sm:items-center justify-between gap-4">
+                <span>
+                  <span class="font-medium text-gray-900">{% trans "Product updates" %}</span><br>
+                  <span class="text-sm text-gray-500">{% trans "Occasional tips and announcements." %}</span>
+                </span>
+                <input type="checkbox" name="updates" class="w-5 h-5 mt-1 sm:mt-0" {% if request.user.prefs.notify_updates %}checked{% endif %}>
+              </label>
+
+              <label class="flex items-start sm:items-center justify-between gap-4">
+                <span>
+                  <span class="font-medium text-gray-900">{% trans "Billing alerts" %}</span><br>
+                  <span class="text-sm text-gray-500">{% trans "Invoices, payment reminders, and receipts." %}</span>
+                </span>
+                <input type="checkbox" name="billing" class="w-5 h-5 mt-1 sm:mt-0" {% if request.user.prefs.notify_billing %}checked{% endif %}>
+              </label>
+
+              <label class="flex items-start sm:items-center justify-between gap-4">
+                <span>
+                  <span class="font-medium text-gray-900">{% trans "Ticket updates" %}</span><br>
+                  <span class="text-sm text-gray-500">{% trans "Get notified when support replies." %}</span>
+                </span>
+                <input type="checkbox" name="tickets" class="w-5 h-5 mt-1 sm:mt-0" {% if request.user.prefs.notify_tickets %}checked{% endif %}>
+              </label>
+
+              <div class="pt-2">
+                <button type="submit"
+                        class="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500">
+                  {% trans "Save preferences" %}
+                </button>
+                <span id="notifyHint" class="text-xs text-gray-500 ml-2"></span>
+              </div>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- KYC -->
+      <section id="panel-kyc" class="settings-panel hidden">
+        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "KYC" %}</h2>
+            {% if kyc and kyc.status == "approved" %}
+              <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 inline-flex items-center gap-1">
+                <i class="fas fa-check-circle"></i> {% trans "Verified" %}
+              </span>
+            {% elif kyc and kyc.status == "pending" %}
+              <span class="px-2 py-1 text-xs rounded-full bg-amber-100 text-amber-700 inline-flex items-center gap-1">
+                <i class="fas fa-clock"></i> {% trans "Pending Review" %}
+              </span>
+            {% elif kyc %}
+              <span class="px-2 py-1 text-xs rounded-full bg-rose-100 text-rose-700 inline-flex items-center gap-1">
+                <i class="fas fa-times-circle"></i> {% trans "Rejected" %}
+              </span>
+            {% else %}
+              <span class="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-700 inline-flex items-center gap-1">
+                <i class="fas fa-info-circle"></i> {% trans "Not submitted" %}
+              </span>
+            {% endif %}
+          </div>
+
+          <div class="px-5 py-5 space-y-5">
+            {% if kyc %}
+              {# CompanyKYC if company_name present; otherwise PersonalKYC #}
+              {% if kyc.company_name %}
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div><p class="text-xs text-gray-500">{% trans "Company Name" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.company_name|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "RCCM" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.rccm|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "NIF" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.nif|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "ID NAT" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.id_nat|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Representative" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.representative_name|default:"—" }}</p></div>
+                </div>
+
+                <div>
+                  <p class="text-xs text-gray-500 mb-1">{% trans "Address" %}</p>
+                  <p class="font-medium text-gray-900 break-words">{{ kyc.address|default:"—" }}</p>
+                </div>
+
+                <div>
+                  <p class="text-xs text-gray-500 mb-2">{% trans "Uploaded Documents" %}</p>
+                  <div class="flex flex-wrap gap-2">
+                    {% if kyc.representative_id_file %}
+                      <a href="{{ kyc.representative_id_file.url }}" target="_blank"
+                         class="px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm hover:bg-indigo-100">
+                        <i class="fas fa-id-card"></i> {% trans "Representative ID" %}
+                      </a>
+                    {% endif %}
+                    {% if kyc.company_documents %}
+                      <a href="{{ kyc.company_documents.url }}" target="_blank"
+                         class="px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm hover:bg-indigo-100">
+                        <i class="fas fa-file"></i> {% trans "Company Documents" %}
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% else %}
+                <div class="grid sm:grid-cols-2 gap-4">
+                  <div><p class="text-xs text-gray-500">{% trans "Full Name" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.full_name|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Date of Birth" %}</p><p class="font-medium text-gray-900">{{ kyc.date_of_birth|date:"Y-m-d"|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Nationality" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.nationality|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "ID Document Type" %}</p><p class="font-medium text-gray-900">{{ kyc.id_document_type|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Document Number" %}</p><p class="font-medium text-gray-900 break-words">{{ kyc.document_number|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Issued Date" %}</p><p class="font-medium text-gray-900">{{ kyc.id_issue_date|date:"Y-m-d"|default:"—" }}</p></div>
+                  <div><p class="text-xs text-gray-500">{% trans "Expiry Date" %}</p><p class="font-medium text-gray-900">{{ kyc.id_expiry_date|date:"Y-m-d"|default:"—" }}</p></div>
+                </div>
+
+                <div>
+                  <p class="text-xs text-gray-500 mb-1">{% trans "Address" %}</p>
+                  <p class="font-medium text-gray-900 break-words">{{ kyc.address|default:"—" }}</p>
+                </div>
+
+                <div>
+                  <p class="text-xs text-gray-500 mb-2">{% trans "Uploaded Documents" %}</p>
+                  <div class="flex flex-wrap gap-2">
+                    {% if kyc.document_file %}
+                      <a href="{{ kyc.document_file.url }}" target="_blank"
+                         class="px-3 py-1.5 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 text-sm hover:bg-indigo-100">
+                        <i class="fas fa-id-card"></i> {% trans "Identity Document" %}
+                      </a>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
+
+              {% if kyc.status == "rejected" %}
+                <div class="border-t pt-4 mt-2 space-y-2">
+                  <h4 class="font-medium text-gray-900">{% trans "Rejection Details" %}</h4>
+                  <div class="bg-red-50 border border-red-200 rounded-lg p-4 space-y-2">
+                    {% if kyc_rejection_reason %}
+                      <p class="text-sm text-red-800">
+                        <strong>{% trans "Reason" %}:</strong> {{ kyc_rejection_reason }}
+                      </p>
+                    {% endif %}
+                    {% if kyc_rejection_details %}
+                      <p class="text-sm text-red-700">
+                        <strong>{% trans "Additional Details" %}:</strong> {{ kyc_rejection_details }}
+                      </p>
+                    {% endif %}
+                    <p class="text-xs text-red-600">
+                      {% trans "Please review the feedback above and resubmit your KYC with the necessary corrections." %}
+                    </p>
+                  </div>
+                </div>
+              {% endif %}
+            {% else %}
+              <p class="text-sm text-gray-600">{% trans "You have not submitted KYC yet." %}</p>
+            {% endif %}
+
+            {# --- UPDATE KYC BUTTON (DISABLED WHEN PENDING OR APPROVED) --- #}
+            <div class="pt-1">
+              <button id="openKycModalBtn"
+                {% if kyc %}
+                  {% if kyc.status == 'pending' or kyc.status == 'approved' %}disabled aria-disabled="true"{% endif %}
+                {% endif %}
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-md
+                  {% if kyc %}
+                    {% if kyc.status == 'pending' or kyc.status == 'approved' %}
+                      bg-gray-200 text-gray-500 cursor-not-allowed
+                    {% else %}
+                      bg-indigo-600 text-white hover:bg-indigo-700
+                    {% endif %}
+                  {% else %}
+                    bg-indigo-600 text-white hover:bg-indigo-700
+                  {% endif %}
+                focus:ring-2 focus:ring-indigo-500">
+                <i class="fas fa-edit"></i>
+                {% if kyc %}
+                  {% if kyc.status == 'pending' %}{% trans "KYC Under Review" %}
+                  {% elif kyc.status == 'approved' %}{% trans "KYC Approved" %}
+                  {% else %}{% trans "Update KYC" %}
+                  {% endif %}
+                {% else %}
+                  {% trans "Update KYC" %}
+                {% endif %}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Billing -->
+      <section id="panel-billing" class="settings-panel hidden relative">
+        {% if kyc %}
+          {% if kyc.status != 'approved' %}
+            <div class="absolute inset-0 z-10 bg-white/70 backdrop-blur-[1px] flex items-center justify-center px-4 text-center">
+              <div class="max-w-md rounded-md border bg-white shadow p-4">
+                <p class="font-medium text-gray-900 mb-1">{% trans "Billing is locked" %}</p>
+                <p class="text-sm text-gray-600">
+                  {% trans "Please submit and get your KYC approved to access billing." %}
+                </p>
+              </div>
+            </div>
+          {% endif %}
+        {% else %}
+          <div class="absolute inset-0 z-10 bg-white/70 backdrop-blur-[1px] flex items-center justify-center px-4 text-center">
+            <div class="max-w-md rounded-md border bg-white shadow p-4">
+              <p class="font-medium text-gray-900 mb-1">{% trans "Billing is locked" %}</p>
+              <p class="text-sm text-gray-600">
+                {% trans "Please submit and get your KYC approved to access billing." %}
+              </p>
+            </div>
+          </div>
+        {% endif %}
+
+        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "Billing" %}</h2>
+            {% if kyc and kyc.status == 'approved' %}
+              <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-700 inline-flex items-center gap-1">
+                <i class="fas fa-unlock"></i> {% trans "Unlocked" %}
+              </span>
+            {% else %}
+              <span class="px-2 py-1 text-xs rounded-full bg-rose-100 text-rose-700 inline-flex items-center gap-1">
+                <i class="fas fa-lock"></i> {% trans "Locked" %}
+              </span>
+            {% endif %}
+          </div>
+
+          <div class="px-5 py-5 space-y-6
+            {% if kyc %}
+              {% if kyc.status != 'approved' %}pointer-events-none select-none opacity-60{% endif %}
+            {% else %}
+              pointer-events-none select-none opacity-60
+            {% endif %}">
+            <a href="{% url 'billing_page' %}"
+               class="block border rounded-md p-4 hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+              <div class="font-medium text-gray-900">{% trans "Billing Overview" %}</div>
+              <div class="text-sm text-gray-500">{% trans "Balances, history, and invoices." %}</div>
+            </a>
+
+            <div class="border-t pt-5">
+              <h3 class="text-sm font-semibold text-rose-700">{% trans "Danger Zone" %}</h3>
+              <p class="text-sm text-gray-600">{% trans "Deleting your account is irreversible." %}</p>
+              <button id="deleteAccountBtn"
+                      class="mt-3 px-4 py-2 rounded-md bg-rose-600 text-white hover:bg-rose-700 focus:ring-2 focus:ring-rose-500">
+                {% trans "Delete account" %}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NEW: Password -->
+      <section id="panel-password" class="settings-panel hidden">
+        <div class="bg-white border rounded-lg shadow-sm overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="text-lg font-semibold text-gray-900">{% trans "Password" %}</h2>
+            <p class="text-xs text-gray-500">{% trans "Update your password. You'll stay signed in on this device." %}</p>
+          </div>
+
+          <div class="px-5 py-5">
+            <form id="passwordForm" class="grid grid-cols-1 gap-4 sm:max-w-md" method="post" action="{% url 'settings_password_update' %}">
+              {% csrf_token %}
+
+              <div>
+                <label for="current_password" class="block text-xs text-gray-600 mb-1">{% trans "Current password" %}</label>
+                <input id="current_password" name="current_password" type="password" autocomplete="current-password"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" required>
+              </div>
+
+              <div>
+                <label for="new_password1" class="block text-xs text-gray-600 mb-1">{% trans "New password" %}</label>
+                <input id="new_password1" name="new_password1" type="password" autocomplete="new-password"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" required>
+                <p class="text-[11px] text-gray-500 mt-1">
+                  {% trans "Use at least 8 characters. Mix letters, numbers, and symbols for a stronger password." %}
+                </p>
+              </div>
+
+              <div>
+                <label for="new_password2" class="block text-xs text-gray-600 mb-1">{% trans "Confirm new password" %}</label>
+                <input id="new_password2" name="new_password2" type="password" autocomplete="new-password"
+                       class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500" required>
+              </div>
+
+              <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+                <button type="submit"
+                        class="w-full sm:w-auto inline-flex justify-center px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:ring-2 focus:ring-indigo-500">
+                  {% trans "Change password" %}
+                </button>
+                <span id="passwordHint" class="text-xs text-gray-500 sm:ml-1"></span>
+              </div>
+
+              <p id="passwordErrors" class="text-xs text-rose-600 mt-2 hidden"></p>
+            </form>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </section>
+</main>
+
+{# --------------------------- KYC MODAL --------------------------- #}
+<div id="kycModal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative mx-auto my-12 w-[95%] max-w-2xl">
+    <div class="bg-white rounded-lg shadow-xl border">
+      <div class="px-5 py-4 border-b flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">{% trans "Update KYC" %}</h3>
+        <button id="kycCloseBtn" class="p-2 text-gray-500 hover:text-gray-700" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="kycForm" class="px-5 py-5 space-y-5" method="post" action="{% url 'client_kyc_update' %}" enctype="multipart/form-data">
+        {% csrf_token %}
+
+        {# Switcher: Personal vs Company #}
+        <div class="flex gap-4">
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="kyc_type" value="personal" class="kyc-type" {% if not kyc or not kyc.company_name %}checked{% endif %}>
+            <span class="text-sm text-gray-800">{% trans "Personal KYC" %}</span>
+          </label>
+          <label class="inline-flex items-center gap-2">
+            <input type="radio" name="kyc_type" value="company" class="kyc-type" {% if kyc and kyc.company_name %}checked{% endif %}>
+            <span class="text-sm text-gray-800">{% trans "Company KYC" %}</span>
+          </label>
+        </div>
+
+        {# Personal KYC fields #}
+        <div id="kycPersonalFields" class="{% if kyc and kyc.company_name %}hidden{% endif %} grid gap-4 sm:grid-cols-2">
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Full Name" %}</label>
+            <input type="text" name="full_name" value="{{ kyc.full_name|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Date of Birth" %}</label>
+            <input type="date" name="date_of_birth" value="{{ kyc.date_of_birth|date:'Y-m-d'|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Nationality" %}</label>
+            <input type="text" name="nationality" value="{{ kyc.nationality|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "ID Document Type" %}</label>
+            <select name="id_document_type" class="w-full rounded-md border px-3 py-2 text-sm">
+              <option value="">{% trans "Select…" %}</option>
+              <option value="voter_card" {% if kyc.id_document_type == 'voter_card' %}selected{% endif %}>{% trans "Voter Card" %}</option>
+              <option value="drivers_license" {% if kyc.id_document_type == 'drivers_license' %}selected{% endif %}>{% trans "Driver's License" %}</option>
+              <option value="passport" {% if kyc.id_document_type == 'passport' %}selected{% endif %}>{% trans "Passport" %}</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Document Number" %}</label>
+            <input type="text" name="document_number" value="{{ kyc.document_number|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Issued Date" %}</label>
+            <input type="date" name="id_issue_date" value="{{ kyc.id_issue_date|date:'Y-m-d'|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Expiry Date" %}</label>
+            <input type="date" name="id_expiry_date" value="{{ kyc.id_expiry_date|date:'Y-m-d'|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Address" %}</label>
+            <input type="text" name="address" value="{{ kyc.address|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Identity Document (PDF/JPG/PNG)" %}</label>
+            <input type="file" name="document_file" accept=".pdf,image/*" class="w-full text-sm">
+          </div>
+        </div>
+
+        {# Company KYC fields #}
+        <div id="kycCompanyFields" class="{% if not kyc or not kyc.company_name %}hidden{% endif %} grid gap-4 sm:grid-cols-2">
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Company Name" %}</label>
+            <input type="text" name="company_name" value="{{ kyc.company_name|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "RCCM" %}</label>
+            <input type="text" name="rccm" value="{{ kyc.rccm|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "NIF" %}</label>
+            <input type="text" name="nif" value="{{ kyc.nif|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "ID NAT" %}</label>
+            <input type="text" name="id_nat" value="{{ kyc.id_nat|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Representative Name" %}</label>
+            <input type="text" name="representative_name" value="{{ kyc.representative_name|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Company Address" %}</label>
+            <input type="text" name="company_address" value="{{ kyc.address|default:'' }}" class="w-full rounded-md border px-3 py-2 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Representative ID (PDF/JPG/PNG)" %}</label>
+            <input type="file" name="representative_id_file" accept=".pdf,image/*" class="w-full text-sm">
+          </div>
+          <div>
+            <label class="block text-xs text-gray-600 mb-1">{% trans "Company Documents (PDF/JPG/PNG)" %}</label>
+            <input type="file" name="company_documents" accept=".pdf,image/*" class="w-full text-sm">
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t">
+          <button type="button" id="kycCancelBtn" class="px-4 py-2 rounded-md border text-sm hover:bg-gray-50">
+            {% trans "Cancel" %}
+          </button>
+          <button type="submit" class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700">
+            {% trans "Submit KYC" %}
+          </button>
+        </div>
+
+        <p id="kycHint" class="text-xs text-gray-500 pt-2"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+{# ------------------ DELETE ACCOUNT MODAL ------------------ #}
+<div id="deleteAccountModal" class="fixed inset-0 z-50 hidden" aria-modal="true" role="dialog">
+  <div class="absolute inset-0 bg-black/40"></div>
+  <div class="relative mx-auto my-12 w-[95%] max-w-lg">
+    <div class="bg-white rounded-lg shadow-xl border">
+      <div class="px-5 py-4 border-b flex items-center justify-between">
+        <h3 class="text-lg font-semibold text-gray-900">
+          {% trans "Delete Account" %}
+        </h3>
+        <button type="button" id="delCloseBtn" class="p-2 text-gray-500 hover:text-gray-700" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="deleteAccountForm" class="px-5 py-5 space-y-4">
+        <div class="space-y-3">
+          <p class="text-sm text-gray-700">
+            {% trans "This action will immediately deactivate your account and begin removal of your personal information from our systems. This cannot be undone." %}
+          </p>
+          <ul class="list-disc pl-5 text-sm text-gray-700 space-y-1">
+            <li>{% trans "You will lose access to your account and services." %}</li>
+            <li>{% trans "Your profile, preferences, and saved data will be scheduled for deletion." %}</li>
+            <li>{% trans "Tickets, billing history, and audit logs may be retained only where legally required." %}</li>
+          </ul>
+
+          <div class="mt-3">
+            <label class="inline-flex items-start gap-2">
+              <input id="delAcknowledge" type="checkbox" class="mt-1">
+              <span class="text-sm text-gray-800">
+                {% trans "I understand this is irreversible and my data will be deleted." %}
+              </span>
+            </label>
+          </div>
+
+          <div>
+            <label for="delConfirmText" class="block text-xs text-gray-600 mb-1">
+              {% trans "Type" %} <code class="px-1 py-0.5 rounded bg-gray-100 text-gray-800">DELETE MY ACCOUNT</code> {% trans "to confirm" %}:
+            </label>
+            <input id="delConfirmText" type="text"
+                   class="w-full rounded-md border px-3 py-2 text-sm focus:ring-2 focus:ring-rose-500"
+                   placeholder="{% trans 'DELETE MY ACCOUNT' %}">
+            <p id="delError" class="text-xs text-rose-600 mt-1 hidden"></p>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-3 pt-2 border-t">
+          <button type="button" id="delCancelBtn" class="px-4 py-2 rounded-md border text-sm hover:bg-gray-50">
+            {% trans "Cancel" %}
+          </button>
+          <button type="submit" id="delSubmitBtn"
+                  class="px-4 py-2 rounded-md bg-rose-600 text-white text-sm hover:bg-rose-700 focus:ring-2 focus:ring-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled>
+            {% trans "Delete my account" %}
+          </button>
+        </div>
+
+        <p id="delHint" class="text-xs text-gray-500 pt-2"></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JS: sidebar nav + AJAX wiring to views + modal -->
+<script>
+const settingsTranslations = {
+  submitting: "{{ _('Submitting…')|escapejs }}",
+  submitted: "{{ _('Submitted.')|escapejs }}",
+  error: "{{ _('Error')|escapejs }}",
+  deleteAccountConfirm: "{{ _('Please acknowledge and type DELETE MY ACCOUNT to proceed.')|escapejs }}",
+  processing: "{{ _('Processing…')|escapejs }}",
+  couldNotDelete: "{{ _('Could not delete account.')|escapejs }}",
+  networkError: "{{ _('Network error. Please try again.')|escapejs }}"
+};
+
+(function(){
+  const links  = document.querySelectorAll('.settings-link');
+  const panels = document.querySelectorAll('.settings-panel');
+  const csrftoken = document.querySelector('#profileForm [name=csrfmiddlewaretoken]')?.value
+                 || document.querySelector('#notifyForm [name=csrfmiddlewaretoken]')?.value
+                 || document.querySelector('#kycForm [name=csrfmiddlewaretoken]')?.value
+                 || document.querySelector('#passwordForm [name=csrfmiddlewaretoken]')?.value;
+
+  function activate(key){
+    panels.forEach(p => p.classList.add('hidden'));
+    const active = document.getElementById('panel-'+key);
+    if (active) active.classList.remove('hidden');
+
+    links.forEach(b => {
+      const on = b.dataset.target === key;
+      b.classList.toggle('bg-indigo-50', on);
+      b.classList.toggle('text-indigo-700', on);
+      b.classList.toggle('border', on);
+      b.classList.toggle('border-indigo-200', on);
+      b.setAttribute('aria-current', on ? 'page' : 'false');
+    });
+
+    localStorage.setItem('settings_active_tab', key);
+    try { history.replaceState(null, '', '#'+key); } catch(e){}
+  }
+
+  // init
+  const fromHash = (location.hash || '').replace('#','');
+  const start = fromHash || localStorage.getItem('settings_active_tab') || 'profile';
+  activate(start);
+  links.forEach(b => b.addEventListener('click', () => activate(b.dataset.target)));
+
+  // Avatar preview + remove flag
+  document.getElementById('avatarInput')?.addEventListener('change', (e)=>{
+    const f = e.target.files?.[0]; if(!f) return;
+    document.getElementById('avatarPreview').src = URL.createObjectURL(f);
+    const rm = document.getElementById('removeAvatar'); if (rm) rm.value = '0';
+  });
+  document.getElementById('avatarRemoveBtn')?.addEventListener('click', ()=>{
+    const img = document.getElementById('avatarPreview');
+    const input = document.getElementById('avatarInput');
+    const rm = document.getElementById('removeAvatar');
+    if (img) img.src = '/static/icons/account_avatar.png';
+    if (input) input.value = '';
+    if (rm) rm.value = '1';
+  });
+
+  const setHint = (id, txt)=>{ const el=document.getElementById(id); if(el) el.textContent = txt; };
+
+  // ---- DRC phone normalizer (client-side) ----
+  const phoneInput = document.getElementById('phone');
+  function formatDRCPhone(raw){
+    if (!raw) return '';
+    let s = String(raw).trim();
+    s = s.replace(/[\s\-\.]/g, '');
+    s = s.replace(/^\(0\)/, '').replace(/^\+?2430/, '+243'); // collapse +2430 prefix edge-case
+
+    if (s.startsWith('+243')){
+      const rest = s.slice(4).replace(/^0+/, '');
+      return '+243 ' + rest.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+    }
+    if (s.startsWith('00243')){
+      const rest = s.slice(5).replace(/^0+/, '');
+      return '+243 ' + rest.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+    }
+    if (s.startsWith('0')){ // local format
+      const rest = s.slice(1);
+      return '+243 ' + rest.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+    }
+    // if user typed bare 9/10 digits that look like DRC mobile, treat as local
+    if (/^\d{9,10}$/.test(s)){
+      const rest = s.replace(/^0+/, '');
+      return '+243 ' + rest.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+    }
+    // fallback: keep user input (but add spacing for readability)
+    return s.replace(/(\d{3})(?=\d)/g, '$1 ').trim();
+  }
+  function plainE164DRC(raw){
+    if (!raw) return '';
+    let s = String(raw).replace(/[\s\-\.]/g, '').trim();
+    if (s.startsWith('00243')) s = '+' + s.slice(2);
+    if (s.startsWith('+243')) {
+      const rest = s.slice(4).replace(/^0+/, '');
+      return '+243' + rest;
+    }
+    if (s.startsWith('0')) {
+      const rest = s.slice(1);
+      return '+243' + rest;
+    }
+    if (/^\d{9,10}$/.test(s)){
+      return '+243' + s.replace(/^0+/, '');
+    }
+    return s; // leave as-is if it doesn't match
+  }
+  phoneInput?.addEventListener('blur', ()=>{ phoneInput.value = formatDRCPhone(phoneInput.value); });
+  phoneInput?.addEventListener('input', (e)=>{
+    const cursor = e.target.selectionStart;
+    const before = e.target.value;
+    const formatted = formatDRCPhone(before);
+    e.target.value = formatted;
+    try { e.target.setSelectionRange(cursor, cursor); } catch(err){}
+  });
+
+  // ---- AJAX: Profile ----
+  document.getElementById('profileForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    setHint('profileHint','{% trans "Saving…" %}');
+    const fd = new FormData(e.currentTarget);
+
+    // normalize phone to E.164 server-side expectation
+    const phoneField = fd.get('phone') || '';
+    fd.set('phone', plainE164DRC(phoneField));
+
+    try{
+      const r = await fetch("{% url 'settings_profile_update' %}", {
+        method: "POST",
+        body: fd,
+        headers: { "X-CSRFToken": csrftoken }
+      });
+      const j = await r.json();
+      setHint('profileHint', j.message || (j.success ? '{% trans "Saved." %}' : '{% trans "Error" %}'));
+      if (j.success && j.profile?.avatar_url){
+        const img = document.getElementById('avatarPreview'); if (img) img.src = j.profile.avatar_url;
+        const rm = document.getElementById('removeAvatar'); if (rm) rm.value = '0';
+      }
+      // reflect normalized phone from server if provided
+      if (j?.profile?.phone && phoneInput){ phoneInput.value = formatDRCPhone(j.profile.phone); }
+    }catch(err){
+      setHint('profileHint','{% trans "Error" %}');
+    }
+  });
+
+  // ---- AJAX: Notifications ----
+  document.getElementById('notifyForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    setHint('notifyHint','{% trans "Saving…" %}');
+    const fd = new FormData(e.currentTarget);
+    try{
+      const r = await fetch("{% url 'settings_notifications_update' %}", {
+        method: "POST",
+        body: fd,
+        headers: { "X-CSRFToken": csrftoken }
+      });
+      const j = await r.json();
+      setHint('notifyHint', j.message || (j.success ? '{% trans "Saved." %}' : '{% trans "Error" %}'));
+    }catch{ setHint('notifyHint','{% trans "Error" %}'); }
+  });
+
+  // ---- KYC Modal logic ----
+  const modal      = document.getElementById('kycModal');
+  const openBtn    = document.getElementById('openKycModalBtn');
+  const closeBtn   = document.getElementById('kycCloseBtn');
+  const cancelBtn  = document.getElementById('kycCancelBtn');
+  const hintEl     = document.getElementById('kycHint');
+  const kycForm    = document.getElementById('kycForm');
+
+  function openModal(){ modal?.classList.remove('hidden'); }
+  function closeModal(){ modal?.classList.add('hidden'); }
+
+  openBtn?.addEventListener('click', (e)=>{
+    if (openBtn.hasAttribute('disabled')) return;
+    openModal();
+  });
+  closeBtn?.addEventListener('click', closeModal);
+  cancelBtn?.addEventListener('click', closeModal);
+  modal?.addEventListener('click', (e)=>{ if (e.target === modal) closeModal(); });
+
+  // Toggle personal/company fields
+  const typeRadios = document.querySelectorAll('.kyc-type');
+  const personal = document.getElementById('kycPersonalFields');
+  const company  = document.getElementById('kycCompanyFields');
+  typeRadios.forEach(r=>{
+    r.addEventListener('change', ()=>{
+      if (r.checked && r.value === 'personal'){
+        personal?.classList.remove('hidden');
+        company?.classList.add('hidden');
+      }else if (r.checked && r.value === 'company'){
+        company?.classList.remove('hidden');
+        personal?.classList.add('hidden');
+      }
+    });
+  });
+
+  // ---- AJAX: KYC Submit ----
+  kycForm?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    if (hintEl) hintEl.textContent = settingsTranslations.submitting;
+    const fd = new FormData(kycForm);
+    try{
+      const r = await fetch("{% url 'client_kyc_update' %}", {
+        method: "POST",
+        body: fd,
+        headers: { "X-CSRFToken": csrftoken }
+      });
+      const j = await r.json();
+      if (hintEl) hintEl.textContent = j.message || (j.success ? settingsTranslations.submitted : settingsTranslations.error);
+      if (j.success){
+        setTimeout(()=>window.location.reload(), 800);
+      }
+    }catch{
+      if (hintEl) hintEl.textContent = settingsTranslations.error;
+    }
+  });
+
+  // ---- AJAX: Password change ----
+  const pwdForm   = document.getElementById('passwordForm');
+  const pwdHint   = document.getElementById('passwordHint');
+  const pwdErrors = document.getElementById('passwordErrors');
+
+  function showPwdHint(msg){ if (pwdHint) pwdHint.textContent = msg || ''; }
+  function showPwdError(msg){
+    if (!pwdErrors) return;
+    pwdErrors.textContent = msg || '';
+    pwdErrors.classList.toggle('hidden', !msg);
+  }
+
+  pwdForm?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    showPwdError('');
+    showPwdHint('{% trans "Saving…" %}');
+
+    const form = e.currentTarget;
+    const fd = new FormData(form);
+    const p1 = fd.get('new_password1') || '';
+    const p2 = fd.get('new_password2') || '';
+
+    if (String(p1) !== String(p2)){
+      showPwdHint('');
+      showPwdError("{% trans 'New passwords do not match.' %}");
+      return;
+    }
+
+    try{
+      const r = await fetch("{% url 'settings_password_update' %}", {
+        method: "POST",
+        body: fd,
+        headers: { "X-CSRFToken": csrftoken }
+      });
+      const j = await r.json();
+
+      if (r.ok && j.success){
+        showPwdError('');
+        showPwdHint(j.message || '{% trans "Password updated." %}');
+        form.reset();
+      } else {
+        showPwdHint('');
+        const details = (j && (j.errors || j.error)) ? JSON.stringify(j.errors || j.error) : '';
+        showPwdError((j && j.message) ? (j.message + (details ? ` – ${details}` : '')) : "{% trans 'Could not change password.' %}");
+      }
+    }catch(err){
+      showPwdHint('');
+      showPwdError("{% trans 'Network error. Please try again.' %}");
+    }
+  });
+
+  // ---- Billing Overview navigation (forces hard redirect in dynamic contexts) ----
+  document.querySelectorAll('a[href*="{% url 'billing_page' %}"]').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      window.location.href = link.href;
+    });
+  });
+
+  // ---- AJAX: Delete account (with confirmation modal) ----
+  const delModal      = document.getElementById('deleteAccountModal');
+  const delOpenBtn    = document.getElementById('deleteAccountBtn');
+  const delCloseBtn   = document.getElementById('delCloseBtn');
+  const delCancelBtn  = document.getElementById('delCancelBtn');
+  const delForm       = document.getElementById('deleteAccountForm');
+  const delAck        = document.getElementById('delAcknowledge');
+  const delText       = document.getElementById('delConfirmText');
+  const delSubmitBtn  = document.getElementById('delSubmitBtn');
+  const delError      = document.getElementById('delError');
+  const delHint       = document.getElementById('delHint');
+
+  function openDelModal(){ delModal?.classList.remove('hidden'); resetDelModal(); }
+  function closeDelModal(){ delModal?.classList.add('hidden'); }
+
+  function resetDelModal(){
+    if (!delForm) return;
+    delAck.checked = false;
+    delText.value = '';
+    delSubmitBtn.disabled = true;
+    if (delError){ delError.textContent = ''; delError.classList.add('hidden'); }
+    if (delHint) delHint.textContent = '';
+  }
+
+  function updateDelSubmitState(){
+    const okPhrase = (delText.value || '').trim().toUpperCase() === 'DELETE MY ACCOUNT';
+    delSubmitBtn.disabled = !(delAck.checked && okPhrase);
+  }
+  delAck?.addEventListener('change', updateDelSubmitState);
+  delText?.addEventListener('input', updateDelSubmitState);
+
+  delOpenBtn?.addEventListener('click', openDelModal);
+  delCloseBtn?.addEventListener('click', closeDelModal);
+  delCancelBtn?.addEventListener('click', closeDelModal);
+  delModal?.addEventListener('click', (e)=>{ if (e.target === delModal) closeDelModal(); });
+
+  delForm?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+
+    const okPhrase = (delText.value || '').trim().toUpperCase() === 'DELETE MY ACCOUNT';
+    if (!delAck.checked || !okPhrase){
+      if (delError){
+        delError.textContent = settingsTranslations.deleteAccountConfirm;
+        delError.classList.remove('hidden');
+      }
+      return;
+    }
+
+    delSubmitBtn.disabled = true;
+    if (delHint) delHint.textContent = settingsTranslations.processing;
+
+    try{
+      const r = await fetch("{% url 'settings_delete_account' %}", {
+        method: "POST",
+        headers: { "X-CSRFToken": csrftoken }
+      });
+
+      const j = await r.json().catch(()=> ({}));
+
+      if (r.ok && j.success){
+        window.location.href = "/";
+        return;
+      }
+
+      delSubmitBtn.disabled = false;
+      if (delError){
+        delError.textContent = j.message || settingsTranslations.couldNotDelete;
+        delError.classList.remove('hidden');
+      }
+      if (r.status === 409){
+        try { activate('billing'); } catch(e){}
+      }
+      if (delHint) delHint.textContent = '';
+    }catch(err){
+      delSubmitBtn.disabled = false;
+      if (delError){
+        delError.textContent = settingsTranslations.networkError;
+        delError.classList.remove('hidden');
+      }
+      if (delHint) delHint.textContent = '';
+    }
+  });
+})();
+</script>
+{% endblock %}

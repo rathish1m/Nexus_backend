@@ -1,0 +1,1775 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<div id="kycModal" class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4 md:p-6">
+  <div id="kycModalDialog" role="dialog" aria-modal="true" aria-labelledby="kycModalTitle"
+       class="relative w-full max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl xl:max-w-4xl bg-white rounded-xl sm:rounded-2xl shadow-2xl ring-1 ring-black/5 overflow-hidden flex flex-col max-h-[90vh]">
+
+    <!-- Gradient Header -->
+    <header class="bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-500 text-white px-6 sm:px-8 py-6">
+      <div class="flex items-start gap-4">
+        <div class="shrink-0 hidden sm:block">
+          <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+            <i class="fa-solid fa-id-card-clip text-xl"></i>
+          </span>
+        </div>
+        <div class="min-w-0">
+          <h2 id="kycModalTitle" class="text-2xl sm:text-3xl font-bold leading-tight"
+              data-default-title="{% trans 'Choose KYC Type' %}">
+            {% trans "Choose KYC Type" %}
+          </h2>
+          <p id="kycModalSubtitle" class="text-indigo-100/90 text-sm mt-1"
+             data-default-subtitle="{% trans 'Select the type of KYC to submit' %}">
+            {% trans "Select the type of KYC to submit" %}
+          </p>
+        </div>
+      </div>
+
+      <!-- Close Button -->
+      <button type="button" onclick="closeKycModal()"
+              class="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full
+                     bg-white/80 text-gray-800 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 shadow-lg border border-gray-200 z-10 transition">
+        <span class="sr-only">{% trans "Close" %}</span>
+        <i class="fa-solid fa-xmark text-2xl"></i>
+      </button>
+    </header>
+
+    <!-- Scrollable Content Area -->
+    <div class="flex-1 overflow-y-auto px-6 sm:px-8 py-6">
+
+      <!-- ===== "Professional Chooser (hidden after selection) ===== -->
+      <div id="kycTypeChooser" class="space-y-4">
+        <div class="text-center">
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            {% trans "Choose Your KYC Type" %}
+          </h3>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          <!-- Personal Card -->
+          <button id="btnKycPersonal" type="button"
+                  class="group text-left rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm
+                         hover:shadow-lg transition-transform duration-200 hover:-translate-y-0.5 focus:outline-none
+                         focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-describedby="personalKycDesc">
+            <div class="flex items-start gap-4">
+              <div class="shrink-0">
+                <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-indigo-600 to-blue-500
+                            text-white flex items-center justify-center shadow-sm">
+                  <i class="fa-solid fa-user text-lg"></i>
+                </div>
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-base sm:text-lg font-semibold text-slate-900">
+                  {% trans "Personal KYC" %}
+                </h3>
+                <p id="personalKycDesc" class="text-sm text-slate-600 mt-1">
+                  {% trans "For individuals using a passport, voter card, or driver's license." %}
+                </p>
+                <ul class="mt-3 space-y-1.5 text-sm text-slate-600">
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Quick review time" %}
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Photo ID + address" %}
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Best for single users" %}
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+              <span class="inline-flex items-center gap-2 text-indigo-600 font-medium group-hover:gap-3 transition-all">
+                {% trans "Continue" %} <i class="fa-solid fa-arrow-right"></i>
+              </span>
+              <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold bg-indigo-50 text-indigo-700">
+                {% trans "Step 1 of 2" %}
+              </span>
+            </div>
+          </button>
+
+          <!-- Business Card -->
+          <button id="btnKycBusiness" type="button"
+                  class="group text-left rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-sm
+                         hover:shadow-lg transition-transform duration-200 hover:-translate-y-0.5 focus:outline-none
+                         focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  aria-describedby="businessKycDesc">
+            <div class="flex items-start gap-4">
+              <div class="shrink-0">
+                <div class="h-11 w-11 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500
+                            text-white flex items-center justify-center shadow-sm">
+                  <i class="fa-solid fa-building text-lg"></i>
+                </div>
+              </div>
+              <div class="min-w-0">
+                <h3 class="text-base sm:text-lg font-semibold text-slate-900">
+                  {% trans "Business KYC" %}
+                </h3>
+                <p id="businessKycDesc" class="text-sm text-slate-600 mt-1">
+                  {% trans "For companies with legal representative and company documents." %}
+                </p>
+                <ul class="mt-3 space-y-1.5 text-sm text-slate-600">
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Representative ID" %}
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Company docs (RCCM, NIF, ID Nat)" %}
+                  </li>
+                  <li class="flex items-center gap-2">
+                    <i class="fa-solid fa-check text-emerald-600 text-xs"></i>
+                    {% trans "Best for teams & resellers" %}
+                  </li>
+                </ul>
+              </div>
+            </div>
+            <div class="mt-4 flex items-center justify-between">
+              <span class="inline-flex items-center gap-2 text-emerald-600 font-medium group-hover:gap-3 transition-all">
+                {% trans "Continue" %} <i class="fa-solid fa-arrow-right"></i>
+              </span>
+              <span class="rounded-full px-2.5 py-1 text-[11px] font-semibold bg-emerald-50 text-emerald-700">
+                {% trans "Step 1 of 2" %}
+              </span>
+            </div>
+          </button>
+        </div>
+
+        <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <p class="text-xs sm:text-sm text-slate-600">
+            <i class="fa-solid fa-lock mr-2"></i>
+            {% trans "Your documents are encrypted at rest and used only for compliance verification." %}
+          </p>
+        </div>
+      </div>
+      <!-- ===== /Chooser ===== -->
+
+      <!-- Personal KYC Form -->
+      <form id="personalKycForm" class="hidden space-y-7">
+        {% csrf_token %}
+        <!-- Step 1 -->
+        <div id="personalStep1" class="space-y-6">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Personal KYC Details" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 1 of 2" %}</span>
+          </div>
+
+          <!-- Personal Info -->
+          <div class="space-y-4">
+            <h4 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-2">{% trans "Personal Information" %}</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Full Name" %}</label>
+                <input name="full_name" type="text" placeholder="{% trans 'Full Name' %}"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Date of Birth" %}</label>
+                <input name="date_of_birth" type="date"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="text-sm font-medium text-gray-700">{% trans "Nationality" %}</label>
+                <select name="nationality"
+                        class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                               focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                               hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+                  <option value="">{% trans "Select your nationality" %}</option>
+                  <option value="Afghan">{% trans "Afghan" %}</option>
+                  <option value="Albanian">{% trans "Albanian" %}</option>
+                  <option value="Algerian">{% trans "Algerian" %}</option>
+                  <option value="American">{% trans "American" %}</option>
+                  <option value="Andorran">{% trans "Andorran" %}</option>
+                  <option value="Angolan">{% trans "Angolan" %}</option>
+                  <option value="Argentine">{% trans "Argentine" %}</option>
+                  <option value="Armenian">{% trans "Armenian" %}</option>
+                  <option value="Australian">{% trans "Australian" %}</option>
+                  <option value="Austrian">{% trans "Austrian" %}</option>
+                  <option value="Azerbaijani">{% trans "Azerbaijani" %}</option>
+                  <option value="Bahamian">{% trans "Bahamian" %}</option>
+                  <option value="Bahraini">{% trans "Bahraini" %}</option>
+                  <option value="Bangladeshi">{% trans "Bangladeshi" %}</option>
+                  <option value="Barbadian">{% trans "Barbadian" %}</option>
+                  <option value="Belarusian">{% trans "Belarusian" %}</option>
+                  <option value="Belgian">{% trans "Belgian" %}</option>
+                  <option value="Belizean">{% trans "Belizean" %}</option>
+                  <option value="Beninese">{% trans "Beninese" %}</option>
+                  <option value="Bhutanese">{% trans "Bhutanese" %}</option>
+                  <option value="Bolivian">{% trans "Bolivian" %}</option>
+                  <option value="Bosnian">{% trans "Bosnian" %}</option>
+                  <option value="Brazilian">{% trans "Brazilian" %}</option>
+                  <option value="British">{% trans "British" %}</option>
+                  <option value="Bruneian">{% trans "Bruneian" %}</option>
+                  <option value="Bulgarian">{% trans "Bulgarian" %}</option>
+                  <option value="Burkinabé">{% trans "Burkinabé" %}</option>
+                  <option value="Burmese">{% trans "Burmese" %}</option>
+                  <option value="Burundian">{% trans "Burundian" %}</option>
+                  <option value="Cambodian">{% trans "Cambodian" %}</option>
+                  <option value="Cameroonian">{% trans "Cameroonian" %}</option>
+                  <option value="Canadian">{% trans "Canadian" %}</option>
+                  <option value="Cape Verdean">{% trans "Cape Verdean" %}</option>
+                  <option value="Central African">{% trans "Central African" %}</option>
+                  <option value="Chadian">{% trans "Chadian" %}</option>
+                  <option value="Chilean">{% trans "Chilean" %}</option>
+                  <option value="Chinese">{% trans "Chinese" %}</option>
+                  <option value="Colombian">{% trans "Colombian" %}</option>
+                  <option value="Comoran">{% trans "Comoran" %}</option>
+                  <option value="Congolese" selected>{% trans "Congolese (DRC)" %}</option>
+                  <option value="Costa Rican">{% trans "Costa Rican" %}</option>
+                  <option value="Croatian">{% trans "Croatian" %}</option>
+                  <option value="Cuban">{% trans "Cuban" %}</option>
+                  <option value="Cypriot">{% trans "Cypriot" %}</option>
+                  <option value="Czech">{% trans "Czech" %}</option>
+                  <option value="Danish">{% trans "Danish" %}</option>
+                  <option value="Djiboutian">{% trans "Djiboutian" %}</option>
+                  <option value="Dominican">{% trans "Dominican" %}</option>
+                  <option value="Dutch">{% trans "Dutch" %}</option>
+                  <option value="Ecuadorian">{% trans "Ecuadorian" %}</option>
+                  <option value="Egyptian">{% trans "Egyptian" %}</option>
+                  <option value="Salvadoran">{% trans "Salvadoran" %}</option>
+                  <option value="Equatorial Guinean">{% trans "Equatorial Guinean" %}</option>
+                  <option value="Eritrean">{% trans "Eritrean" %}</option>
+                  <option value="Estonian">{% trans "Estonian" %}</option>
+                  <option value="Ethiopian">{% trans "Ethiopian" %}</option>
+                  <option value="Fijian">{% trans "Fijian" %}</option>
+                  <option value="Finnish">{% trans "Finnish" %}</option>
+                  <option value="French">{% trans "French" %}</option>
+                  <option value="Gabonese">{% trans "Gabonese" %}</option>
+                  <option value="Gambian">{% trans "Gambian" %}</option>
+                  <option value="Georgian">{% trans "Georgian" %}</option>
+                  <option value="German">{% trans "German" %}</option>
+                  <option value="Ghanaian">{% trans "Ghanaian" %}</option>
+                  <option value="Greek">{% trans "Greek" %}</option>
+                  <option value="Grenadian">{% trans "Grenadian" %}</option>
+                  <option value="Guatemalan">{% trans "Guatemalan" %}</option>
+                  <option value="Guinean">{% trans "Guinean" %}</option>
+                  <option value="Guinea-Bissauan">{% trans "Guinea-Bissauan" %}</option>
+                  <option value="Guyanese">{% trans "Guyanese" %}</option>
+                  <option value="Haitian">{% trans "Haitian" %}</option>
+                  <option value="Honduran">{% trans "Honduran" %}</option>
+                  <option value="Hungarian">{% trans "Hungarian" %}</option>
+                  <option value="Icelandic">{% trans "Icelandic" %}</option>
+                  <option value="Indian">{% trans "Indian" %}</option>
+                  <option value="Indonesian">{% trans "Indonesian" %}</option>
+                  <option value="Iranian">{% trans "Iranian" %}</option>
+                  <option value="Iraqi">{% trans "Iraqi" %}</option>
+                  <option value="Irish">{% trans "Irish" %}</option>
+                  <option value="Israeli">{% trans "Israeli" %}</option>
+                  <option value="Italian">{% trans "Italian" %}</option>
+                  <option value="Ivorian">{% trans "Ivorian" %}</option>
+                  <option value="Jamaican">{% trans "Jamaican" %}</option>
+                  <option value="Japanese">{% trans "Japanese" %}</option>
+                  <option value="Jordanian">{% trans "Jordanian" %}</option>
+                  <option value="Kazakhstani">{% trans "Kazakhstani" %}</option>
+                  <option value="Kenyan">{% trans "Kenyan" %}</option>
+                  <option value="Kiribati">{% trans "Kiribati" %}</option>
+                  <option value="North Korean">{% trans "North Korean" %}</option>
+                  <option value="South Korean">{% trans "South Korean" %}</option>
+                  <option value="Kuwaiti">{% trans "Kuwaiti" %}</option>
+                  <option value="Kyrgyzstani">{% trans "Kyrgyzstani" %}</option>
+                  <option value="Laotian">{% trans "Laotian" %}</option>
+                  <option value="Latvian">{% trans "Latvian" %}</option>
+                  <option value="Lebanese">{% trans "Lebanese" %}</option>
+                  <option value="Lesotho">{% trans "Lesotho" %}</option>
+                  <option value="Liberian">{% trans "Liberian" %}</option>
+                  <option value="Libyan">{% trans "Libyan" %}</option>
+                  <option value="Liechtensteiner">{% trans "Liechtensteiner" %}</option>
+                  <option value="Lithuanian">{% trans "Lithuanian" %}</option>
+                  <option value="Luxembourgish">{% trans "Luxembourgish" %}</option>
+                  <option value="Macedonian">{% trans "Macedonian" %}</option>
+                  <option value="Malagasy">{% trans "Malagasy" %}</option>
+                  <option value="Malawian">{% trans "Malawian" %}</option>
+                  <option value="Malaysian">{% trans "Malaysian" %}</option>
+                  <option value="Maldivian">{% trans "Maldivian" %}</option>
+                  <option value="Malian">{% trans "Malian" %}</option>
+                  <option value="Maltese">{% trans "Maltese" %}</option>
+                  <option value="Marshallese">{% trans "Marshallese" %}</option>
+                  <option value="Mauritanian">{% trans "Mauritanian" %}</option>
+                  <option value="Mauritian">{% trans "Mauritian" %}</option>
+                  <option value="Mexican">{% trans "Mexican" %}</option>
+                  <option value="Micronesian">{% trans "Micronesian" %}</option>
+                  <option value="Moldovan">{% trans "Moldovan" %}</option>
+                  <option value="Monacan">{% trans "Monacan" %}</option>
+                  <option value="Mongolian">{% trans "Mongolian" %}</option>
+                  <option value="Montenegrin">{% trans "Montenegrin" %}</option>
+                  <option value="Moroccan">{% trans "Moroccan" %}</option>
+                  <option value="Mozambican">{% trans "Mozambican" %}</option>
+                  <option value="Namibian">{% trans "Namibian" %}</option>
+                  <option value="Nauruan">{% trans "Nauruan" %}</option>
+                  <option value="Nepalese">{% trans "Nepalese" %}</option>
+                  <option value="New Zealand">{% trans "New Zealand" %}</option>
+                  <option value="Nicaraguan">{% trans "Nicaraguan" %}</option>
+                  <option value="Nigerien">{% trans "Nigerien" %}</option>
+                  <option value="Nigerian">{% trans "Nigerian" %}</option>
+                  <option value="Norwegian">{% trans "Norwegian" %}</option>
+                  <option value="Omani">{% trans "Omani" %}</option>
+                  <option value="Pakistani">{% trans "Pakistani" %}</option>
+                  <option value="Palauan">{% trans "Palauan" %}</option>
+                  <option value="Palestinian">{% trans "Palestinian" %}</option>
+                  <option value="Panamanian">{% trans "Panamanian" %}</option>
+                  <option value="Papua New Guinean">{% trans "Papua New Guinean" %}</option>
+                  <option value="Paraguayan">{% trans "Paraguayan" %}</option>
+                  <option value="Peruvian">{% trans "Peruvian" %}</option>
+                  <option value="Filipino">{% trans "Filipino" %}</option>
+                  <option value="Polish">{% trans "Polish" %}</option>
+                  <option value="Portuguese">{% trans "Portuguese" %}</option>
+                  <option value="Qatari">{% trans "Qatari" %}</option>
+                  <option value="Romanian">{% trans "Romanian" %}</option>
+                  <option value="Russian">{% trans "Russian" %}</option>
+                  <option value="Rwandan">{% trans "Rwandan" %}</option>
+                  <option value="Saint Lucian">{% trans "Saint Lucian" %}</option>
+                  <option value="Salvadoran">{% trans "Salvadoran" %}</option>
+                  <option value="Samoan">{% trans "Samoan" %}</option>
+                  <option value="San Marinese">{% trans "San Marinese" %}</option>
+                  <option value="Sao Tomean">{% trans "Sao Tomean" %}</option>
+                  <option value="Saudi Arabian">{% trans "Saudi Arabian" %}</option>
+                  <option value="Senegalese">{% trans "Senegalese" %}</option>
+                  <option value="Serbian">{% trans "Serbian" %}</option>
+                  <option value="Seychellois">{% trans "Seychellois" %}</option>
+                  <option value="Sierra Leonean">{% trans "Sierra Leonean" %}</option>
+                  <option value="Singaporean">{% trans "Singaporean" %}</option>
+                  <option value="Slovak">{% trans "Slovak" %}</option>
+                  <option value="Slovenian">{% trans "Slovenian" %}</option>
+                  <option value="Solomon Islander">{% trans "Solomon Islander" %}</option>
+                  <option value="Somali">{% trans "Somali" %}</option>
+                  <option value="South African">{% trans "South African" %}</option>
+                  <option value="South Sudanese">{% trans "South Sudanese" %}</option>
+                  <option value="Spanish">{% trans "Spanish" %}</option>
+                  <option value="Sri Lankan">{% trans "Sri Lankan" %}</option>
+                  <option value="Sudanese">{% trans "Sudanese" %}</option>
+                  <option value="Surinamese">{% trans "Surinamese" %}</option>
+                  <option value="Swazi">{% trans "Swazi" %}</option>
+                  <option value="Swedish">{% trans "Swedish" %}</option>
+                  <option value="Swiss">{% trans "Swiss" %}</option>
+                  <option value="Syrian">{% trans "Syrian" %}</option>
+                  <option value="Tajikistani">{% trans "Tajikistani" %}</option>
+                  <option value="Tanzanian">{% trans "Tanzanian" %}</option>
+                  <option value="Thai">{% trans "Thai" %}</option>
+                  <option value="Timorese">{% trans "Timorese" %}</option>
+                  <option value="Togolese">{% trans "Togolese" %}</option>
+                  <option value="Tongan">{% trans "Tongan" %}</option>
+                  <option value="Trinidadian">{% trans "Trinidadian" %}</option>
+                  <option value="Tunisian">{% trans "Tunisian" %}</option>
+                  <option value="Turkish">{% trans "Turkish" %}</option>
+                  <option value="Turkmen">{% trans "Turkmen" %}</option>
+                  <option value="Tuvaluan">{% trans "Tuvaluan" %}</option>
+                  <option value="Ugandan">{% trans "Ugandan" %}</option>
+                  <option value="Ukrainian">{% trans "Ukrainian" %}</option>
+                  <option value="Emirati">{% trans "Emirati" %}</option>
+                  <option value="Uruguayan">{% trans "Uruguayan" %}</option>
+                  <option value="Uzbekistani">{% trans "Uzbekistani" %}</option>
+                  <option value="Vanuatuan">{% trans "Vanuatuan" %}</option>
+                  <option value="Venezuelan">{% trans "Venezuelan" %}</option>
+                  <option value="Vietnamese">{% trans "Vietnamese" %}</option>
+                  <option value="Yemeni">{% trans "Yemeni" %}</option>
+                  <option value="Zambian">{% trans "Zambian" %}</option>
+                  <option value="Zimbabwean">{% trans "Zimbabwean" %}</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Identity -->
+          <div class="space-y-4">
+            <h4 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-2">{% trans "Identity Information" %}</h4>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "ID Document Type" %}</label>
+                <select name="id_document_type" id="idDocumentType"
+                        class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                               focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                               hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+                  <option value="">{% trans "Select Document Type" %}</option>
+                  <option value="voter_card">{% trans "Voter Card" %}</option>
+                  <option value="drivers_license">{% trans "Driver's License" %}</option>
+                  <option value="passport">{% trans "Passport" %}</option>
+                </select>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "ID Number" %}</label>
+                <input name="id_number" type="text" placeholder="{% trans 'ID Number' %}"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Issue Date" %}</label>
+                <input name="id_issue_date" type="date"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium text-gray-700">{% trans "Expiry Date" %}</label>
+                <input name="id_expiry_date" type="date"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+
+              <div class="space-y-1.5 sm:col-span-2">
+                <label class="text-sm font-medium text-gray-700">{% trans "Address" %}</label>
+                <input name="address" type="text" placeholder="{% trans 'Full Address' %}"
+                       class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                              focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                              hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end pt-4">
+            <button type="button" id="personalNextBtn"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600
+                           hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-2.5 px-6
+                           rounded-xl shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+              <i class="fa-solid fa-arrow-right text-sm"></i>
+              {% trans "Next" %}
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="personalStep2" class="hidden space-y-5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Documents & Terms" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 2 of 2" %}</span>
+          </div>
+
+          <!-- Upload -->
+          <div class="space-y-2">
+            <label class="text-sm font-medium text-gray-700">{% trans "Upload ID Documents" %}</label>
+            <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition" data-dropzone="personal">
+              <i class="fa-regular fa-file-lines text-2xl text-gray-400"></i>
+              <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop files here, or click to browse." %}</p>
+              <p class="text-xs text-gray-400">{% trans "Accepted: JPG, PNG" %}</p>
+              <input id="personalFileInput" name="file" type="file" accept=".pdf,.jpg,.jpeg,.png" required onchange="validateFile(this)"
+                     class="absolute inset-0 opacity-0 cursor-pointer required-field" />
+            </div>
+            <!-- Selected file preview list -->
+            <div id="personalFileList" class="mt-2 hidden"></div>
+            {% if personal_document %}
+            <div class="mt-4">
+              <h4 class="text-sm font-semibold text-gray-800">{% trans "Previously Submitted Document" %}</h4>
+              <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-slate-50 rounded border">
+                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <i class="fa-solid fa-file text-blue-500 shrink-0"></i>
+                  <div class="flex-1 min-w-0">
+                    <a href="{{ personal_document.url }}" target="_blank" class="text-indigo-700 underline break-all text-sm sm:text-base">{{ personal_document.name }}</a>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                      <span class="text-xs text-gray-500">{{ personal_document.uploaded_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700 shrink-0 self-end sm:self-center" onclick="deleteKycDocument('personal')">
+                  <i class="fa-solid fa-trash"></i> {% trans "Delete" %}
+                </button>
+              </div>
+            </div>
+            {% endif %}
+            <small class="text-sm text-gray-500">{% trans "Max size: 10MB" %}</small>
+          </div>
+
+          <div id="personalVisaWrapper" class="space-y-2 hidden">
+            <label class="text-sm font-medium text-gray-700">{% trans "Upload last visa page" %}</label>
+            <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition" data-dropzone="personal-visa">
+              <i class="fa-solid fa-passport text-2xl text-gray-400"></i>
+              <p class="mt-2 text-sm text-gray-600">{% trans "Provide the most recent visa page showing entry authorization." %}</p>
+              <p class="text-xs text-gray-400">{% trans "Accepted: PDF, JPG, PNG — Max 10MB" %}</p>
+              <input id="personalVisaFile" name="visa_file" type="file" accept=".pdf,.jpg,.jpeg,.png" onchange="validateFile(this)"
+                     class="absolute inset-0 opacity-0 cursor-pointer" />
+            </div>
+            <div id="personalVisaList" class="mt-2 hidden"></div>
+            {% if personal_visa %}
+            <div class="mt-4">
+              <h4 class="text-sm font-semibold text-gray-800">{% trans "Previously Submitted Visa" %}</h4>
+              <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-slate-50 rounded border">
+                <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <i class="fa-solid fa-passport text-blue-500 shrink-0"></i>
+                  <div class="flex-1 min-w-0">
+                    <a href="{{ personal_visa.url }}" target="_blank" class="text-indigo-700 underline break-all text-sm sm:text-base">{{ personal_visa.name }}</a>
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                      <span class="text-xs text-gray-500">{{ personal_visa.uploaded_at|date:"Y-m-d H:i" }}</span>
+                    </div>
+                  </div>
+                </div>
+                <button type="button" class="text-red-500 hover:text-red-700 shrink-0 self-end sm:self-center" onclick="deleteKycDocument('personal_visa')">
+                  <i class="fa-solid fa-trash"></i> {% trans "Delete" %}
+                </button>
+              </div>
+            </div>
+            {% endif %}
+            <small class="text-sm text-gray-500">{% trans "Required for non-Congolese nationals." %}</small>
+          </div>
+
+          <!-- Terms -->
+          <div class="mt-4 space-y-3">
+            <div id="personal-terms-container"
+                 class="max-h-40 overflow-y-auto border border-gray-300 rounded bg-gray-50 p-3 text-xs text-gray-700"
+                 style="font-size:13px;">
+              {% block personal_terms_text %}
+              <strong class="block mb-1">{% trans "Terms and Conditions" %}</strong>
+              <p class="mb-2">{% trans "By submitting your KYC, you certify that the information provided is true, accurate, and complete. You agree to provide additional information if requested for verification and compliance purposes." %}</p>
+              <p class="mb-2">{% trans "Documents may be retained as required by law or internal policy. You may request deletion where permitted by applicable regulations." %}</p>
+              <p class="mb-2">{% trans "We may refuse or terminate applications if we detect fraud or non-compliance." %}</p>
+              <hr class="my-2">
+              <strong class="block mb-1"><i class="fa-solid fa-shield-halved mr-1"></i>{% trans "Data Confidentiality & Security" %}</strong>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>{% trans "Your documents are encrypted at rest and in transit." %}</li>
+                <li>{% trans "Access is strictly limited to authorized compliance staff." %}</li>
+                <li>{% trans "We never sell your data and only share where legally required." %}</li>
+                <li>{% trans "You can contact support to exercise your privacy rights as applicable." %}</li>
+              </ul>
+              {% endblock %}
+            </div>
+
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" id="personal-terms" name="terms_personal" disabled>
+              <span id="personal-terms-label">{% trans "I agree to the terms and conditions" %}</span>
+            </label>
+
+            <p id="personal-terms-scroll-hint" class="text-xs text-gray-500">
+              {% trans "Scroll to the end to enable and auto-check the box." %}
+            </p>
+
+            <!-- Final reassurance -->
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              <i class="fa-solid fa-lock mr-2"></i>
+              {% trans "We protect your information with industry-standard security. It is used only for identity verification and regulatory compliance." %}
+            </div>
+          </div>
+
+    <div class="flex items-center justify-between pt-2">
+            <button type="button" id="personalPrevBtn"
+                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              <i class="fa-solid fa-arrow-left mr-2"></i>
+              {% trans "Previous" %}
+            </button>
+            <button type="submit" id="submit-personal"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600
+                           hover:from-emerald-700 hover:to-green-700 text-white font-semibold py-2.5 px-6
+                           rounded-xl shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <i class="fa-solid fa-paper-plane text-sm"></i>
+              {% trans "Submit Personal KYC" %}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Business KYC Form -->
+  <form id="businessKycForm" class="hidden space-y-7" novalidate>
+        {% csrf_token %}
+        <!-- Hidden fields for retained files (moved into the form) -->
+        <input type="hidden" name="retained_company_doc_ids" id="retainedCompanyDocIds" value="{% if company_documents %}{% for doc in company_documents %}{{ doc.id }}{% if not forloop.last %},{% endif %}{% endfor %}{% endif %}">
+        <input type="hidden" name="retained_rep_id" id="retainedRepId" value="{% if company_rep_id %}1{% else %}0{% endif %}">
+        <!-- Step 1 -->
+        <div id="businessStep1" class="space-y-5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Business KYC Details" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 1 of 2" %}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Legal Representative Name" %}</label>
+              <input name="representative_name" type="text" placeholder="{% trans 'Legal Representative Name' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Company Name" %}</label>
+              <input name="company_name" type="text" placeholder="{% trans 'Company Name' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Address" %}</label>
+              <input name="address" type="text" placeholder="{% trans 'Address' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Date Established" %}</label>
+              <input name="established_date" type="date"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 shadow-sm">
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Business Sector" %}</label>
+              <select name="business_sector"
+                      class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                             focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                             hover:border-gray-300 transition-all duration-200 shadow-sm">
+                <option value="">{% trans "Select Business Sector" %}</option>
+                <option value="agriculture">{% trans "Agriculture, Forestry and Fishing" %}</option>
+                <option value="mining">{% trans "Mining and Quarrying" %}</option>
+                <option value="manufacturing">{% trans "Manufacturing" %}</option>
+                <option value="utilities">{% trans "Electricity, Gas, Steam and Water Supply" %}</option>
+                <option value="construction">{% trans "Construction" %}</option>
+                <option value="trade">{% trans "Wholesale and Retail Trade" %}</option>
+                <option value="transport">{% trans "Transportation and Storage" %}</option>
+                <option value="accommodation">{% trans "Accommodation and Food Service" %}</option>
+                <option value="information">{% trans "Information and Communication" %}</option>
+                <option value="finance">{% trans "Financial and Insurance Activities" %}</option>
+                <option value="real_estate">{% trans "Real Estate Activities" %}</option>
+                <option value="professional">{% trans "Professional, Scientific and Technical Activities" %}</option>
+                <option value="administrative">{% trans "Administrative and Support Service Activities" %}</option>
+                <option value="public_admin">{% trans "Public Administration and Defence" %}</option>
+                <option value="education">{% trans "Education" %}</option>
+                <option value="health">{% trans "Human Health and Social Work Activities" %}</option>
+                <option value="arts">{% trans "Arts, Entertainment and Recreation" %}</option>
+                <option value="other_services">{% trans "Other Service Activities" %}</option>
+                <option value="household">{% trans "Household Activities" %}</option>
+                <option value="extraterritorial">{% trans "Extraterritorial Organizations" %}</option>
+                <option value="other">{% trans "Other" %}</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Legal Status" %}</label>
+              <select name="legal_status"
+                      class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900
+                             focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                             hover:border-gray-300 transition-all duration-200 shadow-sm">
+                <option value="">{% trans "Select Legal Status" %}</option>
+                <option value="sa">{% trans "Public Limited Company (SA)" %}</option>
+                <option value="sarl">{% trans "Limited Liability Company (SARL)" %}</option>
+                <option value="eurl">{% trans "Single-Person Limited Liability Company (EURL)" %}</option>
+                <option value="sas">{% trans "Simplified Joint Stock Company (SAS)" %}</option>
+                <option value="sasu">{% trans "Single-Person Simplified Joint Stock Company (SASU)" %}</option>
+                <option value="ei">{% trans "Individual Enterprise (EI)" %}</option>
+                <option value="auto_entrepreneur">{% trans "Self-Employed Entrepreneur" %}</option>
+                <option value="association">{% trans "Association" %}</option>
+                <option value="cooperative">{% trans "Cooperative" %}</option>
+                <option value="gie">{% trans "Economic Interest Group (GIE)" %}</option>
+                <option value="other">{% trans "Other" %}</option>
+              </select>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "ID Nat" %}</label>
+              <input name="id_nat" type="text" placeholder="{% trans 'ID Nat' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "RCCM Number" %}</label>
+              <input name="rccm_number" type="text" placeholder="{% trans 'RCCM Number' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+
+            <div class="space-y-1.5">
+              <label class="text-sm font-medium text-gray-700">{% trans "Tax ID (NIF)" %}</label>
+              <input name="nif" type="text" placeholder="{% trans 'Tax ID (NIF)' %}"
+                     class="w-full rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-gray-900 placeholder-gray-500
+                            focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 focus:bg-indigo-50
+                            hover:border-gray-300 transition-all duration-200 required-field shadow-sm" required>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-end pt-4">
+            <button type="button" id="businessNextBtn"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-600
+                           hover:from-indigo-700 hover:to-blue-700 text-white font-semibold py-2.5 px-6
+                           rounded-xl shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+              <i class="fa-solid fa-arrow-right text-sm"></i>
+              {% trans "Next" %}
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2 -->
+        <div id="businessStep2" class="hidden space-y-5">
+          <div class="flex items-center justify-between">
+            <h3 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Documents & Terms" %}</h3>
+            <span class="text-xs text-gray-500">{% trans "Step 2 of 2" %}</span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Rep ID -->
+            <div class="space-y-2">
+                <label class="text-sm font-medium text-gray-700">{% trans "Upload Representative ID" %}</label>
+
+                <!-- Representative ID Info (harmonized height and style) -->
+                <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 min-h-44 sm:min-h-48">
+                  <div class="flex items-start gap-2">
+                    <i class="fa-solid fa-user-tie text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <div>
+                      <p class="font-medium mb-1">{% trans "Representative ID – Upload Tips" %}</p>
+                      <ul class="space-y-0.5 text-xs">
+                        <li>• {% trans "Accepted: passport, national ID, or driver's license" %}</li>
+                        <li>• {% trans "Ensure the document is valid (not expired)" %}</li>
+                        <li>• {% trans "Full name on the ID must match the KYC form" %}</li>
+                        <li>• {% trans "All details must be readable (avoid glare; color preferred)" %}</li>
+                        <li>• {% trans "One file only; use PDF or a clear photo (JPG/PNG)" %}</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+              <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition" data-dropzone="rep">
+                <i class="fa-regular fa-id-card text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop files here, or click to browse." %}</p>
+                <p class="text-xs text-gray-400">{% trans "Accepted: JPG, PNG, PDF" %}</p>
+      <input id="businessRepFile" name="representative_file" type="file" accept=".jpg,.jpeg,.png,.pdf" onchange="validateFile(this)"
+        class="absolute inset-0 opacity-0 cursor-pointer required-field" />
+              </div>
+              <div id="businessRepList" class="mt-2 hidden"></div>
+              {% if company_rep_id %}
+              <div class="mt-4">
+                <h4 class="text-sm font-semibold text-gray-800">{% trans "Previously Submitted Representative ID" %}</h4>
+                <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-slate-50 rounded border">
+                  <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                    <i class="fa-regular fa-id-card text-blue-500 shrink-0"></i>
+                    <div class="flex-1 min-w-0">
+                      <a href="{{ company_rep_id.url }}" target="_blank" class="text-indigo-700 underline break-all text-sm sm:text-base">{{ company_rep_id.name }}</a>
+                      <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                        <span class="text-xs text-gray-500">{{ company_rep_id.uploaded_at|date:"Y-m-d H:i" }}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <button type="button" class="text-red-500 hover:text-red-700 shrink-0 self-end sm:self-center" onclick="deleteBusinessRepId(this)">
+                    <i class="fa-solid fa-trash"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </div>
+              {% endif %}
+              <small class="text-sm text-gray-500">{% trans "Max size: 10MB" %}</small>
+            </div>
+
+            <!-- Company Docs -->
+            <div class="space-y-2">
+              <label class="text-sm font-medium text-gray-700">{% trans "Upload Company Documents" %}</label>
+
+              <!-- File Naming Guide -->
+              <div class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800 min-h-44 sm:min-h-48">
+                <div class="flex items-start gap-2">
+                  <i class="fa-solid fa-lightbulb text-blue-600 mt-0.5 flex-shrink-0"></i>
+                  <div>
+                    <p class="font-medium mb-1">{% trans "File Naming Tips for Automatic Classification" %}</p>
+                    <ul class="space-y-0.5 text-xs">
+                      <li>• <strong>{% trans "RCCM" %}</strong>: {% trans "Include 'rccm' or 'registre' in filename" %}</li>
+                      <li>• <strong>{% trans "Tax ID (NIF)" %}</strong>: {% trans "Include 'nif', 'tax', or 'impot' in filename" %}</li>
+                      <li>• <strong>{% trans "ID Nat" %}</strong>: {% trans "Include 'id' and 'nat' or 'national' in filename" %}</li>
+                      <li>• <strong>{% trans "Articles of Association" %}</strong>: {% trans "Include 'statut', 'statutes', or 'articles' in filename" %}</li>
+                      <li>• <strong>{% trans "Registration Certificate" %}</strong>: {% trans "Include 'registration' or 'certificate' in filename" %}</li>
+                    </ul>
+                    <p class="mt-1 text-xs text-blue-700">{% trans "Example: 'RCCM_CompanyName.pdf', 'NIF_2024.pdf', 'Statuts_SARL.pdf'" %}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="relative rounded-xl border-2 border-dashed border-gray-300 p-5 text-center hover:border-indigo-400 transition" data-dropzone="biz">
+                <i class="fa-solid fa-file-circle-check text-2xl text-gray-400"></i>
+                <p class="mt-2 text-sm text-gray-600">{% trans "Drag & drop files here, or click to browse." %}</p>
+                <p class="text-xs text-gray-400">{% trans "Accepted: JPG, PNG, PDF" %}</p>
+      <input id="businessCompanyFile" name="company_document_files" type="file" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleMultipleFiles(this, 'businessCompanyList')"
+        class="absolute inset-0 opacity-0 cursor-pointer required-field" />
+              </div>
+              <div id="businessCompanyList" class="mt-2 hidden">
+                <div class="space-y-2" id="companyFilesList"></div>
+              </div>
+              {% if company_documents %}
+              <div class="mt-4" id="businessRepBlock">
+<script>
+// Global translations object for KYC modal
+window.kycTranslations = {
+  deleteRepresentativeConfirm: "{{ _('Are you sure you want to delete the representative ID?')|escapejs }}",
+  unsupportedFormat: "{{ _('Unsupported format. Please upload .jpg, .jpeg, or .png.')|escapejs }}",
+  fileTooLarge: "{{ _('File too large')|escapejs }}",
+  maxSize: "{{ _('Max:')|escapejs }}",
+  errorValidatingFile: "{{ _('Error while validating the file.')|escapejs }}",
+  expiryDateError: "{{ _('Expiry date must be after issue date.')|escapejs }}",
+  fillRequiredFields: "{{ _('Please fill in all required fields and ensure dates are valid.')|escapejs }}",
+  fillAllFields: "{{ _('Please fill in all required fields.')|escapejs }}",
+  provideRepresentativeId: "{{ _('Please provide a representative ID document (upload or keep existing).')|escapejs }}",
+  provideCompanyDoc: "{{ _('Please provide at least one company document (upload or keep existing).')|escapejs }}",
+  missingRequiredFields: "{{ _('Missing required fields.')|escapejs }}",
+  kycSubmittedSuccess: "{{ _('KYC submitted successfully!')|escapejs }}",
+  serverError: "{{ _('Server error. Try again later.')|escapejs }}",
+  errorPrefix: "{{ _('Error:')|escapejs }}",
+  deletionImpossible: "{{ _('Deletion impossible.')|escapejs }}",
+  serverErrorRetry: "{{ _('Server error. Please try again later.')|escapejs }}"
+};
+
+function deleteBusinessRepId(btn) {
+  if (!confirm(kycTranslations.deleteRepresentativeConfirm)) return;
+  // Get language prefix and client app prefix from current URL
+  var langPrefix = window.location.pathname.split('/')[1];
+  var url = `/${langPrefix}/client/kyc/delete_company_rep_id/`;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({}),
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Failed to delete');
+    return response.json();
+  })
+  .then(data => {
+  // Remove only the representative ID block (not company docs)
+  const repBlock = btn.closest('.mt-4');
+  if (repBlock) repBlock.remove();
+    // Update hidden field
+    document.getElementById('retainedRepId').value = '0';
+    // Optionally show a success message
+    showToast("{% trans 'Representative ID deleted.' %}", "success");
+  })
+  .catch(() => {
+    showToast("{% trans 'Error deleting representative ID.' %}", "error");
+  });
+}
+
+function getCsrfToken() {
+  const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  return csrfInput ? csrfInput.value : '';
+}
+
+function showToast(msg, type) {
+  // Simple toast implementation, replace with your own if needed
+  const toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.className = 'fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg z-50 ' + (type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white');
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+</script>
+                <h4 class="text-sm font-semibold text-gray-800">{% trans "Previously Submitted Documents" %}</h4>
+                <ul class="space-y-2">
+                  {% for doc in company_documents %}
+                  <li class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 p-3 bg-slate-50 rounded border">
+                    <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <i class="fa-solid fa-file text-blue-500 shrink-0"></i>
+                      <div class="flex-1 min-w-0">
+                        <a href="{{ doc.url }}" target="_blank" class="text-indigo-700 underline break-all text-sm sm:text-base">{{ doc.name }}</a>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
+                          <span class="text-xs text-gray-500">{{ doc.type|title }}</span>
+                          <span class="text-xs text-gray-500">{{ doc.uploaded_at|date:"Y-m-d H:i" }}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button type="button" class="text-red-500 hover:text-red-700 shrink-0 self-end sm:self-center" onclick="deleteKycDocument('business', '{{ doc.id }}')">
+                      <i class="fa-solid fa-trash"></i> {% trans "Delete" %}
+                    </button>
+                  </li>
+                  {% endfor %}
+                </ul>
+              </div>
+              {% endif %}
+              <small class="text-sm text-gray-500">{% trans "Max size per file: 10MB. You can upload multiple documents (Articles of Association, Business License, etc.)" %}</small>
+            </div>
+          </div>
+
+          <!-- Terms -->
+          <div class="mt-4 space-y-3">
+            <div id="business-terms-container"
+                 class="max-h-40 overflow-y-auto border border-gray-300 rounded bg-gray-50 p-3 text-xs text-gray-700"
+                 style="font-size:13px;">
+              {% block business_terms_text %}
+              <strong class="block mb-1">{% trans "Terms and Conditions" %}</strong>
+              <p class="mb-2">{% trans "By submitting your KYC, you certify that the company information provided is true, accurate, and complete. You agree to provide additional supporting documents if required." %}</p>
+              <p class="mb-2">{% trans "Documents may be retained as required by law or internal policy. You may request deletion where permitted by applicable regulations." %}</p>
+              <p class="mb-2">{% trans "We may refuse or terminate applications in case of suspected fraud or non-compliance." %}</p>
+              <hr class="my-2">
+              <strong class="block mb-1"><i class="fa-solid fa-shield-halved mr-1"></i>{% trans "Data Confidentiality & Security" %}</strong>
+              <ul class="list-disc pl-5 space-y-1">
+                <li>{% trans "Documents are encrypted at rest and in transit." %}</li>
+                <li>{% trans "Access is limited to authorized compliance personnel only." %}</li>
+                <li>{% trans "No data is sold; sharing occurs only if legally required." %}</li>
+                <li>{% trans "You may contact support to exercise your privacy rights." %}</li>
+              </ul>
+              {% endblock %}
+            </div>
+
+            <label class="flex items-center gap-2 text-sm">
+              <input type="checkbox" id="business-terms" name="terms_business" disabled>
+              <span id="business-terms-label">{% trans "I agree to the terms and conditions" %}</span>
+            </label>
+
+            <p id="business-terms-scroll-hint" class="text-xs text-gray-500">
+              {% trans "Scroll to the end to enable and auto-check the box." %}
+            </p>
+
+            <!-- Final reassurance -->
+            <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs text-slate-700">
+              <i class="fa-solid fa-lock mr-2"></i>
+              {% trans "Your company data is protected with industry-standard security and used only for KYC/AML compliance." %}
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between pt-2">
+            <button type="button" id="businessPrevBtn"
+                    class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+              <i class="fa-solid fa-arrow-left mr-2"></i>
+              {% trans "Previous" %}
+            </button>
+            <button type="submit" id="submit-business"
+                    class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-600 to-green-600
+                           hover:from-emerald-700 hover:to-green-700 text-white font-semibold py-2.5 px-6
+                           rounded-xl shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <i class="fa-solid fa-paper-plane text-sm"></i>
+              {% trans "Submit Business KYC" %}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ================== KYC Scripts ================== -->
+<script>
+// Access global translations
+const kycTranslations = window.kycTranslations || {};
+
+// --- AJAX delete for KYC documents ---
+window.deleteKycDocument = function(type, docId) {
+  if (!confirm("Êtes-vous sûr de vouloir supprimer ce document ?")) return;
+  let url = "";
+  let payload = {};
+  if (type === "business") {
+    var langPrefix = '{{ LANGUAGE_CODE|default:"en" }}';
+    url = `/${langPrefix}/client/kyc/delete_company_document/`;
+    payload = { doc_id: docId };
+  } else if (type === "business_rep") {
+    var langPrefix = '{{ LANGUAGE_CODE|default:"en" }}';
+    url = `/${langPrefix}/client/kyc/delete_company_rep_id/`;
+    payload = {};
+  } else if (type === "personal") {
+    var langPrefix = '{{ LANGUAGE_CODE|default:"en" }}';
+    url = `/${langPrefix}/client/kyc/delete_personal_document/`;
+    payload = {};
+  } else if (type === "personal_visa") {
+    var langPrefix = '{{ LANGUAGE_CODE|default:"en" }}';
+    url = `/${langPrefix}/client/kyc/delete_personal_visa/`;
+    payload = {};
+  } else {
+    alert("Type de document inconnu.");
+    return;
+  }
+  const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": csrf,
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: JSON.stringify(payload)
+  })
+  .then(r => r.json())
+  .then(d => {
+    if (d.success) {
+      alert("Document supprimé avec succès.");
+      // Remove the document from the DOM
+      if (type === "business") {
+        // Find the button that triggered the event
+        const btn = document.querySelector(`button[onclick*="deleteKycDocument('business', '${docId}')"]`);
+        if (btn) {
+          const li = btn.closest('li');
+          if (li) li.remove();
+        }
+  // Remove from retained docs
+  window.businessKycRetained.companyDocs = window.businessKycRetained.companyDocs.filter(id => id !== docId);
+  // Update hidden input
+  const retainedDocsInputEl = document.getElementById('retainedCompanyDocIds');
+  if (retainedDocsInputEl) retainedDocsInputEl.value = window.businessKycRetained.companyDocs.join(',');
+  updateBusinessSubmit();
+  const companyFilesInputEl = document.getElementById('businessCompanyFile');
+  if (companyFilesInputEl) companyFilesInputEl.required = !(window.businessKycRetained.companyDocs.length > 0) && !(companyFilesInputEl.files && companyFilesInputEl.files.length > 0);
+      } else if (type === "business_rep") {
+        // Remove the previously submitted representative ID block
+        const repBlock = document.querySelector('.mt-4 > .flex.items-center.gap-3.p-2.bg-slate-50.rounded.border');
+        if (repBlock) repBlock.remove();
+  // Also clear the preview area if present
+  const repPreview = document.getElementById('businessRepList');
+  if (repPreview) repPreview.innerHTML = '';
+  // Ensure the retained object exists before mutating it
+  window.businessKycRetained = window.businessKycRetained || { rep: false, companyDocs: [] };
+  window.businessKycRetained.rep = false;
+  // Update hidden input for rep
+  const retainedRepInputEl = document.getElementById('retainedRepId');
+  if (retainedRepInputEl) retainedRepInputEl.value = '0';
+    updateBusinessSubmit();
+    const repFileInputEl = document.getElementById('businessRepFile');
+    if (repFileInputEl) repFileInputEl.required = true;
+      } else if (type === "personal") {
+        // Hide the personal document preview by finding the div containing "Previously Submitted Document"
+        const docHeadings = document.querySelectorAll('h4');
+        for (let heading of docHeadings) {
+          if (heading.textContent.includes('Previously Submitted Document')) {
+            const docBlock = heading.parentElement;
+            if (docBlock) docBlock.remove();
+            break;
+          }
+        }
+        // Update global document state
+        window.hasPersonalDocument = false;
+        // Update submit button state
+        updatePersonalSubmit();
+      } else if (type === "personal_visa") {
+        // Hide the personal visa preview if present by finding the div containing "Previously Submitted Visa"
+        const visaHeadings = document.querySelectorAll('h4');
+        for (let heading of visaHeadings) {
+          if (heading.textContent.includes('Previously Submitted Visa')) {
+            const visaBlock = heading.parentElement;
+            if (visaBlock) visaBlock.remove();
+            break;
+          }
+        }
+        // Update global visa state
+        window.hasPersonalVisa = false;
+        // Update submit button state
+        updatePersonalSubmit();
+      }
+    } else {
+      alert(`${kycTranslations.errorPrefix} ` + (d.message || kycTranslations.deletionImpossible));
+    }
+  })
+  .catch(err => {
+    console.error(err);
+    alert(kycTranslations.serverErrorRetry);
+  });
+};
+/* ---------- Helpers ---------- */
+function formatBytes(n) {
+  if (!n && n !== 0) return '';
+  const k = 1024, sizes = ['B','KB','MB','GB'];
+  const i = Math.floor(Math.log(n) / Math.log(k));
+  return parseFloat((n / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Global function for deleting business representative ID
+window.deleteBusinessRepId = function(btn) {
+  if (!confirm(kycTranslations.deleteRepresentativeConfirm)) return;
+  // Get language prefix and client app prefix from current URL
+  var langPrefix = window.location.pathname.split('/')[1];
+  var url = `/${langPrefix}/client/kyc/delete_company_rep_id/`;
+  fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": getCsrfToken(),
+    },
+    body: JSON.stringify({}),
+  })
+  .then(response => {
+    if (!response.ok) throw new Error('Failed to delete');
+    return response.json();
+  })
+  .then(data => {
+    // Remove only the representative ID block (not company docs)
+    const repBlock = btn.closest('.mt-4');
+    if (repBlock) repBlock.remove();
+    // Update hidden field
+    document.getElementById('retainedRepId').value = '0';
+    // Optionally show a success message
+    showToast("{% trans 'Representative ID deleted.' %}", "success");
+  })
+  .catch(() => {
+    showToast("{% trans 'Error deleting representative ID.' %}", "error");
+  });
+};
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+  const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  return csrfInput ? csrfInput.value : '';
+}
+
+// Simple toast implementation
+function showToast(msg, type) {
+  // Simple toast implementation, replace with your own if needed
+  const toast = document.createElement('div');
+  toast.textContent = msg;
+  toast.className = 'fixed bottom-4 right-4 px-4 py-2 rounded shadow-lg z-50 ' + (type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white');
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+function buildFileChip(file) {
+  const wrap = document.createElement('div');
+  wrap.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-xs mr-2 mb-2';
+  const icon = document.createElement('i'); icon.className = 'fa-solid fa-paperclip';
+  const name = document.createElement('span'); name.textContent = file.name + ' • ' + formatBytes(file.size);
+  wrap.appendChild(icon); wrap.appendChild(name); return wrap;
+}
+function showFileSelection(inputEl, listEl) {
+  const file = inputEl?.files?.[0];
+  if (!listEl) return;
+  listEl.innerHTML = '';
+  if (file) {
+    listEl.classList.remove('hidden');
+    listEl.classList.add('rounded-lg','border','border-slate-200','p-2','bg-white');
+    listEl.appendChild(buildFileChip(file));
+  } else {
+    listEl.classList.add('hidden');
+  }
+}
+
+/* --- File validator --- */
+window.validateFile = function (inputEl) {
+  try {
+    const file = inputEl?.files?.[0];
+    if (!file) return true;
+    const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
+    const maxBytes = 10 * 1024 * 1024; // 10 MB
+    const name = (file.name || "").toLowerCase();
+    const looksLikeImage = name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png") || name.endsWith(".pdf");
+    if (!allowedTypes.includes(file.type) && !looksLikeImage) {
+      alert(`❌ ${kycTranslations.unsupportedFormat}`);
+      inputEl.value = ""; return false;
+    }
+    if (file.size > maxBytes) {
+      const mb = (file.size / (1024 * 1024)).toFixed(2);
+      alert(`❌ ${kycTranslations.fileTooLarge} (${mb} MB). ${kycTranslations.maxSize} 10 MB.`);
+      inputEl.value = ""; return false;
+    }
+    // If valid, show the chip & update submit state
+    if (inputEl.id === 'personalFileInput') {
+      showFileSelection(inputEl, document.getElementById('personalFileList'));
+      updatePersonalSubmit();
+    } else if (inputEl.id === 'personalVisaFile') {
+      showFileSelection(inputEl, document.getElementById('personalVisaList'));
+      updatePersonalSubmit();
+    } else if (inputEl.id === 'businessRepFile') {
+      showFileSelection(inputEl, document.getElementById('businessRepList'));
+      updateBusinessSubmit();
+    }
+    return true;
+  } catch (e) {
+    console.error("validateFile error:", e);
+    alert(`❌ ${kycTranslations.errorValidatingFile}`);
+    inputEl.value = ""; return false;
+  }
+};
+
+/* --- Multiple files handler --- */
+window.handleMultipleFiles = function (input, listId) {
+  // Show selected files in the preview block above previously submitted documents
+  const listEl = document.getElementById(listId);
+  if (!listEl) return;
+  const files = input.files;
+  let filesList = listEl.querySelector('#companyFilesList');
+  if (!filesList) {
+    // If the preview container doesn't exist, create it
+    filesList = document.createElement('div');
+    filesList.id = 'companyFilesList';
+    filesList.className = 'space-y-2';
+    listEl.appendChild(filesList);
+  }
+  if (!files || files.length === 0) {
+    listEl.classList.add('hidden');
+    filesList.innerHTML = '';
+    updateBusinessSubmit();
+    return;
+  }
+  let html = '';
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    html += `<div class=\"flex items-center gap-2 p-2 rounded bg-slate-100 border text-sm\">\n      <i class=\"fa-solid fa-file text-blue-500\"></i>\n      <span class=\"font-medium\">${file.name}</span>\n      <span class=\"text-xs text-gray-500\">(${formatBytes(file.size)}, ${file.type || 'Unknown type'})</span>\n    </div>`;
+  }
+  listEl.classList.remove('hidden');
+  filesList.innerHTML = html;
+  updateBusinessSubmit();
+};
+
+/* --- Remove file from list --- */
+window.removeFileFromList = function (buttonEl, inputId, fileIndex) {
+  const inputEl = document.getElementById(inputId);
+  const filesList = document.getElementById('companyFilesList');
+
+  // Remove the file item from display
+  buttonEl.closest('div').remove();
+
+  // Create new FileList without the removed file
+  const dt = new DataTransfer();
+  const files = inputEl.files;
+
+  for (let i = 0; i < files.length; i++) {
+    if (i !== fileIndex) {
+      dt.items.add(files[i]);
+    }
+  }
+
+  inputEl.files = dt.files;
+
+  // Hide list if no files remaining
+  if (inputEl.files.length === 0) {
+    document.getElementById('businessCompanyList').classList.add('hidden');
+  }
+
+  updateBusinessSubmit();
+};
+
+/* --- Modal open/close --- */
+window.openKycModal = function () {
+  const modal = document.getElementById('kycModal');
+
+  // Only reset if not resubmitting to preserve field population
+  if (!window.isResubmitting) {
+    resetAllKycForms();  // ensure pristine every open
+  }
+
+  modal.classList.remove('hidden');
+  document.body.classList.add('overflow-hidden');
+  initBusinessRetained();
+};
+
+window.closeKycModal = function () {
+  const modal = document.getElementById('kycModal');
+  modal.classList.add('hidden');
+  document.body.classList.remove('overflow-hidden');
+  resetAllKycForms(); // reset everything after close
+};
+
+/* --- Reset helpers --- */
+function resetFormStyles(form) {
+  if (!form) return;
+  form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+}
+function resetPersonalStep2UI() {
+  const fileInput = document.getElementById('personalFileInput');
+  const list = document.getElementById('personalFileList');
+  const visaInput = document.getElementById('personalVisaFile');
+  const visaList = document.getElementById('personalVisaList');
+  const visaWrapper = document.getElementById('personalVisaWrapper');
+  const terms = document.getElementById('personal-terms');
+  const submitBtn = document.getElementById('submit-personal');
+  const hint = document.getElementById('personal-terms-scroll-hint');
+  if (fileInput) fileInput.value = '';
+  if (list) { list.innerHTML = ''; list.classList.add('hidden'); }
+  if (visaInput) visaInput.value = '';
+  if (visaList) { visaList.innerHTML = ''; visaList.classList.add('hidden'); }
+  if (visaWrapper) visaWrapper.classList.add('hidden');
+  if (terms) { terms.checked = false; terms.disabled = true; }
+  if (submitBtn) submitBtn.disabled = true;
+  if (hint) {
+    if (hint.dataset.defaultHint) {
+      hint.textContent = hint.dataset.defaultHint;
+    }
+    hint.classList.remove('hidden');
+  }
+  updatePersonalVisaRequirement();
+}
+function resetBusinessStep2UI() {
+  const rep = document.getElementById('businessRepFile');
+  const repList = document.getElementById('businessRepList');
+  const biz = document.getElementById('businessCompanyFile');
+  const bizList = document.getElementById('businessCompanyList');
+  const terms = document.getElementById('business-terms');
+  const submitBtn = document.getElementById('submit-business');
+  const hint = document.getElementById('business-terms-scroll-hint');
+  if (rep) rep.value = '';
+  if (repList) { repList.innerHTML = ''; repList.classList.add('hidden'); }
+  if (biz) biz.value = '';
+  if (bizList) { bizList.innerHTML = ''; bizList.classList.add('hidden'); }
+  if (terms) { terms.checked = false; terms.disabled = true; }
+  if (submitBtn) submitBtn.disabled = true;
+  if (hint) hint.classList.remove('hidden');
+}
+function resetHeaderAndChooser() {
+  const chooser = document.getElementById('kycTypeChooser');
+  const title = document.getElementById('kycModalTitle');
+  const subtitle = document.getElementById('kycModalSubtitle');
+  chooser?.classList.remove('hidden');
+  if (title?.dataset.defaultTitle) title.textContent = title.dataset.defaultTitle;
+  if (subtitle?.dataset.defaultSubtitle) {
+    subtitle.textContent = subtitle.dataset.defaultSubtitle;
+    subtitle.classList.remove('hidden');
+  }
+}
+function resetAllKycForms() {
+  const personalForm = document.getElementById('personalKycForm');
+  const businessForm = document.getElementById('businessKycForm');
+
+  // Reset native form fields
+  personalForm?.reset();
+  businessForm?.reset();
+
+  // Hide forms, show chooser
+  personalForm?.classList.add('hidden');
+  businessForm?.classList.add('hidden');
+  resetHeaderAndChooser();
+
+  // Clear error styles
+  resetFormStyles(personalForm);
+  resetFormStyles(businessForm);
+
+  // Step positions
+  showPersonalStep(1);
+  showBusinessStep(1);
+
+  // Step-2 extras
+  resetPersonalStep2UI();
+  resetBusinessStep2UI();
+}
+
+/* --- Switch between Personal/Business and HIDE chooser --- */
+window.switchKycForm = function (type) {
+  const chooser = document.getElementById('kycTypeChooser');
+  const personalForm = document.getElementById('personalKycForm');
+  const businessForm = document.getElementById('businessKycForm');
+  const title = document.getElementById('kycModalTitle');
+  const subtitle = document.getElementById('kycModalSubtitle');
+
+  chooser.classList.add('hidden');
+  subtitle?.classList.add('hidden');
+
+  if (type === 'personal') {
+    title.textContent = "{% trans 'Personal KYC' %}";
+    personalForm.classList.remove('hidden');
+    businessForm.classList.add('hidden');
+    showPersonalStep(1);
+  } else {
+    title.textContent = "{% trans 'Business KYC' %}";
+    businessForm.classList.remove('hidden');
+    personalForm.classList.add('hidden');
+    showBusinessStep(1);
+    initBusinessRetained();
+  }
+};
+
+// Read hidden retained inputs and initialize retained state (call whenever modal opens or form is shown)
+function initBusinessRetained() {
+  window.businessKycRetained = window.businessKycRetained || { rep: false, companyDocs: [] };
+  const retainedRepInput = document.getElementById('retainedRepId');
+  const retainedDocsInput = document.getElementById('retainedCompanyDocIds');
+  window.businessKycRetained.rep = retainedRepInput && retainedRepInput.value === '1';
+  window.businessKycRetained.companyDocs = (retainedDocsInput && retainedDocsInput.value) ? retainedDocsInput.value.split(',').filter(Boolean) : [];
+  // Set required flags accordingly
+  const repFileInputInit = document.getElementById('businessRepFile');
+  const companyFilesInputInit = document.getElementById('businessCompanyFile');
+  if (repFileInputInit) repFileInputInit.required = !(window.businessKycRetained.rep);
+  if (companyFilesInputInit) companyFilesInputInit.required = !(window.businessKycRetained.companyDocs.length > 0);
+  updateBusinessSubmit();
+}
+
+/* --- Steps --- */
+function showPersonalStep(step) {
+  const step1 = document.getElementById('personalStep1');
+  const step2 = document.getElementById('personalStep2');
+  const nextBtn = document.getElementById('personalNextBtn');
+  const prevBtn = document.getElementById('personalPrevBtn');
+  if (step === 1) {
+    step1.classList.remove('hidden'); step2.classList.add('hidden');
+    nextBtn?.classList.remove('hidden'); prevBtn?.classList.add('hidden');
+    updatePersonalVisaRequirement();
+    updatePersonalSubmit();
+  } else {
+    step1.classList.add('hidden'); step2.classList.remove('hidden');
+    nextBtn?.classList.add('hidden'); prevBtn?.classList.remove('hidden');
+    updatePersonalVisaRequirement();
+    updatePersonalSubmit();
+  }
+}
+function showBusinessStep(step) {
+  const step1 = document.getElementById('businessStep1');
+  const step2 = document.getElementById('businessStep2');
+  const nextBtn = document.getElementById('businessNextBtn');
+  const prevBtn = document.getElementById('businessPrevBtn');
+  if (step === 1) {
+    step1.classList.remove('hidden'); step2.classList.add('hidden');
+    nextBtn?.classList.remove('hidden'); prevBtn?.classList.add('hidden');
+  } else {
+    step1.classList.add('hidden'); step2.classList.remove('hidden');
+    nextBtn?.classList.add('hidden'); prevBtn?.classList.remove('hidden');
+  }
+}
+
+/* --- Simple validations for step 1 --- */
+function validatePersonalStep1() {
+  const step1 = document.getElementById('personalStep1');
+  const requiredFields = step1.querySelectorAll('.required-field');
+  const idDocumentType = document.getElementById('idDocumentType');
+  let valid = true;
+
+  requiredFields.forEach(f => f.classList.remove('border-red-500'));
+  requiredFields.forEach(f => { if (!f.value.trim()) { f.classList.add('border-red-500'); valid = false; }});
+  if (idDocumentType && !idDocumentType.value) { idDocumentType.classList.add('border-red-500'); valid = false; }
+
+  const issueDate = document.querySelector('input[name="id_issue_date"]');
+  const expiryDate = document.querySelector('input[name="id_expiry_date"]');
+  if (issueDate?.value && expiryDate?.value) {
+    if (new Date(expiryDate.value) <= new Date(issueDate.value)) {
+      expiryDate.classList.add('border-red-500');
+      alert(`❌ ${kycTranslations.expiryDateError}`);
+      valid = false;
+    }
+  }
+  if (!valid) alert(`❌ ${kycTranslations.fillRequiredFields}`);
+  return valid;
+}
+function validateBusinessStep1() {
+  const step1 = document.getElementById('businessStep1');
+  const requiredFields = step1.querySelectorAll('.required-field');
+  let valid = true;
+  requiredFields.forEach(f => f.classList.remove('border-red-500'));
+  requiredFields.forEach(f => { if (!f.value.trim()) { f.classList.add('border-red-500'); valid = false; }});
+  if (!valid) alert(`❌ ${kycTranslations.fillAllFields}`);
+  return valid;
+}
+
+function isCongoleseNationality(value) {
+  if (!value) return false;
+  return value.toLowerCase().startsWith('congol');
+}
+
+function updatePersonalVisaRequirement() {
+  const nationalitySelect = document.querySelector('#personalKycForm select[name="nationality"]');
+  const visaWrapper = document.getElementById('personalVisaWrapper');
+  const visaInput = document.getElementById('personalVisaFile');
+  const visaList = document.getElementById('personalVisaList');
+  const docType = document.getElementById('idDocumentType');
+  const voterOption = docType?.querySelector('option[value="voter_card"]');
+
+  const requireVisa = nationalitySelect ? !isCongoleseNationality(nationalitySelect.value || '') : false;
+
+  if (voterOption) {
+    const hide = requireVisa;
+    voterOption.hidden = hide;
+    voterOption.disabled = hide;
+    if (hide && docType?.value === 'voter_card') {
+      docType.value = '';
+    }
+  }
+
+  if (requireVisa) {
+    visaWrapper?.classList.remove('hidden');
+    // Only require upload if no existing visa file
+    if (visaInput) {
+      visaInput.required = !window.hasPersonalVisa;
+    }
+  } else {
+    visaWrapper?.classList.add('hidden');
+    visaInput?.removeAttribute('required');
+    if (visaInput) {
+      visaInput.value = '';
+      showFileSelection(visaInput, visaList);
+    }
+  }
+  updatePersonalSubmit();
+}
+
+/* --- Submit enabling rules --- */
+// Global variable to track document state
+window.hasPersonalDocument = {% if personal_document %}true{% else %}false{% endif %};
+window.hasPersonalVisa = {% if personal_visa %}true{% else %}false{% endif %};
+
+function updatePersonalSubmit() {
+  const terms = document.getElementById('personal-terms');
+  const fileInput = document.getElementById('personalFileInput');
+  const visaInput = document.getElementById('personalVisaFile');
+  const nationalitySelect = document.querySelector('#personalKycForm select[name="nationality"]');
+  const submitBtn = document.getElementById('submit-personal');
+  const hint = document.getElementById('personal-terms-scroll-hint');
+  const visaRequired = nationalitySelect ? !isCongoleseNationality(nationalitySelect.value || '') : false;
+
+  // Check for new files OR existing document
+  const hasNewFile = !!(fileInput?.files?.length);
+  const fileOk = hasNewFile || window.hasPersonalDocument;
+
+  // Set the required attribute based on whether we have existing document
+  if (fileInput) {
+    fileInput.required = !window.hasPersonalDocument;
+  }
+
+  const visaOk = !visaRequired || !!(visaInput?.files?.length) || window.hasPersonalVisa;
+  const termsOk = !!terms?.checked;
+  const ok = termsOk && fileOk && visaOk;
+  if (submitBtn) submitBtn.disabled = !ok;
+  if (!hint) return;
+  const defaultHint = hint.dataset.defaultHint || hint.textContent;
+  if (!hint.dataset.defaultHint) {
+    hint.dataset.defaultHint = defaultHint;
+  }
+  if (ok) {
+    hint.classList.add('hidden');
+    hint.textContent = defaultHint;
+    return;
+  }
+  hint.classList.remove('hidden');
+  if (!termsOk) {
+    hint.textContent = defaultHint;
+  } else if (!fileOk) {
+    hint.textContent = "{% trans 'Please upload your ID document to continue.' %}";
+  } else if (visaRequired && !visaOk) {
+    hint.textContent = "{% trans 'Please upload the last visa page to continue.' %}";
+  } else {
+    hint.textContent = defaultHint;
+  }
+}
+function updateBusinessSubmit() {
+  const terms = document.getElementById('business-terms');
+  const rep = document.getElementById('businessRepFile');
+  const biz = document.getElementById('businessCompanyFile');
+  const submitBtn = document.getElementById('submit-business');
+
+  // Check if previously submitted rep ID is present
+  const hasPrevRep = window.businessKycRetained.rep;
+  const hasNewRep = rep?.files?.length > 0;
+
+  // Check if previously submitted company docs are present
+  const hasPrevDocs = window.businessKycRetained.companyDocs.length > 0;
+  const hasNewDocs = biz?.files?.length > 0;
+
+  // Enable submit if terms checked AND (rep ID present or new) AND (company docs present or new)
+  const ok = !!(terms?.checked && (hasPrevRep || hasNewRep) && (hasPrevDocs || hasNewDocs));
+  if (submitBtn) submitBtn.disabled = !ok;
+}
+
+/* --- Init bindings --- */
+document.addEventListener('DOMContentLoaded', function() {
+  // Pré-remplissage du champ id_number lors du resubmit KYC personnel
+  if (window.previousPersonalKYC && window.previousPersonalKYC.id_number) {
+    const idNumberInput = document.querySelector('input[name="id_number"]');
+    if (idNumberInput) {
+      idNumberInput.value = window.previousPersonalKYC.id_number;
+    }
+  }
+  // Initialize retained files object for business KYC (read values from hidden inputs)
+  window.businessKycRetained = window.businessKycRetained || { rep: false, companyDocs: [] };
+  const retainedRepInput = document.getElementById('retainedRepId');
+  const retainedDocsInput = document.getElementById('retainedCompanyDocIds');
+  window.businessKycRetained.rep = retainedRepInput && retainedRepInput.value === '1';
+  window.businessKycRetained.companyDocs = (retainedDocsInput && retainedDocsInput.value) ? retainedDocsInput.value.split(',').filter(Boolean) : [];
+  updateBusinessSubmit();
+  updatePersonalSubmit(); // Initialize personal form validation state
+  // Set native 'required' flags on file inputs according to retained state to avoid native browser blocking
+  const repFileInputInit = document.getElementById('businessRepFile');
+  const companyFilesInputInit = document.getElementById('businessCompanyFile');
+  if (repFileInputInit) repFileInputInit.required = !(window.businessKycRetained.rep);
+  if (companyFilesInputInit) companyFilesInputInit.required = !(window.businessKycRetained.companyDocs.length > 0);
+  // Chooser
+  document.getElementById('btnKycPersonal')?.addEventListener('click', () => switchKycForm('personal'));
+  document.getElementById('btnKycBusiness')?.addEventListener('click', () => switchKycForm('business'));
+
+  // Keyboard access
+  ['btnKycPersonal','btnKycBusiness'].forEach(id => {
+    const b = document.getElementById(id);
+    b?.setAttribute('tabindex','0');
+    b?.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); }
+    });
+  });
+
+  // Navigation
+  document.getElementById('personalNextBtn')?.addEventListener('click', () => { if (validatePersonalStep1()) showPersonalStep(2); });
+  document.getElementById('personalPrevBtn')?.addEventListener('click', () => showPersonalStep(1));
+  document.getElementById('businessNextBtn')?.addEventListener('click', () => { if (validateBusinessStep1()) showBusinessStep(2); });
+  document.getElementById('businessPrevBtn')?.addEventListener('click', () => showBusinessStep(1));
+
+  const personalNationality = document.querySelector('#personalKycForm select[name="nationality"]');
+  personalNationality?.addEventListener('change', updatePersonalVisaRequirement);
+  updatePersonalVisaRequirement();
+
+  // Auto-enable + auto-check Terms when scrolled to the end (Personal)
+  const pTermsContainer = document.getElementById('personal-terms-container');
+  const pTerms = document.getElementById('personal-terms');
+  const pHint = document.getElementById('personal-terms-scroll-hint');
+  pTermsContainer?.addEventListener('scroll', function () {
+    const atBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 2;
+    if (atBottom && pTerms?.disabled) {
+      pTerms.disabled = false;
+      pTerms.checked = true; // auto-check
+      pHint?.classList.add('hidden');
+      updatePersonalSubmit();
+    }
+  });
+  pTerms?.addEventListener('change', updatePersonalSubmit);
+
+  // Auto-enable + auto-check Terms when scrolled to the end (Business)
+  const bTermsContainer = document.getElementById('business-terms-container');
+  const bTerms = document.getElementById('business-terms');
+  const bHint = document.getElementById('business-terms-scroll-hint');
+  bTermsContainer?.addEventListener('scroll', function () {
+    const atBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 2;
+    if (atBottom && bTerms?.disabled) {
+      bTerms.disabled = false;
+      bTerms.checked = true; // auto-check
+      bHint?.classList.add('hidden');
+      updateBusinessSubmit();
+    }
+  });
+  bTerms?.addEventListener('change', updateBusinessSubmit);
+
+  // Re-check submit enabling if files change after terms
+  document.getElementById('personalFileInput')?.addEventListener('change', updatePersonalSubmit);
+  document.getElementById('personalVisaFile')?.addEventListener('change', updatePersonalSubmit);
+  document.getElementById('businessRepFile')?.addEventListener('change', updateBusinessSubmit);
+  document.getElementById('businessCompanyFile')?.addEventListener('change', updateBusinessSubmit);
+
+  // AJAX submit handlers (endpoints unchanged)
+  function handleKycSubmit(formId, url) {
+    const form = document.getElementById(formId);
+    const personalStep1Fields = new Set(['full_name','date_of_birth','nationality','id_document_type','id_number','id_issue_date','id_expiry_date','address']);
+    const personalStep2Fields = new Set(['file','visa_file','terms_personal']);
+    const businessStep1Fields = new Set(['representative_name','company_name','address','established_date','business_sector','legal_status','rccm_number','nif','id_nat']);
+
+    const fieldNameMap = {
+      document_number: 'id_number',
+      id_number: 'id_number',
+      file: 'file',
+      visa_file: 'visa_file',
+      terms: 'terms_personal',
+      representative_file: 'representative_file',
+      representative_id_file: 'representative_file',
+      company_documents: 'company_document_files',
+      company_document_files: 'company_document_files',
+      rccm: 'rccm_number',
+      rccm_number: 'rccm_number',
+      nif: 'nif',
+      id_nat: 'id_nat',
+      phone: 'phone',
+    };
+
+    const highlightField = (fieldName, message) => {
+      if (!fieldName) return;
+      const mapped = fieldNameMap[fieldName] || fieldName;
+      let field = form.querySelector(`[name="${mapped}"]`);
+      if (!field) {
+        if (mapped === 'file') field = document.getElementById('personalFileInput');
+        else if (mapped === 'visa_file') field = document.getElementById('personalVisaFile');
+        else if (mapped === 'representative_file') field = document.getElementById('businessRepFile');
+        else if (mapped === 'company_document_files') field = document.getElementById('businessCompanyFile');
+      }
+      if (!field) return;
+
+      if (formId === 'personalKycForm') {
+        if (personalStep1Fields.has(mapped)) {
+          showPersonalStep(1);
+        } else if (personalStep2Fields.has(mapped)) {
+          showPersonalStep(2);
+        }
+      }
+      if (formId === 'businessKycForm') {
+        if (businessStep1Fields.has(mapped)) {
+          showBusinessStep(1);
+        } else {
+          showBusinessStep(2);
+        }
+      }
+
+      field.classList.add('border-red-500');
+      if (typeof field.focus === 'function') field.focus();
+      if (typeof field.scrollIntoView === 'function') {
+        field.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (typeof field.setCustomValidity === 'function') {
+        const msg = message || '';
+        field.setCustomValidity(msg);
+        field.reportValidity?.();
+        setTimeout(() => field.setCustomValidity(''), 2000);
+      }
+    };
+
+    async function doSubmit(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      const req = form.querySelectorAll('.required-field');
+      let ok = true;
+      const formData = new FormData(form);
+      const retainedRepInput = document.getElementById('retainedRepId');
+      const retainedDocsInput = document.getElementById('retainedCompanyDocIds');
+
+      // If this is the business form, explicitly validate file requirements using retained values
+      if (formId === 'businessKycForm') {
+        const repFileInput = form.querySelector('input[name="representative_file"]');
+        const companyFilesInput = form.querySelector('input[name="company_document_files"]');
+        const hasNewRep = repFileInput && repFileInput.files && repFileInput.files.length > 0;
+        const hasRetainedRep = retainedRepInput && retainedRepInput.value === '1';
+        const hasNewDocs = companyFilesInput && companyFilesInput.files && companyFilesInput.files.length > 0;
+        const hasRetainedDocs = retainedDocsInput && retainedDocsInput.value && retainedDocsInput.value.trim().length > 0;
+        if (!hasNewRep && !hasRetainedRep) {
+          if (repFileInput) repFileInput.classList.add('border-red-500');
+          alert(`❌ ${kycTranslations.provideRepresentativeId}`);
+          return;
+        }
+        if (!hasNewDocs && !hasRetainedDocs) {
+          if (companyFilesInput) companyFilesInput.classList.add('border-red-500');
+          alert(`❌ ${kycTranslations.provideCompanyDoc}`);
+          return;
+        }
+      }
+
+      // Generic required-field validation (skip file inputs because they were handled above)
+      req.forEach(f => {
+        if (f.type === 'file') return;
+        f.classList.remove('border-red-500');
+        if (!f.value) { f.classList.add('border-red-500'); ok = false; }
+      });
+      if (!ok) { alert(`❌ ${kycTranslations.missingRequiredFields}`); return; }
+
+      const csrf = document.querySelector('[name=csrfmiddlewaretoken]')?.value;
+      try {
+        const response = await fetch(url, { method:'POST', headers:{ 'X-CSRFToken': csrf, 'X-Requested-With':'XMLHttpRequest' }, body:new FormData(form) });
+        let data = null;
+        try {
+          data = await response.json();
+        } catch (parseErr) {
+          console.warn('KYC: response JSON parse failed; treating as opaque success if HTTP 2xx', parseErr);
+        }
+
+        // Success handling: any 2xx without explicit success:false is treated as success
+        const explicitFailure = data && data.success === false;
+        if (response.ok && !explicitFailure) {
+          alert(`✅ ${kycTranslations.kycSubmittedSuccess}`);
+          form.reset();
+          closeKycModal(); // also resets
+          location.reload();
+          return;
+        }
+
+        // Error handling
+        const errorMessage = (data && data.message) || "{% trans 'Submission failed.' %}";
+        alert(`❌ ${errorMessage}`);
+        form.querySelectorAll('.border-red-500').forEach(el => el.classList.remove('border-red-500'));
+        if (data && data.field) {
+          highlightField(data.field, errorMessage);
+        } else {
+          if (!response.ok) {
+            console.error('KYC submission error', response.status, response.statusText, data);
+          }
+        }
+      } catch (err) {
+        console.error('KYC submission network/error', err);
+        alert(`⚠️ ${kycTranslations.serverError}`);
+      }
+    }
+
+    // Bind to form submit event (fires AFTER validation passes)
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      console.log(`✅ Form validation passed for ${formId}, submitting...`);
+      doSubmit(e);
+    });
+  }
+  handleKycSubmit('personalKycForm', '{% url "submit_personal_kyc" %}');
+  handleKycSubmit('businessKycForm', '{% url "submit_business_kyc" %}');
+});
+</script>

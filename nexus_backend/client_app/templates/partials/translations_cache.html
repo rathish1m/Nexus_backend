@@ -1,0 +1,140 @@
+{% load i18n %}
+<!-- Global Translation Cache Script -->
+<script>
+/**
+ * Cache global des traductions pour optimiser les performances
+ * Génère un seul objet avec toutes les traductions nécessaires
+ */
+window.NEXUS_TRANSLATIONS = {
+  // Statuts d'abonnement
+  status: {
+    'active': '{% trans "Active"|escapejs %}',
+    'suspended': '{% trans "Suspended"|escapejs %}',
+    'cancelled': '{% trans "Cancelled"|escapejs %}',
+    'inactive': '{% trans "Inactive"|escapejs %}'
+  },
+
+  // Cycles de facturation
+  billing: {
+    'monthly': '{% trans "Monthly" %}',
+    'quarterly': '{% trans "Quarterly" %}',
+    'yearly': '{% trans "Yearly" %}'
+  },
+
+  // Actions communes
+  actions: {
+    'manage': '{% trans "Manage" %}',
+    'review': '{% trans "Review" %}',
+    'pay': '{% trans "Pay Now" %}',
+    'cancel': '{% trans "Cancel" %}',
+    'suspend': '{% trans "Suspend" %}',
+    'resume': '{% trans "Resume" %}',
+    'view': '{% trans "View" %}',
+    'clear': '{% trans "Clear" %}',
+    'pause': '{% trans "Pause" %}',
+    'activate': '{% trans "Activate" %}',
+    // Billing management actions
+    'reject': '{% trans "Reject" %}',
+    'approve_continue': '{% trans "Approve & Continue" %}'
+  },
+
+  // Messages d'interface
+  ui: {
+    'loading': '{% trans "Loading..." %}',
+    'loading_subscriptions': '{% trans "Loading subscriptions..." %}',
+    'loading_details': '{% trans "Loading subscription details..." %}',
+    'loading_map': '{% trans "Loading map…" %}',
+    'no_data': '{% trans "No data available" %}',
+    'error': '{% trans "An error occurred" %}',
+    'success': '{% trans "Success" %}',
+    'failed_load': '{% trans "Failed to load subscriptions." %}',
+    'no_match_filters': '{% trans "No subscriptions match your filters." %}'
+  },
+
+  // Labels de données
+  labels: {
+    'used': '{% trans "Used" %}',
+    'cap': '{% trans "Cap" %}',
+    'active_subscriptions': '{% trans "Active Subscriptions" %}',
+    'projected_monthly_spend': '{% trans "Projected Monthly Spend (Excl. Taxes)" %}',
+    'renewals_7_days': '{% trans "Renewals (7 days)" %}',
+    'subscriptions_page': '{% trans "Subscriptions (page)" %}',
+    'search': '{% trans "Search" %}',
+    'search_by_plan_or_order': '{% trans "Search by plan or order ref" %}',
+    'status': '{% trans "Status" %}',
+    'all_statuses': '{% trans "All Statuses" %}',
+    'date_range': '{% trans "Date range (start–end)" %}',
+    'plan': '{% trans "Plan" %}',
+    'billing_cycle': '{% trans "Billing Cycle" %}',
+    'cycle_fee': '{% trans "Cycle Fee (Excl. Taxes)" %}',
+    'start_date': '{% trans "Start Date" %}',
+    'next_billing': '{% trans "Next Billing" %}',
+    'manage': '{% trans "Manage" %}',
+    'loading_subscriptions': '{% trans "Loading subscriptions..." %}',
+    'start': '{% trans "Start" %}',
+    'next_bill': '{% trans "Next bill" %}',
+    // Billing management labels
+    'additional_equipment_required': '{% trans "Additional Equipment Required" %}',
+    'order': '{% trans "Order:" %}',
+    'close': '{% trans "Close" %}',
+    'loading_billing_details': '{% trans "Loading billing details..." %}',
+    'cost_breakdown': '{% trans "Cost Breakdown" %}',
+    'item': '{% trans "Item" %}',
+    'description': '{% trans "Description" %}',
+    'qty': '{% trans "Qty" %}',
+    'unit_price': '{% trans "Unit Price" %}',
+    'total': '{% trans "Total" %}',
+    'subtotal': '{% trans "Subtotal:" %}',
+    'total_tax': '{% trans "Total Tax:" %}',
+    'total_amount': '{% trans "Total Amount:" %}',
+    'your_notes_optional': '{% trans "Your Notes (Optional)" %}',
+    'add_questions_placeholder': '{% trans "Add any questions or comments about these additional costs..." %}',
+    'current_balance': '{% trans "Current Balance" %}',
+    'billing': '{% trans "Billing" %}',
+    'start': '{% trans "Start" %}',
+    'next_bill': '{% trans "Next bill" %}',
+    'order_ref': '{% trans "Order Ref" %}'
+  },
+
+  // Messages d'usage
+  usage: {
+    'you_have_used': '{% trans "You have used" %}',
+    'of_monthly_data': '{% trans "of your monthly data." %}',
+    'exceeded_cap': '{% trans "You exceeded your data cap." %}',
+    'no_cap_info': '{% trans "No cap information available." %}'
+  }
+};
+
+/**
+ * Fonction utilitaire pour récupérer une traduction
+ * @param {string} category - Catégorie de traduction
+ * @param {string} key - Clé de traduction
+ * @param {string} fallback - Valeur par défaut si traduction introuvable
+ * @returns {string} Traduction ou fallback
+ */
+window.t = function(category, key, fallback = null) {
+  return window.NEXUS_TRANSLATIONS[category]?.[key] || fallback || key;
+};
+
+/**
+ * Fonctions spécialisées pour optimiser les appels
+ */
+window.translateStatus = (status) => {
+  const result = t('status', status) || '—';
+  {% if debug %}
+  // Debug logging (only in DEBUG mode)
+  console.log(`[translateStatus] Input: "${status}" -> Output: "${result}"`);
+  console.log(`[translateStatus] Available translations:`, window.NEXUS_TRANSLATIONS?.status);
+  {% endif %}
+  return result;
+};
+window.translateBilling = (cycle) => t('billing', cycle) || '—';
+window.translateAction = (action) => t('actions', action);
+window.translateUI = (message) => t('ui', message);
+window.translateLabel = (label) => t('labels', label);
+
+/**
+ * Cache des badge HTML pour éviter la régénération
+ */
+window.statusBadgeCache = new Map();
+</script>

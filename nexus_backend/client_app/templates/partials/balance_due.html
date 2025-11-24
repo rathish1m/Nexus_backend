@@ -1,0 +1,662 @@
+{% load i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<style>
+/* --- Card micro-interactions --- */
+@keyframes bounceCard { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+.card-bounce:hover { animation:bounceCard .6s ease-in-out; }
+
+/* Gradient shift accent (if you need it somewhere) */
+@keyframes gradientShift {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.animate-gradient {background-size:200% 200%;animation:gradientShift 6s ease infinite;}
+
+/* --- Ledger modal visuals --- */
+.ledger-card{border-radius:16px;border:1px solid #e5e7eb;background:#fff;box-shadow:0 10px 30px rgba(2,6,23,.12)}
+.ledger-stat{border:1px solid #e5e7eb;border-radius:14px;padding:.9rem 1rem;background:linear-gradient(180deg,#fafafa, #fff)}
+.ledger-pill{font-size:.72rem;font-weight:700;border-radius:999px;padding:.25rem .55rem;line-height:1}
+.pill-credit{color:#065f46;background:#ecfdf5;border:1px solid #a7f3d0}
+.pill-debit {color:#991b1b;background:#fef2f2;border:1px solid #fecaca}
+.th-sm{font-size:.72rem;letter-spacing:.02em;color:#475569;text-transform:uppercase}
+.row-alt:nth-child(odd){background:#fbfbfb}
+.table-wrap{max-height:60vh;overflow:auto;border:1px solid #e5e7eb;border-radius:14px}
+.table-head{position:sticky;top:0;z-index:1;background:#fff;border-bottom:1px solid #e5e7eb}
+.badge-soft{font-size:.72rem;border:1px solid #e5e7eb;background:#f8fafc;border-radius:8px;padding:.15rem .4rem;color:#334155}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:.5rem;font-weight:600;border-radius:10px;padding:.55rem .85rem;transition:.2s}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{color:#fff;background:linear-gradient(90deg,#0ea5e9,#2563eb)}
+.btn-ghost{background:#f8fafc;border:1px solid #e5e7eb;color:#334155}
+.btn-danger{color:#fff;background:linear-gradient(90deg,#f43f5e,#fb923c)}
+
+/* Inputs */
+.input, .select{
+  width:100%;border:1px solid #e5e7eb;border-radius:10px;padding:.55rem .7rem;font-size:.9rem;color:#0f172a;background:#fff
+}
+.input:focus, .select:focus{outline:2px solid #bfdbfe;outline-offset:2px}
+
+/* Pager */
+.pager button{border:1px solid #e5e7eb;border-radius:8px;padding:.35rem .6rem}
+.pager button[aria-current="page"]{background:#2563eb;color:#fff;border-color:#2563eb}
+</style>
+
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-6">
+  <!-- Unpaid Due (uses active_unpaid_balance_usd) -->
+  <div id="cardUnpaid" class="card-bounce bg-white rounded-2xl shadow-lg border border-rose-200 overflow-hidden flex flex-col justify-between">
+    <div class="p-5">
+      <div id="unpaidHeader" class="flex items-center gap-2 text-rose-600 font-semibold">
+        <i class="fas fa-file-invoice text-lg"></i> {% trans "Unpaid Due" %}
+      </div>
+      <p id="unpaidAmount" class="mt-3 text-3xl font-bold text-rose-700">$0.00</p>
+    </div>
+    <div id="unpaidFooter" class="bg-rose-50 px-5 py-4 text-right">
+      <button id="payNowBtn"
+              aria-label="{% trans 'View details' %}"
+              class="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-orange-500 text-white font-semibold shadow hover:from-rose-600 hover:to-orange-600 transform transition active:scale-95">
+        <i id="payNowIcon" class="fas fa-eye"></i>
+        <span id="payNowLabel">{% trans "View details" %}</span>
+        <span id="payNowAmt" class="ml-1 opacity-90">($0.00)</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Account Credit -->
+  <div class="card-bounce bg-white rounded-2xl shadow-lg border border-emerald-200 overflow-hidden flex flex-col justify-between">
+    <div class="p-5">
+      <div class="flex items-center gap-2 text-emerald-600 font-semibold">
+        <i class="fas fa-wallet text-lg"></i> {% trans "Account Credit" %}
+      </div>
+      <p id="creditAmount" class="mt-3 text-3xl font-bold text-emerald-700">$0.00</p>
+    </div>
+    <div class="bg-emerald-50 px-5 py-4 text-right">
+      <button id="viewLedgerBtn"
+              class="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-semibold shadow hover:from-emerald-600 hover:to-teal-600 transform transition active:scale-95">
+        <i class="fas fa-list"></i> {% trans "View Ledger" %}
+      </button>
+    </div>
+  </div>
+
+  <!-- Net Due (mirrors active_unpaid_balance_usd) -->
+  <div class="card-bounce bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden flex flex-col justify-between">
+    <div class="p-5">
+      <div class="flex items-center gap-2 text-gray-600 font-semibold">
+        <i class="fas fa-balance-scale text-lg"></i> {% trans "Net Due" %}
+      </div>
+      <p id="balanceAmount" class="mt-3 text-3xl font-bold text-gray-700">$0.00</p>
+    </div>
+    <div class="bg-gray-50 px-5 py-4 text-right">
+      <button id="viewDetailsBtn"
+              class="px-4 py-2 rounded-xl bg-gradient-to-r from-gray-600 to-gray-800 text-white font-semibold shadow hover:from-gray-700 hover:to-gray-900 transform transition active:scale-95">
+        <i class="fas fa-info-circle"></i> {% trans "Details" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ========= Redesigned Ledger Modal ========= -->
+<div id="creditModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/50">
+  <div class="ledger-card w-[min(92vw,980px)] max-h-[92vh] overflow-hidden relative" role="dialog" aria-modal="true" aria-labelledby="ledgerTitle">
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-white">
+      <div>
+        <h2 id="ledgerTitle" class="text-lg font-bold text-gray-900">{% trans "Account Ledger" %}</h2>
+        <p id="ledgerSub" class="text-xs text-gray-500">{% trans "All credits and debits on your account" %}</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="ledgerExportBtn" class="btn btn-ghost">
+          <i class="fas fa-file-export"></i> {% trans "Export CSV" %}
+        </button>
+        <button id="closeCreditModal" class="btn btn-ghost" aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 px-5 pt-4 pb-2 bg-white">
+      <div class="ledger-stat">
+        <div class="text-xs text-gray-500">{% trans "Total Credits" %}</div>
+        <div id="statCredits" class="mt-1 text-xl font-bold text-emerald-700">$0.00</div>
+      </div>
+      <div class="ledger-stat">
+        <div class="text-xs text-gray-500">{% trans "Total Debits" %}</div>
+        <div id="statDebits" class="mt-1 text-xl font-bold text-rose-700">$0.00</div>
+      </div>
+      <div class="ledger-stat">
+        <div class="text-xs text-gray-500">{% trans "Net Movement" %}</div>
+        <div id="statNet" class="mt-1 text-xl font-bold text-gray-900">$0.00</div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="px-5 py-3 bg-white border-b border-gray-200">
+      <div class="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+        <div>
+          <label class="text-xs text-gray-600">{% trans "Type" %}</label>
+          <select id="ledgerType" class="select">
+            <option value="all">{% trans "All" %}</option>
+            <option value="credit">{% trans "Credits" %}</option>
+            <option value="debit">{% trans "Debits" %}</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-600">{% trans "From" %}</label>
+          <input id="ledgerFrom" type="date" class="input">
+        </div>
+        <div>
+          <label class="text-xs text-gray-600">{% trans "To" %}</label>
+          <input id="ledgerTo" type="date" class="input">
+        </div>
+        <div class="sm:col-span-2">
+          <label class="text-xs text-gray-600">{% trans "Search" %}</label>
+          <input id="ledgerSearch" type="text" class="input" placeholder="{% trans 'Find by description, ref…' %}">
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="p-5 bg-white">
+      <div class="table-wrap rounded-xl">
+        <table class="min-w-full text-sm">
+          <thead class="table-head">
+            <tr>
+              <th class="th-sm px-4 py-3 text-left">{% trans "Date" %}</th>
+              <th class="th-sm px-4 py-3 text-left">{% trans "Description" %}</th>
+              <th class="th-sm px-4 py-3 text-left">{% trans "Type" %}</th>
+              <th class="th-sm px-4 py-3 text-right">{% trans "Amount" %}</th>
+              <th class="th-sm px-4 py-3 text-left hidden sm:table-cell">{% trans "Reference" %}</th>
+            </tr>
+          </thead>
+          <tbody id="ledgerBody">
+            <tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">{% trans "Loading…" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-4 flex items-center justify-between text-xs text-gray-600">
+        <div id="ledgerCount">{% trans "—" %}</div>
+        <div class="pager flex gap-1" id="ledgerPager"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const balanceTranslations = {
+  zeroItems: "{{ _('0 items')|escapejs }}",
+  of: "{{ _('of')|escapejs }}",
+  allClear: "{{ _('All Clear')|escapejs }}",
+  viewDetails: "{{ _('View details')|escapejs }}"
+};
+
+/* ---------- Simple navigation actions (no ledger fetch here; handled below) ---------- */
+(function(){
+  const $ = s => document.querySelector(s);
+  const payNowBtn = $("#payNowBtn");
+  const viewDetailsBtn = $("#viewDetailsBtn");
+
+  // Always go to billing details (no "pay=now" URL)
+  payNowBtn?.addEventListener("click", () => {
+    window.location.href = "/client/billing/#open-invoices";
+  });
+
+  viewDetailsBtn?.addEventListener("click", () => {
+    window.location.href = "/client/billing/";
+  });
+})();
+
+/* ---------- Ledger modal (redesigned, 3-per-page pagination) ---------- */
+(function(){
+  const $ = s => document.querySelector(s);
+
+  const viewLedgerBtn = $("#viewLedgerBtn");
+  const creditModal   = $("#creditModal");
+  const closeModalBtn = $("#closeCreditModal");
+  const exportBtn     = $("#ledgerExportBtn");
+
+  const statCredits = $("#statCredits");
+  const statDebits  = $("#statDebits");
+  const statNet     = $("#statNet");
+
+  const fType   = $("#ledgerType");
+  const fFrom   = $("#ledgerFrom");
+  const fTo     = $("#ledgerTo");
+  const fSearch = $("#ledgerSearch");
+
+  const tBody   = $("#ledgerBody");
+  const tCount  = $("#ledgerCount");
+  const tPager  = $("#ledgerPager");
+
+  const money = (n,c="USD") => (Number(n)||0).toLocaleString(undefined,{style:"currency",currency:c});
+  const parseDate = (s) => { if(!s) return null; const d=new Date(s); return isNaN(d)?null:d; };
+
+  let __tx = [];
+  let __filtered = [];
+  let __page = 1;
+  const PER_PAGE = 3;  /* Paginate by 3 records per page */
+
+  function classify(tx){
+    const type = (tx.tx_type || tx.type || "").toLowerCase();
+    if (type.includes("credit")) return "credit";
+    if (type.includes("debit"))  return "debit";
+    const amt = Number(tx.amount || tx.value || 0);
+    return amt >= 0 ? "credit" : "debit";
+  }
+
+  function normalize(items){
+    return (items||[]).map((it,i)=>({
+      id: it.id || i,
+      date: it.date || it.created_at || it.timestamp || null,
+      description: it.note || it.description || it.entry_type || "",
+      tx_type: classify(it),
+      amount: Number(it.amount || it.value || 0),
+      currency: it.currency || "USD",
+      reference: it.reference || it.order_reference || it.payment_ref || ""
+    }));
+  }
+
+  function openModal(){ creditModal?.classList.remove("hidden"); creditModal?.classList.add("flex"); }
+  function closeModal(){ creditModal?.classList.add("hidden"); creditModal?.classList.remove("flex"); }
+
+  function renderStats(list){
+    const credits = list.filter(t=>t.tx_type==='credit').reduce((s,t)=>s+Math.abs(t.amount),0);
+    const debits  = list.filter(t=>t.tx_type==='debit').reduce((s,t)=>s+Math.abs(t.amount),0);
+    const net = credits - debits;
+    if (statCredits) statCredits.textContent = money(credits);
+    if (statDebits)  statDebits.textContent  = money(debits);
+    if (statNet)     statNet.textContent     = money(net);
+  }
+
+  function escapeHtml(str){ return String(str||"").replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+  function formatDate(s){
+    const d = parseDate(s); if(!d) return "—";
+    try{ return d.toLocaleString(undefined,{year:'numeric',month:'short',day:'2-digit',hour:'2-digit',minute:'2-digit'}); }
+    catch{ return s; }
+  }
+
+  function renderPage(){
+    if (!tBody || !tPager || !tCount) return;
+
+    if (!__filtered.length){
+      tBody.innerHTML = `<tr><td colspan="5" class="px-4 py-10 text-center">
+        <div class="inline-flex items-center gap-2 badge-soft"><i class="far fa-inbox"></i> {% trans "No transactions found for your filters." %}</div>
+      </td></tr>`;
+      tPager.innerHTML = "";
+      tCount.textContent = balanceTranslations.zeroItems;
+      return;
+    }
+
+    const totalPages = Math.max(1, Math.ceil(__filtered.length / PER_PAGE));
+    __page = Math.max(1, Math.min(__page, totalPages));
+    const start = (__page-1) * PER_PAGE;
+    const pageItems = __filtered.slice(start, start + PER_PAGE);
+
+    tBody.innerHTML = pageItems.map((tx)=>`
+      <tr class="row-alt">
+        <td class="px-4 py-3 text-gray-700 whitespace-nowrap">${formatDate(tx.date)}</td>
+        <td class="px-4 py-3 text-gray-900">${escapeHtml(tx.description || "—")}</td>
+        <td class="px-4 py-3">
+          <span class="ledger-pill ${tx.tx_type==='credit'?'pill-credit':'pill-debit'}">
+            ${tx.tx_type==='credit' ? '{% trans "Credit" %}' : '{% trans "Debit" %}'}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-right font-semibold ${tx.tx_type==='credit'?'text-emerald-700':'text-rose-700'}">
+          ${tx.tx_type==='credit' ? '+' : '-'}${money(Math.abs(tx.amount), tx.currency)}
+        </td>
+        <td class="px-4 py-3 text-gray-600 hidden sm:table-cell">${escapeHtml(tx.reference || "—")}</td>
+      </tr>
+    `).join("");
+
+    tCount.textContent = `${start+1}-${start+pageItems.length} ${balanceTranslations.of} ${__filtered.length}`;
+
+    // Pager
+    tPager.innerHTML = "";
+    if (totalPages > 1){
+      if (__page > 1){
+        tPager.insertAdjacentHTML("beforeend", `<button data-p="${__page-1}">&laquo; {% trans 'Prev' %}</button>`);
+      }
+      const win = 5;
+      let s = Math.max(1, __page - Math.floor(win/2));
+      let e = Math.min(totalPages, s + win - 1);
+      if (e - s < win - 1) s = Math.max(1, e - win + 1);
+      for (let i=s;i<=e;i++){
+        tPager.insertAdjacentHTML("beforeend", `<button data-p="${i}" ${i===__page?'aria-current="page"':''}>${i}</button>`);
+      }
+      if (__page < totalPages){
+        tPager.insertAdjacentHTML("beforeend", `<button data-p="${__page+1}">{% trans 'Next' %} &raquo;</button>`);
+      }
+    }
+  }
+
+  function applyFilters(){
+    const type = fType?.value || "all";
+    const q = (fSearch?.value || "").trim().toLowerCase();
+    const dFrom = fFrom?.value ? new Date(fFrom.value) : null;
+    const dTo   = fTo?.value   ? new Date(fTo.value)   : null;
+    if (dTo) dTo.setHours(23,59,59,999);
+
+    let out = __tx.filter(tx=>{
+      if (type !== "all" && tx.tx_type !== type) return false;
+      const d = parseDate(tx.date);
+      if (dFrom && (!d || d < dFrom)) return false;
+      if (dTo   && (!d || d > dTo))   return false;
+      if (q){
+        const bag = `${tx.description} ${tx.reference}`.toLowerCase();
+        if (!bag.includes(q)) return false;
+      }
+      return true;
+    });
+
+    out.sort((a,b)=>{
+      const da = parseDate(a.date)?.getTime() || 0;
+      const db = parseDate(b.date)?.getTime() || 0;
+      return db - da;
+    });
+
+    __filtered = out;
+    __page = 1;
+    renderStats(out);
+    renderPage();
+  }
+
+  async function loadLedger(){
+    openModal();
+    tBody.innerHTML = `<tr><td colspan="5" class="px-4 py-8 text-center text-gray-400">{% trans "Loading…" %}</td></tr>`;
+    tPager.innerHTML = ""; tCount.textContent = "—";
+
+    try{
+      const res = await fetch("{% url 'wallet_ledger' %}", {
+        headers: {"X-Requested-With":"XMLHttpRequest","Accept":"application/json"},
+        cache: "no-cache"
+      });
+      const data = await res.json();
+      const items = Array.isArray(data?.transactions) ? data.transactions : [];
+      __tx = normalize(items);
+      applyFilters();
+    }catch(e){
+      console.error(e);
+      tBody.innerHTML = `<tr><td colspan="5" class="px-4 py-10 text-center text-rose-600">{% trans "Failed to load ledger." %}</td></tr>`;
+    }
+  }
+
+  function toCSV(rows){
+    const headers = ["Date","Description","Type","Amount","Currency","Reference"];
+    const escape = v => `"${String(v??"").replace(/"/g,'""')}"`;
+    const lines = rows.map(r => [
+      formatDate(r.date),
+      r.description||"",
+      r.tx_type,
+      (r.tx_type==='debit'?-Math.abs(r.amount):Math.abs(r.amount)).toFixed(2),
+      r.currency||"USD",
+      r.reference||""
+    ].map(escape).join(","));
+    return [headers.join(","), ...lines].join("\n");
+  }
+  function downloadCSV(){
+    const csv = toCSV(__filtered);
+    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+    a.download = `ledger-${ts}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  $("#viewLedgerBtn")?.addEventListener("click", loadLedger);
+  closeModalBtn?.addEventListener("click", closeModal);
+  document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closeModal(); });
+  [fType,fFrom,fTo,fSearch].forEach(el=> el?.addEventListener("input", applyFilters));
+  tPager?.addEventListener("click", (e)=>{
+    const b = e.target.closest("button[data-p]");
+    if(!b) return;
+    __page = parseInt(b.getAttribute("data-p"),10) || 1;
+    renderPage();
+  });
+  exportBtn?.addEventListener("click", downloadCSV);
+})();
+
+/* ---------- Summary fetch + unpaid color logic (non-expired, unpaid sum) ---------- */
+(function(){
+  const $ = s => document.querySelector(s);
+
+  const unpaidEl    = $("#unpaidAmount");
+  const creditEl    = $("#creditAmount");
+  const balanceEl   = $("#balanceAmount");
+  const payNowBtn   = $("#payNowBtn");
+  const payNowAmt   = $("#payNowAmt");
+  const payNowLabel = $("#payNowLabel");
+  const payNowIcon  = $("#payNowIcon");
+
+  // Elements for color toggling
+  const cardUnpaid   = $("#cardUnpaid");
+  const unpaidHeader = $("#unpaidHeader");
+  const unpaidFooter = $("#unpaidFooter");
+
+  const money = n => (Number(n)||0).toLocaleString(undefined,{style:"currency",currency:"USD"});
+
+  function swap(el, removeArr, addArr){
+    if(!el) return;
+    removeArr.forEach(c=>el.classList.remove(c));
+    addArr.forEach(c=>el.classList.add(c));
+  }
+
+  function updateUnpaidVisual(due){
+    const zero = Number(due) <= 0;
+
+    if (zero){
+      // Switch to “All Clear” (green theme)
+      swap(cardUnpaid,  ["border-rose-200"], ["border-emerald-200"]);
+      swap(unpaidHeader,["text-rose-600"],   ["text-emerald-600"]);
+      swap(unpaidEl,    ["text-rose-700"],   ["text-emerald-700"]);
+      swap(unpaidFooter,["bg-rose-50"],      ["bg-emerald-50"]);
+
+      swap(payNowBtn,
+        ["from-rose-500","to-orange-500","hover:from-rose-600","hover:to-orange-600"],
+        ["from-emerald-500","to-teal-500","hover:from-emerald-600","hover:to-teal-600"]
+      );
+      if (payNowLabel) payNowLabel.textContent = balanceTranslations.allClear;
+      if (payNowAmt) { payNowAmt.textContent = ""; payNowAmt.classList.add("hidden"); }
+      if (payNowIcon) payNowIcon.className = "fas fa-check-circle";
+      // Keep enabled so user can still view details/history
+      if (payNowBtn) payNowBtn.disabled = false;
+
+    } else {
+      // Back to “due” (rose theme) — but still “View details”
+      swap(cardUnpaid,  ["border-emerald-200"], ["border-rose-200"]);
+      swap(unpaidHeader,["text-emerald-600"],   ["text-rose-600"]);
+      swap(unpaidEl,    ["text-emerald-700"],   ["text-rose-700"]);
+      swap(unpaidFooter,["bg-emerald-50"],      ["bg-rose-50"]);
+
+      swap(payNowBtn,
+        ["from-emerald-500","to-teal-500","hover:from-emerald-600","hover:to-teal-600"],
+        ["from-rose-500","to-orange-500","hover:from-rose-600","hover:to-orange-600"]
+      );
+      if (payNowLabel) payNowLabel.textContent = balanceTranslations.viewDetails;
+      if (payNowAmt) { payNowAmt.textContent = `(${money(due)})`; payNowAmt.classList.remove("hidden"); }
+      if (payNowIcon) payNowIcon.className = "fas fa-eye";
+      if (payNowBtn) payNowBtn.disabled = false;
+    }
+  }
+
+  // ---- Helpers to interpret backend order shapes safely ----
+  function parseDateSafe(v){
+    if (v == null || v === "") return null;
+    if (typeof v === "number" && Number.isFinite(v)){
+      const ms = v < 1e12 ? v * 1000 : v; // epoch seconds vs ms
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof v === "string"){
+      const s = v.trim();
+      const isoish = (s.length >= 19 && s[10] === " ") ? s.replace(" ", "T") : s;
+      const d = new Date(isoish);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function isExpired(order){
+    // Authoritative: backend boolean if provided
+    if (typeof order?.is_expired === "boolean") return order.is_expired;
+
+    // Strict rule: expired iff now >= expires_at (inclusive). If no expires_at → not expired.
+    const dbExpiry = parseDateSafe(order?.expires_at ?? order?.expiration_at ?? order?.expiry_at);
+    if (dbExpiry) return Date.now() >= dbExpiry.getTime();
+
+    // If no explicit expiry provided, consider it not expired (do not infer from status strings)
+    return false;
+  }
+
+  function isCancelled(order){
+    const st = String(order?.status || order?.state || "").toLowerCase();
+    return ["cancelled","canceled","void","refunded","failed"].includes(st);
+  }
+
+  function orderPaidAmount(order){
+    const vals = [
+      order?.amount_paid_usd,
+      order?.amount_paid,
+      order?.paid_amount_usd,
+      order?.paid_amount
+    ].map(Number).filter(n => Number.isFinite(n));
+    if (vals.length) return Math.max(...vals);
+    // sometimes backend provides booleans only—treat fully paid as total
+    if (isPaid(order)) return Number(order?.total_price_usd ?? order?.total_usd ?? order?.total ?? 0);
+    return 0;
+  }
+
+  function orderTotalAmount(order){
+    const vals = [
+      order?.remaining_due_usd, // if provided, we’ll use separately
+      order?.balance_usd,       // if provided, we’ll use separately
+      order?.total_price_usd,
+      order?.total_usd,
+      order?.total_price,
+      order?.total
+    ];
+    for (const v of vals){
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+  }
+
+  function isPaid(order){
+    // explicit flags or clear statuses
+    if (order?.is_paid === true || order?.paid === true) return true;
+    const ps = String(order?.payment_status || "").toLowerCase();
+    if (["paid","succeeded","settled"].includes(ps)) return true;
+
+    // if backend provides a remaining/balance, use that
+    const rem = Number(order?.remaining_due_usd ?? order?.balance_usd ?? order?.total_due_usd);
+    if (Number.isFinite(rem)) return rem <= 0;
+
+    // fallback: compare paid vs total
+    const total = orderTotalAmount(order);
+    const paid  = orderPaidAmount(order);
+    if (total > 0 && paid >= total - 1e-6) return true;
+
+    return false;
+  }
+
+  function orderRemainingDue(order){
+    // Preferred: explicit remaining/balance
+    const explicit = Number(order?.remaining_due_usd ?? order?.balance_usd ?? order?.total_due_usd);
+    if (Number.isFinite(explicit)) return Math.max(0, explicit);
+
+    // Fallback: total - paid
+    const total = orderTotalAmount(order);
+    const paid  = orderPaidAmount(order);
+    const rem = total - paid;
+    return Math.max(0, Number.isFinite(rem) ? rem : 0);
+  }
+
+  // New rule: compute sum of TOTALS for all active (not expired, not cancelled) orders that are NOT paid
+  function computeActiveNonPaidTotal(orders){
+    if (!Array.isArray(orders) || !orders.length) return 0;
+
+    let sum = 0;
+    for (const o of orders){
+      if (isCancelled(o)) continue;
+      if (isExpired(o)) continue;
+      // Match Billing page logic: rely on payment_status strictly
+      const ps = String(o?.payment_status || '').toLowerCase();
+      if (ps === 'paid') continue;
+
+      // Use total amount (not remaining) to match "not paid" definition
+      const tot = orderTotalAmount(o);
+      if (Number.isFinite(tot) && tot > 0) sum += tot;
+    }
+    return sum;
+  }
+
+  async function loadSummary(){
+    try {
+      // 1) Prefer the new lightweight KPI endpoint
+      const kpiRes = await fetch("{% url 'billing_kpis' %}", {
+        headers: {"X-Requested-With":"XMLHttpRequest","Accept":"application/json"},
+        cache: "no-cache"
+      });
+      if (!kpiRes.ok) throw new Error(`KPI HTTP ${kpiRes.status}`);
+      const kpiData = await kpiRes.json();
+      const kpis = kpiData?.kpis || {};
+      const credits = kpiData?.credits || {};
+
+      let due = Number(kpis?.unpaid_due_usd);
+      if (!Number.isFinite(due)) due = 0;
+
+      if (unpaidEl)   unpaidEl.textContent  = money(due);
+      if (balanceEl)  balanceEl.textContent = money(Number(kpis?.net_due_usd ?? due));
+      if (payNowAmt)  payNowAmt.textContent = due > 0 ? `(${money(due)})` : "";
+
+      if (payNowBtn && Number.isFinite(due)) payNowBtn.dataset.amount = due.toFixed(2);
+
+      // Prefer wallet balance for visible credit (fallback to account credit)
+      const creditVal = Number(credits?.wallet_balance_usd ?? credits?.account_credit_usd ?? 0);
+      if (creditEl)   creditEl.textContent  = money(creditVal);
+
+      updateUnpaidVisual(due);
+
+    } catch(err){
+      // 2) Fallback to legacy billing_history if KPI endpoint is unavailable
+      try {
+        const res = await fetch("{% url 'billing_history' %}", {
+          headers: {"X-Requested-With":"XMLHttpRequest","Accept":"application/json"},
+          cache: "no-cache"
+        });
+        const data = await res.json();
+        const sum = data?.summary || {};
+        const orders = Array.isArray(data?.orders) ? data.orders : (Array.isArray(data?.invoices) ? data.invoices : []);
+
+        let due = computeActiveNonPaidTotal(orders);
+        if (!Number.isFinite(due) || due === 0) {
+          const prefer = Number(sum.active_unpaid_balance_usd);
+          if (Number.isFinite(prefer) && prefer > 0) {
+            due = prefer;
+          } else {
+            const fallback = Number(sum.unpaid_total_usd);
+            due = Number.isFinite(fallback) ? fallback : 0;
+          }
+        }
+
+        if (unpaidEl)   unpaidEl.textContent  = money(due);
+        if (balanceEl)  balanceEl.textContent = money(due);
+        if (payNowAmt)  payNowAmt.textContent = due > 0 ? `(${money(due)})` : "";
+        if (payNowBtn && Number.isFinite(due)) payNowBtn.dataset.amount = due.toFixed(2);
+        if (creditEl)   creditEl.textContent  = money(sum.wallet_balance_usd || sum.account_credit_usd || 0);
+        updateUnpaidVisual(due);
+      } catch(e){
+        console.error("Failed to load summary", e);
+        if (payNowBtn) payNowBtn.disabled = false;
+      }
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", loadSummary);
+})();
+
+</script>

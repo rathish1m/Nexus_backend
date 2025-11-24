@@ -1,0 +1,60 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Register – Nexus</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+
+  <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+    <div class="text-center mb-6">
+      <img src="{% static 'images/logo/logo.png' %}" alt="NEXUS Logo" class="w-24 mx-auto mb-4">
+      <h2 class="text-2xl font-bold text-blue-600">Create Your Account</h2>
+    </div>
+
+    {% if messages %}
+      <ul class="mb-4">
+        {% for message in messages %}
+          <li class="text-sm text-{{ message.tags }}-600">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <form method="post" class="space-y-4">
+      {% csrf_token %}
+      <div>
+        <label for="id_username" class="block text-sm font-medium text-gray-700">Username</label>
+        {{ form.username|add_class:"w-full border border-gray-300 rounded px-3 py-2 text-sm" }}
+      </div>
+
+      <div>
+        <label for="id_email" class="block text-sm font-medium text-gray-700">Email</label>
+        {{ form.email|add_class:"w-full border border-gray-300 rounded px-3 py-2 text-sm" }}
+      </div>
+
+      <div>
+        <label for="id_password1" class="block text-sm font-medium text-gray-700">Password</label>
+        {{ form.password1|add_class:"w-full border border-gray-300 rounded px-3 py-2 text-sm" }}
+      </div>
+
+      <div>
+        <label for="id_password2" class="block text-sm font-medium text-gray-700">Confirm Password</label>
+        {{ form.password2|add_class:"w-full border border-gray-300 rounded px-3 py-2 text-sm" }}
+      </div>
+
+      <button type="submit" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-sm font-semibold">
+        Register & Send OTP
+      </button>
+    </form>
+
+    <p class="mt-4 text-sm text-center text-gray-500">
+      Already have an account?
+      <a href="{% url 'login' %}" class="text-blue-600 hover:underline">Login</a>
+    </p>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,292 @@
+{% extends 'backoffice/dispatch_console_base.html' %}
+{% load i18n %}
+
+{% block content %}
+<section class="w-full px-6 py-6">
+    <div class="mb-6 flex flex-col gap-4 rounded-2xl bg-slate-900 p-6 text-white shadow-xl lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">
+                {% trans "Customer feedback" %} — {{ order.order_reference|default:feedback.installation_id }}
+            </h1>
+            <p class="text-sm text-white/70">
+                {{ feedback.customer.full_name|default:feedback.customer.email }} • {{ feedback.created_at|date:"d/m/Y H:i" }}
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <button id="pin-toggle"
+                    data-pinned="{{ feedback.pinned|yesno:'true,false' }}"
+                    class="inline-flex items-center rounded-md bg-white/10 px-4 py-2 text-sm font-medium tracking-wide hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/40">
+                <i class="fas fa-thumbtack mr-2"></i>
+                {% if feedback.pinned %}{% trans "Unpin" %}{% else %}{% trans "Pin" %}{% endif %}
+            </button>
+            {% if feedback.status != 'locked' %}
+            <button id="lock-button"
+                    class="inline-flex items-center rounded-md bg-rose-500 px-4 py-2 text-sm font-medium tracking-wide text-white shadow hover:bg-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-300">
+                <i class="fas fa-lock mr-2"></i>{% trans "Lock" %}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-3">
+        <article class="lg:col-span-2 space-y-6">
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <header class="mb-4 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="inline-flex items-center rounded-full bg-indigo-100 px-3 py-1 text-sm font-semibold text-indigo-700">
+                            {{ feedback.rating }} {% trans "star(s)" %}
+                        </span>
+                        <span class="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
+                            {{ feedback.get_status_display }}
+                        </span>
+                        {% if feedback.internal_flag %}
+                            <span class="inline-flex items-center rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                                <i class="fas fa-flag mr-1"></i>{% trans "Flagged" %}
+                            </span>
+                        {% endif %}
+                        {% if feedback.edit_until %}
+                            <span class="text-xs text-slate-500">
+                                {% blocktrans with ts=feedback.edit_until|date:"d/m/Y H:i" %}Editable until {{ ts }}{% endblocktrans %}
+                            </span>
+                        {% endif %}
+                    </div>
+                </header>
+                <div class="prose max-w-none text-slate-800">
+                    {{ feedback.sanitized_comment|safe|default:_("No comment provided.") }}
+                </div>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-600">{% trans "Internal reply" %}</h2>
+                <form id="reply-form" class="mt-4 space-y-3">
+                    <textarea id="reply-text" rows="4" maxlength="500"
+                              class="w-full rounded-md border-slate-200 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                              placeholder="{% trans 'Short reply to the customer (light Markdown allowed).' %}">{{ feedback.staff_reply }}</textarea>
+                    <div class="flex items-center justify-between text-xs text-slate-500">
+                        <span id="reply-counter">0 / 500</span>
+                        <div class="flex items-center gap-2">
+                            <label class="inline-flex items-center gap-2">
+                                <input type="checkbox" name="internal_flag" id="flag-toggle" {% if feedback.internal_flag %}checked{% endif %} disabled class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                <span class="text-rose-600 font-medium">{% trans "Flag enabled" %}</span>
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit"
+                            class="inline-flex items-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                        <i class="fas fa-paper-plane mr-2"></i>{% trans "Send reply" %}
+                    </button>
+                </form>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <header class="mb-3 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-600">{% trans "Attachments" %}</h2>
+                    <label class="inline-flex cursor-pointer items-center gap-2 rounded-md border border-slate-200 px-3 py-1.5 text-sm text-slate-600 hover:border-indigo-400 hover:text-indigo-600">
+                        <i class="fas fa-upload"></i>
+                        <span>{% trans "Add" %}</span>
+                        <input type="file" id="attachment-input" class="hidden">
+                    </label>
+                </header>
+                <ul id="attachment-list" class="space-y-2 text-sm text-slate-600">
+                    {% for attachment in feedback.attachments.all %}
+                        <li data-id="{{ attachment.id }}" class="flex items-center justify-between rounded-md border border-slate-100 px-3 py-2">
+                            <div>
+                                <p class="font-medium text-slate-800">{{ attachment.filename }}</p>
+                                <p class="text-xs text-slate-500">{{ attachment.content_type }} • {{ attachment.file_size|filesizeformat }} • {{ attachment.uploaded_at|date:"d/m/Y H:i" }}</p>
+                            </div>
+                            <button data-remove="{{ attachment.id }}" class="rounded-md border border-transparent px-2 py-1 text-xs text-rose-600 hover:bg-rose-50">
+                                {% trans "Delete" %}
+                            </button>
+                        </li>
+                    {% empty %}
+                        <li class="rounded-md border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
+                            {% trans "No attachments yet." %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+
+            <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">{% trans "History" %}</h2>
+                <ul class="space-y-2 text-xs text-slate-600">
+                    {% for entry in feedback.audit_logs.all %}
+                        <li class="flex justify-between">
+                            <span class="font-medium text-slate-700">{{ entry.created_at|date:"d/m/Y H:i" }}</span>
+                            <span>{{ entry.get_action_display|default:entry.action }} — {{ entry.actor }}</span>
+                        </li>
+                    {% empty %}
+                        <li class="rounded-md border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-400">
+                            {% trans "No audit entries yet." %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </article>
+
+        <aside class="space-y-4">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-600 mb-3">{% trans "Installation summary" %}</h2>
+                <dl class="space-y-3 text-sm text-slate-600">
+                    <div>
+                        <dt class="font-medium text-slate-500">{% trans "Job" %}</dt>
+                        <dd>{{ order.order_reference|default:feedback.installation_id }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-medium text-slate-500">{% trans "Technician" %}</dt>
+                        <dd>{{ feedback.installation.technician.full_name|default:"—" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-medium text-slate-500">{% trans "Installation status" %}</dt>
+                        <dd>{{ feedback.installation.get_status_display }}</dd>
+                    </div>
+                    <div>
+                        <dt class="font-medium text-slate-500">{% trans "Client" %}</dt>
+                        <dd>{{ feedback.customer.full_name|default:feedback.customer.email }}</dd>
+                    </div>
+                </dl>
+            </div>
+            <div class="rounded-2xl border border-slate-200 bg-slate-50 p-5 shadow-inner text-sm text-slate-600">
+                <p class="font-semibold text-slate-700 mb-2">{% trans "Quick actions" %}</p>
+                <ul class="space-y-2">
+                    <li>{% trans "• Pin for priority follow-up" %}</li>
+                    <li>{% trans "• Lock once the case is resolved" %}</li>
+                    <li>{% trans "• Reply to keep the customer informed" %}</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+</section>
+
+<script>
+    const endpoints = {
+        detail: "{{ detail_endpoint }}",
+        pin: "{{ pin_endpoint }}",
+        lock: "{{ lock_endpoint }}",
+        reply: "{{ reply_endpoint }}",
+        attachment: "{{ attachment_endpoint }}",
+        attachmentDelete: "{{ attachment_delete_base }}"
+    };
+
+    function getCookie(name) {
+        const cookieValue = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith(name + "="));
+        return cookieValue ? decodeURIComponent(cookieValue.split("=")[1]) : "";
+    }
+
+    const csrfToken = getCookie("csrftoken");
+
+    async function postJSON(url, payload = {}) {
+        const response = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": csrfToken
+            },
+            body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(text || "Request failed");
+        }
+        return response.json();
+    }
+
+    document.getElementById("pin-toggle")?.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        const button = ev.currentTarget;
+        const currentlyPinned = button.dataset.pinned === "true";
+        try {
+            const data = await postJSON(endpoints.pin, { pinned: !currentlyPinned });
+            button.dataset.pinned = data.pinned ? "true" : "false";
+            button.innerHTML = data.pinned
+                ? '<i class="fas fa-thumbtack mr-2"></i>{% trans "Unpin" %}'
+                : '<i class="fas fa-thumbtack mr-2"></i>{% trans "Pin" %}';
+        } catch (error) {
+            alert(error.message || "{% trans "Unable to update pin status." %}");
+        }
+    });
+
+    document.getElementById("lock-button")?.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        if (!confirm("{% trans 'Confirm lock?' %}")) {
+            return;
+        }
+        try {
+            await postJSON(endpoints.lock);
+            location.reload();
+        } catch (error) {
+            alert(error.message || "{% trans "Unable to lock feedback." %}");
+        }
+    });
+
+    const replyForm = document.getElementById("reply-form");
+    const replyTextarea = document.getElementById("reply-text");
+    const replyCounter = document.getElementById("reply-counter");
+    if (replyTextarea && replyCounter) {
+        const updateCounter = () => {
+            replyCounter.textContent = `${replyTextarea.value.length} / 500`;
+        };
+        replyTextarea.addEventListener("input", updateCounter);
+        updateCounter();
+    }
+    replyForm?.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        try {
+            await postJSON(endpoints.reply, { reply: replyTextarea.value });
+            location.reload();
+        } catch (error) {
+            alert(error.message || "{% trans "Unable to send reply." %}");
+        }
+    });
+
+    const attachmentInput = document.getElementById("attachment-input");
+    attachmentInput?.addEventListener("change", async (ev) => {
+        const file = ev.target.files[0];
+        if (!file) {
+            return;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        try {
+            const response = await fetch(endpoints.attachment, {
+                method: "POST",
+                headers: { "X-CSRFToken": csrfToken },
+                body: formData,
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Upload failed");
+            }
+            location.reload();
+        } catch (error) {
+            alert(error.message || "Erreur lors de l'upload.");
+        } finally {
+            ev.target.value = "";
+        }
+    });
+
+    document.querySelectorAll("[data-remove]").forEach((button) => {
+        button.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            const id = button.dataset.remove;
+        if (!confirm("{% trans 'Delete this attachment?' %}")) {
+            return;
+        }
+        try {
+            const response = await fetch(`${endpoints.attachmentDelete}${id}/`, {
+                method: "DELETE",
+                headers: { "X-CSRFToken": csrfToken },
+            });
+            if (!response.ok) {
+                const text = await response.text();
+                throw new Error(text || "Delete failed");
+            }
+            location.reload();
+        } catch (error) {
+            alert(error.message || "{% trans "Unable to delete attachment." %}");
+        }
+    });
+    });
+</script>
+{% endblock %}

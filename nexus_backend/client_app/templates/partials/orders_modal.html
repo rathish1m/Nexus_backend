@@ -1,0 +1,2754 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+{% include 'partials/payment_modal.html' %}
+
+<!-- ================= Checkout Modal ================= -->
+<div id="checkoutModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/60" onclick="closeCheckoutModal()" aria-hidden="true"></div>
+
+    <div class="relative mx-auto w-full max-w-5xl px-3 sm:px-4 md:px-6">
+        <div class="mx-auto mt-4 sm:mt-10 w-full bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden">
+
+            <!-- Header -->
+            <div class="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-4 border-b">
+                <h2 class="text-base sm:text-lg md:text-xl font-semibold text-gray-900">
+                    {% trans "Confirm Your Checkout and Pay" %}
+                </h2>
+                <button type="button"
+                        class="inline-flex items-center justify-center w-9 h-9 rounded-full hover:bg-gray-100 text-gray-500"
+                        aria-label="{% trans 'Close' %}" onclick="closeCheckoutModal()">✖
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="flex-1 overflow-y-auto max-h-[70vh] sm:max-h-[75vh]">
+                <div class="p-4 sm:p-5 grid grid-cols-1 lg:grid-cols-5 gap-4 sm:gap-5">
+
+                    <!-- LEFT -->
+                    <section class="lg:col-span-3 space-y-4 sm:space-y-5">
+                        <!-- Order Meta -->
+                        <div class="rounded-xl border bg-gray-50">
+                            <div class="px-4 py-3 border-b text-sm font-medium text-gray-900">{% trans "Order Summary" %}</div>
+                            <div class="divide-y text-sm">
+                                <div class="flex items-center justify-between px-4 py-2">
+                                    <span class="text-gray-600">{% trans "Order ID" %}</span>
+                                    <span id="checkoutOrderId" class="font-medium text-gray-900"></span>
+                                </div>
+                                <div class="flex items-center justify-between px-4 py-2">
+                                    <span class="text-gray-600">{% trans "Expires At" %}</span>
+                                    <span id="checkoutExpiresAt" class="text-gray-900"></span>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2 px-4 py-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">{% trans "Latitude" %}</span>
+                                        <span id="checkoutLat" class="text-gray-900"></span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">{% trans "Longitude" %}</span>
+                                        <span id="checkoutLng" class="text-gray-900"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Items (mobile) -->
+                        <div class="rounded-xl border bg-white">
+                            <div class="px-4 py-3 border-b text-sm font-semibold text-gray-900">{% trans "Items" %}</div>
+                            <div id="checkoutLinesList" class="md:hidden divide-y">
+                                <div class="p-4 text-gray-500 hidden" data-empty-lines>
+                                    {% trans "No items to display." %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Items (desktop) -->
+                        <div class="hidden md:block">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm">
+                                    <thead class="bg-gray-50 text-gray-600 sticky top-0">
+                                    <tr>
+                                        <th class="px-4 py-2 text-left font-medium">{% trans "Kind" %}</th>
+                                        <th class="px-4 py-2 text-left font-medium">{% trans "Description" %}</th>
+                                        <th class="px-4 py-2 text-right font-medium">{% trans "Qty" %}</th>
+                                        <th class="px-4 py-2 text-right font-medium">{% trans "Unit" %}</th>
+                                        <th class="px-4 py-2 text-right font-medium">{% trans "Total" %}</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody id="checkoutLines" class="divide-y">
+                                    <tr class="hidden" data-empty-lines>
+                                        <td colspan="5" class="px-4 py-3 text-center text-gray-500">
+                                            {% trans "No items to display." %}
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Taxes -->
+                        <div class="rounded-xl border bg-white">
+                            <div class="px-4 py-3 border-b text-sm font-semibold text-gray-900">{% trans "Taxes" %}</div>
+                            <div id="checkoutTaxesList" class="md:hidden divide-y">
+                                <div class="p-4 text-gray-500 hidden" data-empty-taxes>
+                                    {% trans "No taxes applied." %}
+                                </div>
+                            </div>
+                            <div class="hidden md:block">
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full text-sm">
+                                        <thead class="bg-gray-50 text-gray-600 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left font-medium">{% trans "Tax" %}</th>
+                                            <th class="px-4 py-2 text-right font-medium">{% trans "Amount" %}</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody id="checkoutTaxes" class="divide-y">
+                                        <tr class="hidden" data-empty-taxes>
+                                            <td colspan="2" class="px-4 py-3 text-center text-gray-500">
+                                                {% trans "No taxes applied." %}
+                                            </td>
+                                        </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                    </section>
+
+                    <!-- RIGHT -->
+                    <aside class="lg:col-span-2 space-y-4 sm:space-y-5">
+                        <!-- Totals -->
+                        <div class="rounded-xl border bg-white">
+                            <div class="px-4 py-3 border-b text-sm font-medium text-gray-900">
+                                {% trans "Payment Summary" %}
+                            </div>
+                            <div class="p-4 space-y-2 text-sm">
+                                <!-- Coupon badge & messages -->
+                                <div id="checkoutCouponBanner" class="hidden mb-2">
+                                    <span id="checkoutCouponBadge"
+                                          class="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700"></span>
+                                </div>
+                                <div id="checkoutDiscounts" class="hidden text-xs text-emerald-700 space-y-1"></div>
+                                <div id="checkoutCouponError" class="hidden text-xs text-red-600"></div>
+
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">{% trans "Subtotal (Before Tax)" %}</span>
+                                    <span id="checkoutSubtotal" class="font-medium"></span>
+                                </div>
+                                <div class="flex items-center justify-between">
+                                    <span class="text-gray-600">{% trans "Tax Total" %}</span>
+                                    <span id="checkoutTaxTotal" class="font-medium"></span>
+                                </div>
+                                <div class="border-t pt-3 mt-2 flex items-center justify-between text-base font-semibold">
+                                    <span class="text-gray-900">{% trans "Total (Incl. Tax)" %}</span>
+                                    <span id="checkoutTotal" class="text-purple-700"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ================= Payment Methods ================ -->
+                        <section id="checkoutPaymentMethods" class="rounded-2xl border bg-white shadow-sm">
+                            <!-- Header -->
+                            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b flex items-center justify-between">
+                                <h3 class="text-sm sm:text-base font-semibold text-gray-900">
+                                    {% trans "Select a Payment Method" %}
+                                </h3>
+                                <div class="hidden sm:flex items-center gap-2 text-xs text-gray-500">
+                                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                        <path d="M12 2L2 7l10 5 10-5-10-5Zm0 9.5L2 7v10l10 5 10-5V7l-10 4.5Z"
+                                              stroke="currentColor" stroke-width="1.5"/>
+                                    </svg>
+                                    <span>{% trans "Secure checkout" %}</span>
+                                </div>
+                            </div>
+
+                            <!-- Tiles -->
+                            <div class="p-4 sm:p-5">
+                                <div id="checkoutPaymentButtons" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {# Buttons inserted by JS (selectPaymentMethod) #}
+                                    {# Example static fallback (optional): #}
+                                    <!--
+      <button type="button" id="pm-btn-mobile"
+              class="group w-full rounded-xl border px-4 py-3 text-left bg-white hover:bg-emerald-50 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 group-hover:bg-emerald-200">📱</span>
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900">{% trans "Mobile Money" %}</div>
+            <p class="text-xs text-gray-500">{% trans "Pay from your mobile wallet (M-Pesa, Airtel, Orange Money…)" %}</p>
+          </div>
+        </div>
+      </button>
+
+      <button type="button" id="pm-btn-card"
+              class="group w-full rounded-xl border px-4 py-3 text-left bg-white hover:bg-indigo-50 transition shadow-sm">
+        <div class="flex items-center gap-3">
+          <span class="flex h-10 w-10 items-center justify-center rounded-lg bg-indigo-100 group-hover:bg-indigo-200">💳</span>
+          <div class="min-w-0">
+            <div class="font-medium text-gray-900">{% trans "Card Payment" %}</div>
+            <p class="text-xs text-gray-500">{% trans "Pay with Visa / Mastercard on a secure page" %}</p>
+          </div>
+        </div>
+      </button>
+      -->
+                                </div>
+
+                                <!-- Security note -->
+                                <div class="mt-4 flex items-start gap-2 rounded-lg bg-gray-50 border p-3">
+                                    <svg class="w-4 h-4 mt-[2px] text-emerald-600" viewBox="0 0 24 24" fill="none"
+                                         aria-hidden="true">
+                                        <path d="M12 3l7 4v5c0 5-3.5 9-7 9s-7-4-7-9V7l7-4Z" stroke="currentColor"
+                                              stroke-width="1.5"/>
+                                        <path d="M9.5 12l1.8 1.8 3.2-3.3" stroke="currentColor" stroke-width="1.5"
+                                              stroke-linecap="round"/>
+                                    </svg>
+                                    <p class="text-xs text-gray-600">
+                                        {% trans "Payments are encrypted. Card payments open in a secure window. We never store your card number." %}
+                                    </p>
+                                </div>
+                            </div>
+                        </section>
+
+                        <!-- ============== Mobile Money Details ============== -->
+                        <section id="mobileMoneyPhoneGroup" class="hidden rounded-2xl border bg-white shadow-sm">
+                            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b">
+                                <h4 class="text-sm sm:text-base font-semibold text-gray-900">{% trans "Mobile Money" %}</h4>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {% trans "Enter the phone number linked to your mobile wallet (e.g., M-Pesa, Airtel Money, Orange Money)." %}
+                                </p>
+                            </div>
+                            <div class="p-4 sm:p-5 space-y-2">
+                                <label for="mobileMoneyPhone"
+                                       class="text-sm text-gray-700">{% trans "Phone Number" %}</label>
+                                <div class="flex">
+      <span class="inline-flex items-center px-3 border border-r-0 rounded-l-lg bg-gray-50 text-gray-600 text-sm">
+        +243
+      </span>
+                                    <input type="tel" id="mobileMoneyPhone"
+                                           placeholder="{% trans 'e.g., 8xxxxxxxx' %}"
+                                           inputmode="tel"
+                                           class="mt-0 block w-full border rounded-r-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                           aria-describedby="momoHelp momoError">
+                                </div>
+                                <p id="momoHelp" class="text-xs text-gray-500">
+                                    {% trans "We’ll send a payment request to this number. Confirm the payment on your phone." %}
+                                </p>
+                                <p id="momoError" class="hidden text-xs text-red-600">
+                                    {% trans "Please enter a valid mobile number." %}
+                                </p>
+                            </div>
+                        </section>
+
+                        <!-- ================== Card Details ================== -->
+                        <section id="cardEmailWrapper" class="hidden rounded-2xl border bg-white shadow-sm">
+                            <div class="px-4 sm:px-5 py-3 sm:py-4 border-b">
+                                <h4 class="text-sm sm:text-base font-semibold text-gray-900">{% trans "Card Payment" %}</h4>
+                                <p class="mt-1 text-xs text-gray-500">
+                                    {% trans "You’ll be redirected to a secure card payment page (Visa/Mastercard). We’ll email the receipt to the address below." %}
+                                </p>
+                            </div>
+                            <div class="p-4 sm:p-5 space-y-2">
+                                <label for="cardEmail"
+                                       class="text-sm text-gray-700">{% trans "Email for Receipt" %}</label>
+                                <input type="email" id="cardEmail"
+                                       placeholder="{% trans 'Enter your email address' %}"
+                                       class="mt-0 block w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                                       aria-describedby="cardEmailHelp cardEmailError">
+                                <p id="cardEmailHelp" class="text-xs text-gray-500">
+                                    {% trans "Use an address you can access now, in case we need to confirm your payment." %}
+                                </p>
+                                <p id="cardEmailError" class="hidden text-xs text-red-600">
+                                    {% trans "Please enter a valid email address." %}
+                                </p>
+                            </div>
+                        </section>
+
+                        <!-- ============== Active Method Styling Helper ============== -->
+                        <style>
+                            /* Optional: visual state when a payment method is selected by JS */
+                            .pm-selected {
+                                outline: 2px solid rgb(16 185 129);
+                                background-color: rgb(236 253 245);
+                            }
+                        </style>
+
+                        <!-- Hidden Order ID -->
+                        <input type="hidden" id="flexpayOrderId">
+                    </aside>
+                </div>
+            </div>
+
+            <!-- Sticky Footer -->
+            <div class="px-4 sm:px-5 py-3 border-t bg-white">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div class="flex-1">
+                        <div class="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                            <div class="text-sm text-gray-600">{% trans "Due Now (Before Tax)" %}</div>
+                            <div id="checkoutTotalFooterHT"
+                                 class="text-lg sm:text-xl font-semibold text-gray-900"></div>
+                            <div class="hidden sm:inline-block h-4 w-px bg-gray-200 mx-1"></div>
+                            <div class="text-xs text-gray-500">
+                                <span class="align-middle">{% trans "Taxes" %}:</span>
+                                <span id="checkoutTotalFooterTaxes" class="align-middle"></span>
+                            </div>
+                            <div class="text-xs text-gray-500">
+                                • {% trans "Total (Incl. Tax)" %}:
+                                <span id="checkoutTotalFooterTTC" class="font-medium text-purple-700"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button id="proceedToPaymentBtn"
+                            class="w-full sm:w-auto justify-center py-3 px-5 bg-emerald-600 text-white rounded-xl font-semibold
+                   hover:bg-emerald-700 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition">
+                        {% trans "Proceed to Payment" %}
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!-- ================= /Checkout Modal ================= -->
+
+<!-- ================= Order Modal ================= -->
+<div id="orderModal"
+     class="fixed inset-0 z-50 hidden bg-black/60 backdrop-blur-sm flex items-center justify-center px-3 sm:px-4 py-8 overflow-y-auto">
+    <div id="order-modal-dialog"
+         class="relative w-full max-w-md sm:max-w-lg bg-white rounded-2xl shadow-2xl ring-1 ring-black/5 overflow-hidden">
+        <header class="bg-gradient-to-r from-green-600 via-emerald-600 to-teal-500 text-white px-4 sm:px-6 py-4 sm:py-5">
+            <div class="flex items-start gap-3">
+                <div class="hidden sm:flex h-10 w-10 items-center justify-center rounded-xl bg-white/20">
+                    <i class="fa-solid fa-rocket text-lg"></i>
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-lg sm:text-2xl font-bold leading-tight">{% trans "Start Your Order" %}</h2>
+                    <p class="text-emerald-100/90 text-xs sm:text-sm mt-1">{% trans "Order your Starlink kit and subscription in 3 easy steps" %}</p>
+                </div>
+            </div>
+
+            <button onclick="closeOrderModal()" type="button" aria-label="{% trans 'Close' %}"
+                    class="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full
+                     bg-white/80 text-gray-800 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shadow-lg border border-gray-200 z-10 transition">
+                <span class="sr-only">{% trans 'Close' %}</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-6 h-6"
+                     aria-hidden="true">
+                    <path fill-rule="evenodd"
+                          d="M10 8.586l4.95-4.95a1 1 0 111.414 1.414L11.414 10l4.95 4.95a1 1 0 01-1.414 1.414L10 11.414l-4.95 4.95a1 1 0 01-1.414-1.414L8.586 10l-4.95-4.95A1 1 0 115.05 3.636L10 8.586z"
+                          clip-rule="evenodd"/>
+                </svg>
+            </button>
+        </header>
+
+        <div class="px-4 sm:px-6 py-5 sm:py-6">
+            <form id="orderForm" method="post" action="/checkout/">
+                {% csrf_token %}
+                <input type="hidden" name="customer_type" id="customerTypeInput" value="full">
+
+                <!-- Step Indicator -->
+                <div class="mb-6">
+                    <div id="orderStepIndicator" class="text-center mb-2">
+            <span class="inline-block text-xs sm:text-sm font-semibold bg-emerald-100 text-emerald-700 rounded-full px-3 py-1">
+              Step <span id="orderStepIndicatorNum">1</span> of 3
+            </span>
+                    </div>
+                    <h2 id="orderStepTitle" class="text-xl sm:text-2xl font-bold text-gray-800 text-center">
+                        {% trans "Select Your Installation Address" %}
+                    </h2>
+                </div>
+
+                <!-- STEP 1 -->
+                <div id="orderStep1">
+                    <div class="mb-4">
+                        <label class="text-sm font-medium mb-1">{% trans "Select on Map the Installation Address" %}</label>
+                        <input type="text" id="addressSearch"
+                               placeholder="{% trans 'Search for avenue, building, place, etc.' %}"
+                               class="block w-full border px-4 py-2 mb-2 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+                               autocomplete="off">
+                        <div id="map" class="w-full h-64 rounded border"></div>
+                        <input type="hidden" name="latitude" id="latitude">
+                        <input type="hidden" name="longitude" id="longitude">
+                        <input type="hidden" name="install_fee_usd" id="installFeeUsdField">
+                        <p class="text-xs text-gray-500 mt-1">{% trans "Click on map or search address to set location." %}</p>
+                    </div>
+
+                    <div id="orderSummary" class="bg-gray-50 border rounded p-3 text-sm mb-4">
+                        <p id="rowKit" class="hidden"><strong>{% trans "Kit" %}:</strong> <span id="kitLabel"></span>
+                        </p>
+                        <p id="rowPlan" class="hidden"><strong>{% trans "Plan" %}:</strong> <span id="planLabel"></span>
+                        </p>
+                        <hr class="my-2">
+                        <p id="rowKitFee" class="hidden"><strong>{% trans "Kit Fee" %}:</strong> <span id="kitFee"
+                                                                                                       class="text-blue-700">$0.00</span>
+                        </p>
+                        <p><strong>{% trans "Installation Fee" %}:</strong> <span id="installFee" class="text-blue-700">$0.00</span>
+                        </p>
+                        <p id="rowCycleFee" class="hidden"><strong id="cycleFeeLabel">{% trans "Cycle Fee" %}</strong>:
+                            <span id="monthlyFee" class="text-green-700">$0.00</span></p>
+                        <hr class="my-2">
+                        <p class="flex items-baseline gap-2">
+                            <strong class="whitespace-nowrap">{% trans "Total Due Now (Before Tax)" %}:</strong>
+                            <span id="totalDueNow" class="text-purple-700 font-bold">$0.00</span>
+                        </p>
+                        <p class="text-xs text-gray-500">{% trans "Taxes are calculated at checkout." %}</p>
+                        <p id="rowCycleTotal" class="hidden"><strong
+                                id="cycleTotalLabel">{% trans "Cycle Total" %}:</strong> <span id="totalMonthly"
+                                                                                               class="text-green-700 font-bold">$0.00</span>
+                        </p>
+                    </div>
+
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button type="button" id="nextStep1"
+                                class="bg-blue-600 text-white px-6 py-2 rounded font-semibold disabled:opacity-50">
+                            {% trans "Next" %}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 2 -->
+                <div id="orderStep2" class="hidden">
+                    <!-- Kit -->
+                    <div class="mb-4">
+                        <label for="kitType" class="text-sm font-medium mb-1">{% trans "Select Kit Type" %}</label>
+                        <select id="kitType" name="kit_type"
+                                class="block w-full border px-4 py-3 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">{% trans "-- Choose Kit --" %}</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-1 flex items-center gap-2">
+                        <span class="text-xs text-gray-500" id="regionBadge" style="display:none;"></span>
+                    </div>
+
+                    <!-- Plan -->
+                    <div class="mb-4">
+                        <label for="subscriptionPlan"
+                               class="text-sm font-medium mb-1">{% trans "Subscription Plan" %}</label>
+                        <select id="subscriptionPlan" name="subscription_plan"
+                                class="block w-full border px-4 py-3 rounded-md shadow-sm text-sm focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">{% trans "-- Select Plan --" %}</option>
+                        </select>
+                    </div>
+
+                    <!-- Billing Cycle -->
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium mb-2">{% trans "Billing Cycle" %}</label>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <!-- monthly -->
+                            <label class="relative block p-3 rounded-xl border bg-white cursor-pointer transition hover:shadow-sm focus-within:ring-2 focus-within:ring-emerald-400">
+                                <input type="radio" name="billing_cycle" value="monthly" id="billingCycleMonthly"
+                                       class="sr-only peer" checked/>
+                                <div class="absolute right-2 top-2 inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 bg-white transition peer-checked:border-emerald-500 peer-checked:bg-emerald-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         class="w-4 h-4 text-white opacity-0 transition peer-checked:opacity-100"
+                                         viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                              d="M16.704 5.29a1 1 0 010 1.414l-7.43 7.43a1 1 0 01-1.415 0L3.296 10.57a1 1 0 111.415-1.414l3.001 3.002 6.723-6.723a1 1 0 011.269-.145z"
+                                              clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <div class="rounded-lg p-2 transition peer-checked:bg-emerald-50 peer-checked:border peer-checked:border-emerald-500">
+                                    <div class="text-sm font-semibold text-gray-900">{% trans "Monthly" %}</div>
+                                    <p class="mt-1 text-xs text-gray-500">{% trans "Pay every month. Cancel anytime." %}</p>
+                                </div>
+                            </label>
+                            <!-- quarterly -->
+                            <label class="relative block p-3 rounded-xl border bg-white cursor-pointer transition hover:shadow-sm focus-within:ring-2 focus-within:ring-emerald-400">
+                                <input type="radio" name="billing_cycle" value="quarterly" id="billingCycleQuarterly"
+                                       class="sr-only peer"/>
+                                <div class="absolute right-2 top-2 inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 bg-white transition peer-checked:border-emerald-500 peer-checked:bg-emerald-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         class="w-4 h-4 text-white opacity-0 transition peer-checked:opacity-100"
+                                         viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                              d="M16.704 5.29a1 1 0 010 1.414l-7.43 7.43a1 1 0 01-1.415 0L3.296 10.57a1 1 0 111.415-1.414l3.001 3.002 6.723-6.723a1 1 0 011.269-.145z"
+                                              clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <div class="rounded-lg p-2 transition peer-checked:bg-emerald-50 peer-checked:border peer-checked:border-emerald-500">
+                                    <div class="text-sm font-semibold text-gray-900">{% trans "Quarterly" %}</div>
+                                    <p class="mt-1 text-xs text-gray-500">{% trans "Billed every 3 months." %}</p>
+                                </div>
+                            </label>
+                            <!-- yearly -->
+                            <label class="relative block p-3 rounded-xl border bg-white cursor-pointer transition hover:shadow-sm focus-within:ring-2 focus-within:ring-emerald-400">
+                                <input type="radio" name="billing_cycle" value="yearly" id="billingCycleYearly"
+                                       class="sr-only peer"/>
+                                <div class="absolute right-2 top-2 inline-flex items-center justify-center w-6 h-6 rounded-full border border-gray-300 bg-white transition peer-checked:border-emerald-500 peer-checked:bg-emerald-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg"
+                                         class="w-4 h-4 text-white opacity-0 transition peer-checked:opacity-100"
+                                         viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                              d="M16.704 5.29a1 1 0 010 1.414l-7.43 7.43a1 1 0 01-1.415 0L3.296 10.57a1 1 0 111.415-1.414l3.001 3.002 6.723-6.723a1 1 0 011.269-.145z"
+                                              clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                <div class="rounded-lg p-2 transition peer-checked:bg-emerald-50 peer-checked:border peer-checked:border-emerald-500">
+                                    <div class="text-sm font-semibold text-gray-900">{% trans "Yearly" %}</div>
+                                    <p class="mt-1 text-xs text-gray-500">{% trans "Billed once a year." %}</p>
+                                </div>
+                            </label>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-500">{% trans "Your selected plan will be billed according to the chosen cycle." %}</p>
+                    </div>
+
+                    <!-- Summary (Step 2) -->
+                    <div id="orderSummary2" class="bg-gray-50 border rounded p-3 text-sm mb-4">
+                        <p id="rowKit2" class="hidden"><strong>{% trans "Kit" %}:</strong> <span id="kitLabel2"></span>
+                        </p>
+                        <p id="rowPlan2" class="hidden"><strong>{% trans "Plan" %}:</strong> <span
+                                id="planLabel2"></span></p>
+                        <hr class="my-2">
+                        <p id="rowKitFee2" class="hidden"><strong>{% trans "Kit Fee" %}:</strong> <span id="kitFee2"
+                                                                                                        class="text-blue-700">$0.00</span>
+                        </p>
+                        <p><strong>{% trans "Installation Fee" %}:</strong> <span id="installFee2"
+                                                                                  class="text-blue-700">$0.00</span></p>
+                        <p id="rowCycleFee2" class="hidden"><strong id="cycleFeeLabel2">{% trans "Cycle Fee" %}</strong>:
+                            <span id="monthlyFee2" class="text-green-700">$0.00</span></p>
+                        <hr class="my-2">
+                        <p class="flex items-baseline gap-2">
+                            <strong class="whitespace-nowrap">{% trans "Total Due Now (Before Tax)" %}:</strong>
+                            <span id="totalDueNow2" class="text-purple-700 font-bold">$0.00</span>
+                        </p>
+                        <p class="text-xs text-gray-500">{% trans "Taxes are calculated at checkout." %}</p>
+                        <p id="rowCycleTotal2" class="hidden"><strong
+                                id="cycleTotalLabel2">{% trans "Cycle Total" %}:</strong> <span id="totalMonthly2"
+                                                                                                class="text-green-700 font-bold">$0.00</span>
+                        </p>
+                    </div>
+
+                    <!-- Coupon (optional) -->
+                    <div class="mb-4">
+                        <label for="couponCode" class="block text-sm font-medium text-gray-700">
+                            {% trans "Coupon Code (optional)" %}
+                        </label>
+                        <div class="mt-1 flex gap-2">
+                            <input
+                                    type="text"
+                                    id="couponCode"
+                                    name="coupon"
+                                    inputmode="text"
+                                    autocomplete="off"
+                                    placeholder="{% trans 'Enter coupon if you have one' %}"
+                                    class="block w-full border rounded-lg px-3 py-2 text-sm tracking-widest uppercase
+                       focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                    maxlength="32"
+                            />
+                            <button type="button" id="clearCouponBtn"
+                                    class="px-3 py-2 text-sm rounded-lg border hover:bg-gray-50">
+                                {% trans "Clear" %}
+                            </button>
+                        </div>
+                        <p id="couponHelp" class="mt-1 text-xs text-gray-500">
+                            {% trans "If valid, the coupon will be applied to the plan charge before taxes." %}
+                        </p>
+                        <p id="couponInlineError" class="hidden mt-1 text-xs text-red-600"></p>
+                        <p id="couponInlineOk" class="hidden mt-1 text-xs text-emerald-700"></p>
+                    </div>
+
+                    <div class="flex justify-between gap-2 mt-6">
+                        <button type="button" id="prevStep2"
+                                class="bg-gray-300 text-gray-800 px-6 py-2 rounded font-semibold">
+                            {% trans "Previous" %}
+                        </button>
+                        <button type="button" id="nextStep2"
+                                class="bg-blue-600 text-white px-6 py-2 rounded font-semibold disabled:opacity-50">
+                            {% trans "Next" %}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- STEP 3 -->
+                <div id="orderStep3" class="hidden">
+                    <div class="mb-4">
+                        <div id="order-terms-text-container"
+                             class="mt-2 max-h-40 overflow-y-auto border border-gray-300 rounded bg-gray-50 p-3 text-xs text-gray-700"
+                             style="font-size:13px;" tabindex="0">
+
+                            <h3 class="text-sm font-semibold text-gray-900">
+                                {% trans "Terms & Conditions — Standard Installation & Service" %}
+                            </h3>
+
+                            <!-- Scope & Acceptance -->
+                            <p class="mt-2">
+                                {% trans "By proceeding, you acknowledge that you have read, understood, and agree to these Terms & Conditions, including our installation policies, billing terms, and service conditions for Starlink connectivity." %}
+                            </p>
+
+                            <!-- Service Availability -->
+                            <p class="mt-2">
+                                {% trans "Service availability and performance depend on location, line-of-sight, network conditions, and environmental factors. Speeds and latency may vary and are not guaranteed." %}
+                            </p>
+
+                            <!-- Standard Installation Definition -->
+                            <p class="mt-2">
+                                {% trans "A standard installation includes mounting the Starlink antenna on a single structure at a height and location with clear sky visibility, up to a reasonable cable run to the indoor router, basic weatherproofing, and activation/testing." %}
+                            </p>
+
+                            <!-- Site Survey & Non-Standard Installations (Extra Billing) -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Site Survey & Additional Charges" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "If the site survey or on-site assessment determines that your premises require a non-standard setup (e.g., custom or high-elevation mounts, mast extensions, roof or pole penetrations, trenching, long cable runs, structural reinforcement, specialized grounding, permits, or additional safety equipment), these works will incur extra charges." %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "Any non-standard charges will be quoted for your approval before work proceeds. If you decline, we may cancel or reschedule the installation, and a site-visit or survey fee may apply." %}
+                            </p>
+
+                            <!-- Customer Responsibilities -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Customer Responsibilities" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "You are responsible for ensuring the installation address is accurate, accessible, and safe for our technicians; obtaining any required property-owner or landlord permissions; and identifying concealed utilities or hazards. You must provide a suitable power source and indoor placement for the router." %}
+                            </p>
+
+                            <!-- Scheduling, Access & Safety -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Scheduling, Access & Safety" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "Installation dates are scheduled based on regional availability and may be affected by weather or access constraints. You agree to provide safe access to the site and to follow technician safety instructions. Missed appointments or late cancellations may incur a call-out fee." %}
+                            </p>
+
+                            <!-- Equipment, Ownership & Warranty -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Equipment, Ownership & Warranty" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "Unless otherwise stated, Starlink equipment is provided as per manufacturer terms. Title, warranty coverage, and RMA processes follow Starlink’s policies. Damage due to misuse, unauthorized modifications, or environmental/structural issues is excluded." %}
+                            </p>
+
+                            <!-- Billing, Auto-Renewal & Taxes -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Billing, Auto-Renewal & Taxes" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "Subscriptions renew automatically according to the selected billing cycle. You authorize us to charge the selected payment method for recurring service fees, applicable taxes, installation fees, and any approved non-standard works. Prices may change with notice where required by law." %}
+                            </p>
+
+                            <!-- Cancellations & Cooling-Off -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Cancellations & Cooling-Off" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "You may cancel or modify your plan in accordance with our Cancellation Policy. If you cancel after a scheduled visit or once non-standard works have been approved, survey or labor fees and any used materials may be billed." %}
+                            </p>
+
+                            <!-- Acceptable Use & Security -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Acceptable Use & Security" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "You agree to comply with our Acceptable Use Policy and to maintain reasonable security of your premises, equipment, and Wi-Fi network. We may suspend service for security risks, abuse, or unlawful use." %}
+                            </p>
+
+                            <!-- Data & Privacy -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Data & Privacy" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "We process your personal data in accordance with our Privacy Policy, including information required for installation, billing, support, and regulatory compliance." %}
+                            </p>
+
+                            <!-- Support & Contact -->
+                            <p class="mt-2 font-medium text-gray-900">
+                                {% trans "Support & Contact" %}
+                            </p>
+                            <p class="mt-1">
+                                {% trans "If you have questions about installation scope, potential extra charges, billing, or service coverage, please contact our support team before confirming your order." %}
+                            </p>
+
+                            <!-- Agreement Instruction -->
+                            <p class="mt-2">
+                                {% trans "Scroll to the end to enable the agreement checkbox below and proceed with your order." %}
+                            </p>
+
+                            <!-- Spacer to enforce scroll-to-end -->
+                            <div style="height: 10px;"></div>
+
+                            <p class="mt-2 font-medium">
+                                {% trans "End of terms." %}
+                            </p>
+                        </div>
+                        <p id="order-terms-scroll-hint" class="text-xs text-gray-500 mt-2">
+                            {% trans "Please scroll to the end to enable the checkbox." %}
+                        </p>
+
+                        <label class="flex items-start gap-2 text-sm mt-2">
+                            <input type="checkbox" id="order-terms" disabled>
+                            <span>{% trans "I have read and agree to the Terms and Conditions." %}</span>
+                        </label>
+
+                        <p id="order-terms-error" class="text-red-500 text-sm hidden mt-2">
+                            {% trans "You must agree to the terms." %}</p>
+                    </div>
+
+                    <div class="flex justify-between gap-2 mt-6">
+                        <button type="button" id="prevStep3"
+                                class="bg-gray-300 text-gray-800 px-6 py-2 rounded font-semibold">
+                            {% trans "Previous" %}
+                        </button>
+                        <button type="button" id="submitOrderBtn"
+                                class="bg-green-600 text-white px-6 py-2 rounded font-semibold disabled:opacity-50"
+                                disabled>
+                            {% trans "Confirm Order" %}
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- ================= /Order Modal ================= -->
+
+<!-- ================= Payment Status / Notice Modal (NEW) ================= -->
+<div id="paymentStatusModal" class="fixed inset-0 z-[60] hidden">
+    <div class="absolute inset-0 bg-black/60" onclick="closePaymentStatusModal()" aria-hidden="true"></div>
+    <div class="relative mx-auto mt-24 w-[92%] max-w-md rounded-2xl bg-white shadow-2xl ring-1 ring-black/5">
+        <div class="px-5 py-4 border-b">
+            <h3 id="paymentStatusTitle" class="text-lg font-semibold text-gray-900">
+                {% trans "Payment" %}
+            </h3>
+        </div>
+        <div class="p-5 space-y-3">
+            <div id="paymentStatusBody" class="text-sm text-gray-800"></div>
+        </div>
+        <div class="px-5 py-4 border-t flex justify-end gap-2">
+            <button id="paymentStatusCancelBtn" type="button"
+                    class="hidden px-4 py-2 rounded-lg border hover:bg-gray-50"
+                    onclick="closePaymentStatusModal()">
+                {% trans "Cancel" %}
+            </button>
+            <button id="paymentStatusPrimaryBtn" type="button"
+                    class="px-4 py-2 rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700"
+                    onclick="closePaymentStatusModal()">
+                {% trans "OK" %}
+            </button>
+        </div>
+    </div>
+</div>
+<!-- ================= /Payment Status / Notice Modal ================= -->
+
+<style>
+    select option:disabled {
+        color: #dc2626;
+    }
+</style>
+
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css"/>
+
+<script>
+const orderModalTranslations = {
+  noOrdersCreated: "{{ _('No orders created.')|escapejs }}",
+  somethingWentWrong: "{{ _('Something went wrong while submitting your order. Please try again.')|escapejs }}",
+  missingOrderId: "{{ _('Missing order ID.')|escapejs }}",
+  selectPaymentMethod: "{{ _('Please select a payment method.')|escapejs }}",
+  selectStarlinkKit: "{{ _('Please select a Starlink kit.')|escapejs }}",
+  kitNotAvailable: "{{ _('The selected kit is not available. Please choose a different kit.')|escapejs }}",
+  selectSubscriptionPlan: "{{ _('Please select a subscription plan.')|escapejs }}",
+  chooseBillingCycle: "{{ _('Please choose a billing cycle.')|escapejs }}"
+};
+
+/* ====================== GLOBAL CONFIG ====================== */
+window.ENDPOINTS = window.ENDPOINTS || {
+  kitsByLocation: "{% url 'get_kits_by_location' %}",
+  plans: "{% url 'get_plans' %}"
+};
+window.PAY_ENDPOINTS = window.PAY_ENDPOINTS || {
+  mobile: "{% url 'mobile_payment' %}",
+  card: "{% url 'initiate_card_payment' %}",
+  cancelNow: "{% url 'cancel_order_now' %}" // ← NEW
+};
+
+/* ====================== HELPERS ====================== */
+function $(id){ return document.getElementById(id); }
+function toggleElement(id, show = true){ const el = $(id); if (el) el.classList.toggle("hidden", !show); }
+
+if (typeof window._fmtUSD !== "function"){
+  window._fmtUSD = function (n){ return (Number(n) || 0).toLocaleString(undefined, { style: "currency", currency: "USD" }); };
+}
+
+function getCSRFToken(){
+  const input = document.querySelector('input[name="csrfmiddlewaretoken"]');
+  if (input) return input.value;
+  const name = 'csrftoken=';
+  return (document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name)) || "").slice(name.length);
+}
+
+/* ===== Helpers to retrieve order identifiers (reference & number) ===== */
+function getOrderReference(){
+  const tRef = "{{ billing.survey.order.order_reference|default_if_none:'' }}".trim();
+  if (tRef && !tRef.startsWith("{{")) return tRef;
+  const bodyRef = document.body?.dataset?.orderReference || "";
+  if (bodyRef) return bodyRef;
+  const labelRef = document.querySelector("#checkoutOrderReference, [data-checkout-ref]")?.textContent?.trim() || "";
+  if (labelRef) return labelRef;
+  return "";
+}
+function getOrderNumber(){
+  // we use your hidden #flexpayOrderId as the canonical “order_number”
+  return ($("flexpayOrderId")?.value || "").trim();
+}
+
+/* ====================== Payment Modal Helpers ====================== */
+function openPaymentStatusModal({
+  title,
+  html,
+  showCancel = false,
+  primaryLabel = "{% trans 'OK' %}",
+  onPrimary = null,
+  onCancel = null
+} = {}){
+  const wrap = $("paymentStatusModal");
+  if (!wrap) return;
+
+  $("paymentStatusTitle").textContent = title || "{% trans 'Payment' %}";
+  $("paymentStatusBody").innerHTML = html || "";
+
+  const cancelBtn  = $("paymentStatusCancelBtn");
+  const primaryBtn = $("paymentStatusPrimaryBtn");
+
+  cancelBtn.classList.toggle("hidden", !showCancel);
+  primaryBtn.textContent = primaryLabel || "{% trans 'OK' %}";
+
+  primaryBtn.onclick = function(){ closePaymentStatusModal(); if (typeof onPrimary === "function") onPrimary(); };
+  cancelBtn.onclick  = function(){ closePaymentStatusModal(); if (typeof onCancel  === "function") onCancel(); };
+
+  wrap.classList.remove("hidden");
+}
+function closePaymentStatusModal(){
+  if (window._paymentStatusLocked) return; // prevent closing while locked
+  $("paymentStatusModal")?.classList.add("hidden");
+}
+
+/* lock/unlock primary/cancel within the modal */
+if (typeof window.setPaymentStatusModalLocked !== "function"){
+  window.setPaymentStatusModalLocked = function(locked){
+    window._paymentStatusLocked = !!locked;
+    const primary = $("paymentStatusPrimaryBtn");
+    const cancel  = $("paymentStatusCancelBtn");
+    [primary, cancel].forEach(b => { if (b) { b.disabled = !!locked; b.classList.toggle("opacity-60", !!locked); }});
+  };
+}
+
+function infoModal({ title = "{% trans 'Info' %}", message = "", primaryLabel = "{% trans 'OK' %}" } = {}){
+  const wrap = $("paymentStatusModal");
+  if (!wrap){ try { if (message) alert(message); } catch(_){} return Promise.resolve(); }
+  return new Promise((resolve) => {
+    openPaymentStatusModal({
+      title, html: `<p class=\"text-gray-800\">${message}</p>`,
+      showCancel: false, primaryLabel, onPrimary: () => resolve()
+    });
+  });
+}
+
+/* Fancy result modal wrapper for payment outcome */
+function openPaymentResultModal({
+  status = 'success', // 'success' | 'failed'
+  title = '',
+  message = '',
+  amount = null,
+  reference = "{{ billing.survey.order.order_reference }}",
+  onRetry = null
+} = {}){
+  const ok = String(status).toLowerCase() === 'success' || String(status).toLowerCase() === 'paid';
+  const isFail = !ok;
+  const icon = ok
+    ? `<div class=\"rounded-full bg-emerald-500 h-12 w-12 grid place-items-center text-white shadow\"><i class=\"fas fa-check\"></i></div>`
+    : `<div class=\"rounded-full bg-rose-500 h-12 w-12 grid place-items-center text-white shadow\"><i class=\"fas fa-times\"></i></div>`;
+  const hdr = ok ? (title || `{% trans 'Payment Successful' %}`) : (title || `{% trans 'Payment Failed' %}`);
+  const msg = message || (ok
+    ? `{% trans 'Your payment was confirmed successfully.' %}`
+    : `{% trans 'Your payment did not go through. Please try again.' %}`);
+  const amountHtml = Number.isFinite(Number(amount)) && Number(amount) > 0
+    ? `<div class=\"text-sm text-gray-700\">{% trans 'Amount' %}: <strong>$${Number(amount).toFixed(2)}</strong></div>`
+    : '';
+  const refHtml = reference ? `<div class=\"text-xs text-gray-500\">{% trans 'Reference' %}: ${reference}</div>` : '';
+
+  openPaymentStatusModal({
+    title: hdr,
+    html: `
+      <div class=\"flex items-center gap-3\">${icon}<div>
+        <div class=\"font-semibold text-gray-900\">${msg}</div>
+        ${amountHtml}
+        ${refHtml}
+      </div></div>
+    `,
+    showCancel: false,
+    primaryLabel: "{% trans 'Refresh' %}",
+    onPrimary: function(){
+      try { window.location.reload(); } catch(_) { window.location.href = window.location.href; }
+    }
+  });
+}
+
+/* ===== Unified finish helper: decides UI and cancels when not paid ===== */
+async function finishPaymentCheck(finalStatus, cancelReason){
+  setPaymentStatusModalLocked(false);
+  const status = String(finalStatus || '').toLowerCase();
+  if (status === 'paid' || status === 'success' || status === 'confirmed'){
+    openPaymentResultModal({ status: 'success' });
+    return;
+  }
+  // Not paid (failed or pending after window) → cancel then show failed
+  try { await triggerCancelOrderNow(cancelReason || 'payment_check_failed_2min'); } catch(_) {}
+  try { await triggerCancelExpired(); } catch(_) {}
+  openPaymentResultModal({
+    status: 'failed',
+    onRetry: () => {
+      closePaymentStatusModal();
+      try { window.location.reload(); } catch(_) { window.location.href = window.location.href; }
+    }
+  });
+}
+
+async function triggerCancelExpired(){
+  try{
+    const r = await fetch("{% url 'trigger_cancel_expired_orders' %}", {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+      body: JSON.stringify({})
+    });
+    await r.json().catch(()=>({}));
+  }catch(_e){ /* ignore */ }
+}
+
+// Immediately cancel current order regardless of expiry (idempotent) – UPDATED
+window._cancelInFlight = false;
+async function triggerCancelOrderNow(reason = 'payment_failed'){
+  if (window._cancelInFlight) return false;
+  window._cancelInFlight = true;
+
+  const order_reference = getOrderReference();
+  const order_number    = getOrderNumber();
+  const idemKey         = makeIdemKey();
+
+  const payload = {
+    ...(order_reference ? { order_reference } : {}),
+    ...(order_number ? { order_number } : {}),
+    reason: String(reason || 'payment_failed')
+  };
+
+  try{
+    const r = await fetch(window.PAY_ENDPOINTS.cancelNow, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCSRFToken(),
+        'X-Requested-With': 'XMLHttpRequest',
+        'Idempotency-Key': idemKey
+      },
+      body: JSON.stringify(payload)
+    });
+    const j = await r.json().catch(()=>({}));
+    return r.ok && (j?.success === true);
+  }catch(_e){
+    return false;
+  } finally {
+    setTimeout(()=>{ window._cancelInFlight = false; }, 800);
+  }
+}
+
+/* ---------- /mobile_probe helper (matches your Django view) ---------- */
+async function probeMobileOnce(data = {}){
+  const payload = {
+    order_number: (data.order_number || null),
+    trans_id: (data.transaction_id || null),
+    order_reference: "{{ billing.survey.order.order_reference }}"
+  };
+  const r = await fetch(`{% url 'mobile_probe' %}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCSRFToken(), 'X-Requested-With': 'XMLHttpRequest' },
+    body: JSON.stringify(payload)
+  });
+  const j = await r.json().catch(() => ({}));
+  const status = String(j?.status || '').toLowerCase(); // 'paid'|'failed'|'pending'
+  return {
+    paid:   (status === 'paid'),
+    failed: (status === 'failed'),
+    pending:(status !== 'paid' && status !== 'failed'),
+    raw: j
+  };
+}
+
+/* Keep a thin interpreter (still returns paid/failed/pending) */
+function interpretMobileProbeResponse(j){
+  const st = String(j?.status || "").toLowerCase();
+  return { paid: st === "paid", failed: st === "failed", pending: st !== "paid" && st !== "failed", raw: j };
+}
+
+/* A confirm dialog before redirect (card flow) */
+function confirmCardRedirect(){
+  return new Promise((resolve) => {
+    openPaymentStatusModal({
+      title: "{% trans 'You will be redirected' %}",
+      html: `
+        <p class="text-gray-800">
+          {% trans "You chose card payment." %}
+          {% trans "You will be redirected to a secure payment page to process your card payment." %}
+        </p>
+        <p class="mt-2 text-sm text-gray-700">
+          {% trans "Complete the payment in the new window. Once your payment is done and confirmed on that page, you may close that window and return here." %}
+        </p>
+        <p class="mt-2 text-xs text-gray-500">
+          {% trans "Tip: If a popup was blocked, allow popups for this site and try again." %}
+        </p>
+      `,
+      showCancel: true,
+      primaryLabel: "{% trans 'Continue' %}",
+      onPrimary: () => resolve(true),
+      onCancel:  () => resolve(false),
+    });
+  });
+}
+
+/* ====================== MOBILE: Two-step notice (countdown + verify) ====================== */
+async function showMobileSentNotice(data = {}){
+  const minutesTotal = 5;
+  const totalMs = minutesTotal * 60 * 1000;
+  let   deadline = Date.now() + totalMs;
+
+  const bodyHTML = `
+    <style>
+      .psm-center { display:flex; align-items:center; justify-content:center; padding:14px 8px; }
+      .psm-stack { display:grid; place-items:center; gap:12px; text-align:center; }
+      .psm-ring-wrap { position:relative; width:128px; height:128px; }
+      .psm-ring { transform: rotate(-90deg); }
+      .psm-ring-bg { opacity:.15; }
+      .psm-core { position:absolute; inset:22px; border-radius:9999px;
+        box-shadow:0 10px 25px rgba(16,185,129,.35), 0 2px 10px rgba(16,185,129,.25);
+        background:radial-gradient(circle at 30% 30%, rgba(16,185,129,.18), rgba(16,185,129,.06));
+        display:grid; place-items:center; animation:psm-pulse 1600ms ease-in-out infinite; }
+      .psm-spinner-dot { width:18px; height:18px; border-radius:9999px; border:3px solid rgba(16,185,129,.35);
+        border-top-color:rgba(16,185,129,1); animation:psm-spin 900ms linear infinite; }
+      @keyframes psm-spin { to{ transform:rotate(360deg); } }
+      @keyframes psm-pulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
+      .psm-count { display:flex; flex-direction:column; align-items:center; line-height:1; }
+      .psm-mm-only { font-size:56px; font-weight:900; letter-spacing:.02em; }
+      .psm-ss-small { margin-top:4px; font-size:13px; color:#6b7280; font-variant-numeric:tabular-nums; }
+    </style>
+
+    <div class="psm-center">
+      <div class="psm-stack">
+        <div class="psm-ring-wrap">
+          <svg class="psm-ring" width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
+            <circle class="psm-ring-bg" cx="64" cy="64" r="56" stroke="currentColor" stroke-width="10" fill="none"></circle>
+            <circle id="psm-ring-fg" cx="64" cy="64" r="56" stroke="#10B981" stroke-linecap="round"
+                    stroke-width="10" fill="none" stroke-dasharray="351.858" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="psm-core"><div id="psm-spinner" class="psm-spinner-dot"></div></div>
+        </div>
+
+        <div class="psm-count">
+          <div class="psm-mm-only" id="psm-mm">5</div>
+          <div class="psm-ss-small">{% trans "seconds" %}: <span id="psm-ss">00</span></div>
+        </div>
+
+        <div id="psm-status" class="text-gray-900 font-semibold">
+          {% trans "Please complete the payment on your mobile phone." %}
+        </div>
+        <div class="text-sm text-gray-600">
+          {% trans "This can take up to" %} ${minutesTotal} {% trans "minutes depending on your mobile operator." %}
+        </div>
+        <div id="psm-extra" class="text-xs text-gray-500">
+          {% trans "When your payment is done, click the button below to verify." %}
+        </div>
+      </div>
+    </div>
+  `;
+
+  openPaymentStatusModal({
+    title: "{% trans 'Confirming Payment' %}",
+    html: bodyHTML,
+    showCancel: false,
+    primaryLabel: "{% trans 'Payment done' %}",
+    onPrimary: null
+  });
+  // Allow user to click “Payment done” immediately as requested
+  setPaymentStatusModalLocked(false);
+
+  const $mm = $("psm-mm");
+  const $ss = $("psm-ss");
+  const $ringFg = $("psm-ring-fg");
+  const primaryBtn = $("paymentStatusPrimaryBtn");
+  if (primaryBtn) primaryBtn.classList.remove("hidden");
+
+  const CIRC = 2 * Math.PI * 56;
+  function setProgress(remainingMs){
+    const ratio = Math.max(0, Math.min(1, remainingMs / totalMs));
+    const offset = CIRC * (1 - ratio);
+    if ($ringFg) $ringFg.setAttribute("stroke-dashoffset", String(offset));
+  }
+  function setMinuteAndSeconds(remainingMs){
+    const clamped = Math.max(0, remainingMs);
+    const secs = Math.ceil(clamped / 1000);
+    const minsLeft = Math.max(0, Math.floor((secs - 1) / 60) + 1);
+    const secPart = (secs % 60 === 0) ? 0 : secs % 60;
+    if ($mm) $mm.textContent = String(minsLeft);
+    if ($ss) $ss.textContent = String(secPart).padStart(2,"0");
+  }
+
+  // live countdown
+  setMinuteAndSeconds(totalMs);
+  setProgress(totalMs);
+  let tickInt = setInterval(() => {
+    const remaining = deadline - Date.now();
+    setMinuteAndSeconds(remaining);
+    setProgress(remaining);
+    if (remaining <= 0){
+      clearInterval(tickInt);
+      if ($mm) $mm.textContent = "0";
+      if ($ss) $ss.textContent = "00";
+    }
+  }, 1000);
+
+  // STEP 2: verification modal with polling to /mobile_probe
+  function showVerificationModalAndProbe(){
+    clearInterval(tickInt);
+
+    const verifyHTML = `
+      <div class="flex items-center justify-center p-6">
+        <div class="grid place-items-center text-center gap-3" aria-busy="true" aria-live="polite">
+          <div class="w-14 h-14 rounded-full grid place-items-center shadow-[0_10px_25px_rgba(16,185,129,.35),0_2px_10px_rgba(16,185,129,.25)] bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,.18),rgba(16,185,129,.06))]">
+            <div class="w-6 h-6 rounded-full border-4 border-emerald-300 border-t-emerald-600 animate-spin"></div>
+          </div>
+          <div id="psv-status" class="text-gray-900 font-semibold">
+            {% trans "Please wait, we are verifying your payment." %}
+          </div>
+          <div id="psv-extra" class="text-sm text-gray-600">
+            {% trans "Please don't close this window. When verification is completed, it will auto close." %}
+          </div>
+          <div class="text-xs text-gray-500">
+            {% trans "Time remaining" %}: <span id="psv-timer" class="font-semibold">02:00</span>
+          </div>
+        </div>
+      </div>`;
+
+    openPaymentStatusModal({
+      title: "{% trans 'Checking Payment' %}",
+      html: verifyHTML,
+      showCancel: false,
+      primaryLabel: "{% trans 'OK' %}",
+      onPrimary: null
+    });
+    setPaymentStatusModalLocked(true);
+
+    const $status = $('psv-status');
+    const $extra  = $('psv-extra');
+    const btn = $('paymentStatusPrimaryBtn');
+    if (btn) btn.classList.add('hidden');
+
+    // 2-minute countdown for verification
+    const verifyTotalMs = 2 * 60 * 1000;
+    const verifyDeadline = Date.now() + verifyTotalMs;
+    const $timer = $('psv-timer');
+    function fmt(ms){
+      const s = Math.max(0, Math.ceil(ms/1000));
+      const m = Math.floor(s/60);
+      const r = s % 60;
+      return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+    }
+    const _timerInterval = setInterval(()=>{
+      const remain = verifyDeadline - Date.now();
+      if ($timer) $timer.textContent = fmt(remain);
+      if (remain <= 0){ clearInterval(_timerInterval); }
+    }, 1000);
+
+    (async function pollLoop(){
+      let finalStatus = 'pending'; // 'paid' | 'failed' | 'pending'
+      try {
+        // Perform up to two probes within the 2-minute window, but do NOT exit early.
+        let attempts = 0;
+        while (attempts < 2) {
+          const r = await probeMobileOnce(data);
+          if (r.paid) finalStatus = 'paid';
+          if (r.failed) finalStatus = (finalStatus === 'paid' ? 'paid' : 'failed');
+          attempts += 1;
+          if (attempts >= 2) break;
+          // wait about 60 seconds between probes, or until deadline
+          const waitUntil = Date.now() + 60000;
+          while (Date.now() < waitUntil && Date.now() < verifyDeadline){
+            await new Promise(res => setTimeout(res, 500));
+          }
+        }
+        // After probes, if time remains, wait until the full 2-minute window completes
+        while (Date.now() < verifyDeadline){
+          await new Promise(res => setTimeout(res, 500));
+        }
+      } catch(_e) {
+        // ignore transient; outcome decided after window ends
+      } finally {
+        try { clearInterval(_timerInterval); } catch(_) {}
+        await finishPaymentCheck(finalStatus, 'payment_check_failed_2min');
+      }
+    })();
+  }
+
+  const primaryBtnNow = $("paymentStatusPrimaryBtn");
+  if (primaryBtnNow){
+    primaryBtnNow.onclick = () => {
+      setPaymentStatusModalLocked(false);
+      closePaymentStatusModal();
+      showVerificationModalAndProbe();
+    };
+  }
+}
+
+/* ====================== CARD PAYMENT: Two-step notice (8-min countdown + 3-min verify) ====================== */
+async function showCardSentNotice(data = {}){
+  // Step 1: 8-minute countdown while user completes card payment on secure page
+  const minutesTotal = 8;
+  const totalMs = minutesTotal * 60 * 1000;
+  let   deadline = Date.now() + totalMs;
+
+  const bodyHTML = `
+    <style>
+      .psm-center { display:flex; align-items:center; justify-content:center; padding:14px 8px; }
+      .psm-stack { display:grid; place-items:center; gap:12px; text-align:center; }
+      .psm-ring-wrap { position:relative; width:128px; height:128px; }
+      .psm-ring { transform: rotate(-90deg); }
+      .psm-ring-bg { opacity:.15; }
+      .psm-core { position:absolute; inset:22px; border-radius:9999px;
+        box-shadow:0 10px 25px rgba(16,185,129,.35), 0 2px 10px rgba(16,185,129,.25);
+        background:radial-gradient(circle at 30% 30%, rgba(16,185,129,.18),rgba(16,185,129,.06));
+        display:grid; place-items:center; animation:psm-pulse 1600ms ease-in-out infinite; }
+      .psm-spinner-dot { width:18px; height:18px; border-radius:9999px; border:3px solid rgba(16,185,129,.35);
+        border-top-color:rgba(16,185,129,1); animation:psm-spin 900ms linear infinite; }
+      @keyframes psm-spin { to{ transform:rotate(360deg); } }
+      @keyframes psm-pulse { 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.03); } }
+      .psm-count { display:flex; flex-direction:column; align-items:center; line-height:1; }
+      .psm-mm-only { font-size:56px; font-weight:900; letter-spacing:.02em; }
+      .psm-ss-small { margin-top:4px; font-size:13px; color:#6b7280; font-variant-numeric:tabular-nums; }
+    </style>
+
+    <div class="psm-center">
+      <div class="psm-stack">
+        <div class="psm-ring-wrap">
+          <svg class="psm-ring" width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
+            <circle class="psm-ring-bg" cx="64" cy="64" r="56" stroke="currentColor" stroke-width="10" fill="none"></circle>
+            <circle id="psm-ring-fg-card" cx="64" cy="64" r="56" stroke="#10B981" stroke-linecap="round"
+                    stroke-width="10" fill="none" stroke-dasharray="351.858" stroke-dashoffset="0"></circle>
+          </svg>
+          <div class="psm-core"><div id="psm-spinner-card" class="psm-spinner-dot"></div></div>
+        </div>
+
+        <div class="psm-count">
+          <div class="psm-mm-only" id="psm-mm-card">8</div>
+          <div class="psm-ss-small">{% trans "seconds" %}: <span id="psm-ss-card">00</span></div>
+        </div>
+
+        <div id="psm-status-card" class="text-gray-900 font-semibold">
+          {% trans "Please complete the card payment in the secure payment page." %}
+        </div>
+        <div class="text-sm text-gray-600">
+          {% trans "This can take up to" %} ${minutesTotal} {% trans "minutes depending on your card processor." %}
+        </div>
+        <div id="psm-extra-card" class="text-xs text-gray-500">
+          {% trans "When your payment is done, click the button below to verify." %}
+        </div>
+      </div>
+    </div>
+  `;
+
+  openPaymentStatusModal({
+    title: "{% trans 'Confirming Card Payment' %}",
+    html: bodyHTML,
+    showCancel: false,
+    primaryLabel: "{% trans 'Payment done' %}",
+    onPrimary: null
+  });
+  // Allow user to click immediately
+  setPaymentStatusModalLocked(false);
+
+  const $mm = $("psm-mm-card");
+  const $ss = $("psm-ss-card");
+  const $ringFg = $("psm-ring-fg-card");
+  const primaryBtn = $("paymentStatusPrimaryBtn");
+  if (primaryBtn) primaryBtn.classList.remove("hidden");
+
+  const CIRC = 2 * Math.PI * 56;
+  function setProgress(remainingMs){
+    const ratio = Math.max(0, Math.min(1, remainingMs / totalMs));
+    const offset = CIRC * (1 - ratio);
+    if ($ringFg) $ringFg.setAttribute("stroke-dashoffset", String(offset));
+  }
+  function setMinuteAndSeconds(remainingMs){
+    const clamped = Math.max(0, remainingMs);
+    const secs = Math.ceil(clamped / 1000);
+    const minsLeft = Math.max(0, Math.floor((secs - 1) / 60) + 1);
+    const secPart = (secs % 60 === 0) ? 0 : secs % 60;
+    if ($mm) $mm.textContent = String(minsLeft);
+    if ($ss) $ss.textContent = String(secPart).padStart(2,"0");
+  }
+
+  setMinuteAndSeconds(totalMs);
+  setProgress(totalMs);
+  let tickInt = setInterval(() => {
+    const remaining = deadline - Date.now();
+    setMinuteAndSeconds(remaining);
+    setProgress(remaining);
+    if (remaining <= 0){
+      clearInterval(tickInt);
+      if ($mm) $mm.textContent = "0";
+      if ($ss) $ss.textContent = "00";
+    }
+  }, 1000);
+
+  function showCardVerificationModal(){
+  clearInterval(tickInt);
+
+  const verifyHTML = `
+    <div class="flex items-center justify-center p-6">
+      <div class="grid place-items-center text-center gap-3" aria-busy="true" aria-live="polite">
+        <div class="w-14 h-14 rounded-full grid place-items-center shadow-[0_10px_25px_rgba(16,185,129,.35),0_2px_10px_rgba(16,185,129,.25)] bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,.18),rgba(16,185,129,.06))]">
+          <div class="w-6 h-6 rounded-full border-4 border-emerald-300 border-t-emerald-600 animate-spin"></div>
+        </div>
+        <div id="psv-status-card" class="text-gray-900 font-semibold">
+          {% trans "Please wait, we are verifying your card payment." %}
+        </div>
+        <div id="psv-extra-card" class="text-sm text-gray-600">
+          {% trans "Please don't close this window. When verification is completed, it will auto close." %}
+        </div>
+        <div class="text-xs text-gray-500">
+          {% trans "Time remaining" %}: <span id="psv-timer-card" class="font-semibold">02:00</span>
+        </div>
+      </div>
+    </div>`;
+
+  openPaymentStatusModal({
+    title: "{% trans 'Checking Payment' %}",
+    html: verifyHTML,
+    showCancel: false,
+    primaryLabel: "{% trans 'OK' %}",
+    onPrimary: null
+  });
+  setPaymentStatusModalLocked(true);
+
+  const btn = $("paymentStatusPrimaryBtn");
+  if (btn) btn.classList.add("hidden");
+
+  // Keep the 2-minute verification window (same as mobile flow)
+  const verifyTotalMs   = 2 * 60 * 1000;
+  const verifyDeadline  = Date.now() + verifyTotalMs;
+  const $timer          = $("psv-timer-card");
+
+  function fmt(ms){
+    const s = Math.max(0, Math.ceil(ms/1000));
+    const m = Math.floor(s/60);
+    const r = s % 60;
+    return `${String(m).padStart(2,'0')}:${String(r).padStart(2,'0')}`;
+  }
+  const _timerInterval = setInterval(()=>{
+    const remain = verifyDeadline - Date.now();
+    if ($timer) $timer.textContent = fmt(remain);
+    if (remain <= 0){ clearInterval(_timerInterval); }
+  }, 1000);
+
+  // ✅ Use the same probe logic/URL as mobile: probeMobileOnce -> /mobile_probe
+  (async function pollLoop(){
+    let finalStatus = 'pending'; // 'paid' | 'failed' | 'pending'
+    try{
+      // Up to two probes within the window (same cadence as mobile)
+      let attempts = 0;
+      while (attempts < 2){
+        // Reuse probeMobileOnce with order_number (trans_id is null for card)
+        const r = await probeMobileOnce({
+          order_number: (data.order_number || null),
+          transaction_id: null
+        });
+        if (r.paid)   finalStatus = 'paid';
+        if (r.failed) finalStatus = (finalStatus === 'paid' ? 'paid' : 'failed');
+
+        attempts += 1;
+        if (attempts >= 2) break;
+
+        // wait ~60s between probes or until deadline
+        const waitUntil = Date.now() + 60000;
+        while (Date.now() < waitUntil && Date.now() < verifyDeadline){
+          await new Promise(res => setTimeout(res, 500));
+        }
+      }
+
+      // Wait out the full 2-minute window (even if we already saw a status),
+      // mirroring the mobile flow’s behavior
+      while (Date.now() < verifyDeadline){
+        await new Promise(res => setTimeout(res, 500));
+      }
+    } finally {
+      try { clearInterval(_timerInterval); } catch(_) {}
+      await finishPaymentCheck(finalStatus, 'payment_check_failed_2min_card');
+    }
+  })();
+}
+
+  const primaryBtnNow = $("paymentStatusPrimaryBtn");
+  if (primaryBtnNow){
+    primaryBtnNow.onclick = () => {
+      setPaymentStatusModalLocked(false);
+      closePaymentStatusModal();
+      showCardVerificationModal();
+    };
+  }
+}
+
+/* ====================== CARD REDIRECT UI ====================== */
+function showCardRedirecting(){
+  openPaymentStatusModal({
+    title: "{% trans 'Redirecting to Payment' %}",
+    html: `
+      <p class="text-gray-800">
+        {% trans 'We are opening the secure card payment page in a new window.' %}
+      </p>
+      <p class="mt-2 text-sm text-gray-700">
+        {% trans "Complete the payment there. Once your payment is done and confirmed on that page, you may close that window and return here." %}
+      </p>
+      <p class="mt-2 text-xs text-gray-500">
+        {% trans "Tip: If a popup was blocked, allow popups for this site and try again." %}
+      </p>
+    `,
+    primaryLabel: "{% trans 'OK' %}",
+    onPrimary: () => window.location.reload()
+  });
+}
+
+/* ====================== LOCATION ====================== */
+window.CURRENT_LOCATION = window.CURRENT_LOCATION || { lat: null, lng: null };
+
+function setCurrentLocation(lat, lng){
+  const latNum = Number(lat), lngNum = Number(lng);
+  if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return;
+  window.CURRENT_LOCATION = { lat: latNum, lng: lngNum };
+  const latEl = $("latitude"), lngEl = $("longitude");
+  if (latEl) latEl.value = String(latNum);
+  if (lngEl) lngEl.value = String(lngNum);
+}
+
+// ===== Reverse geocoding to populate the Avenue/Search field from the selected map point =====
+window._revGeo = window._revGeo || { ctrl: null, inFlight: false };
+window._addressProgrammaticUpdate = window._addressProgrammaticUpdate || false;
+
+async function reverseGeocodeAndFill(lat, lng){
+  try{
+    const input = $('addressSearch');
+    if (!input) return;
+    // Avoid overriding when the user is actively typing (focused and recently changed)
+    if (document.activeElement === input && !window._addressProgrammaticUpdate){
+      return; // don't disturb while user is typing
+    }
+
+    // Abort previous reverse request
+    if (window._revGeo.ctrl){ try{ window._revGeo.ctrl.abort(); }catch(_){} }
+    window._revGeo.ctrl = new AbortController();
+
+    // Use Nominatim reverse geocoding (OSM)
+    const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&accept-language={{ LANGUAGE_CODE }}&addressdetails=1`;
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'nexus-frontend/1.0 (reverse-geocode)' },
+      signal: window._revGeo.ctrl.signal
+    });
+    if (!res.ok) return;
+    const data = await res.json().catch(()=> ({}));
+    const addr = data && data.address ? data.address : {};
+    // Prefer road/avenue/residential, then suburb/city/town, then country
+    const road = addr.road || addr.residential || addr.footway || addr.path || '';
+    const suburb = addr.suburb || addr.neighbourhood || '';
+    const city = addr.city || addr.town || addr.village || addr.municipality || '';
+    const state = addr.state || '';
+    const country = addr.country || '';
+
+    const parts = [road, suburb || city || state, country].filter(Boolean);
+    const label = parts.join(', ');
+    if (label){
+      window._addressProgrammaticUpdate = true;
+      input.value = label;
+      // clear the flag shortly after to allow user edits
+      setTimeout(() => { window._addressProgrammaticUpdate = false; }, 200);
+    }
+  }catch(e){
+    if (e?.name !== 'AbortError') console.warn('reverseGeocodeAndFill failed:', e);
+  }
+}
+
+// ===== Forward geocoding when the user types an address =====
+window._fwdGeo = window._fwdGeo || { ctrl: null };
+async function forwardGeocodeAndMove(query){
+  try{
+    const q = String(query || '').trim();
+    if (!q) return;
+    if (window._fwdGeo.ctrl){ try{ window._fwdGeo.ctrl.abort(); }catch{}_ }
+    window._fwdGeo.ctrl = new AbortController();
+    const url = 'https://photon.komoot.io/api/?q=' + encodeURIComponent(q) + '&lang={{ LANGUAGE_CODE }}&limit=1';
+    const res = await fetch(url, { signal: window._fwdGeo.ctrl.signal });
+    if (!res.ok) return;
+    const data = await res.json().catch(()=>({}));
+    const f = Array.isArray(data?.features) && data.features.length ? data.features[0] : null;
+    if (f && f.geometry && Array.isArray(f.geometry.coordinates)){
+      const lat = f.geometry.coordinates[1], lng = f.geometry.coordinates[0];
+      if (window.map && window.marker){
+        window.map.setView([lat, lng], 17);
+        window.marker.setLatLng([lat, lng]);
+      }
+      setCurrentLocation(lat, lng);
+      window.updateNextStep1Btn?.();
+      updateSummary();
+      checkPoint(lat, lng);
+      fetchInstallFee(lat, lng).then(() => updateSummary());
+    }
+  }catch(e){
+    if (e?.name !== 'AbortError') console.warn('forwardGeocodeAndMove failed:', e);
+  }
+}
+
+/* ====================== MAP ====================== */
+window.map = window.map || null;
+window.marker = window.marker || null;
+
+function initLeafletMap(){
+  const defaultLatLng = [-11.664, 27.479];
+  const mapEl = $("map");
+  if (!mapEl) return;
+
+  if (window.map && typeof window.map.remove === 'function' && window.map._container){
+    window.map.remove();
+    window.map = null;
+  }
+  window.map = L.map(mapEl).setView(defaultLatLng, 13);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(window.map);
+  window.marker = L.marker(defaultLatLng, { draggable: true }).addTo(window.map);
+
+  function onPointChange(lat, lng){
+    setCurrentLocation(lat, lng);
+    window.updateNextStep1Btn?.();
+    updateSummary();
+    checkPoint(lat, lng);
+    fetchInstallFee(lat, lng).then(() => updateSummary());
+    // Also populate the Avenue/search field from the selected map point
+    reverseGeocodeAndFill(lat, lng);
+  }
+
+  window.marker.on('dragend', () => {
+    const p = window.marker.getLatLng();
+    onPointChange(p.lat, p.lng);
+  });
+  window.map.on('click', (e) => {
+    const p = e.latlng;
+    window.marker.setLatLng(p);
+    onPointChange(p.lat, p.lng);
+  });
+
+  const p = window.marker.getLatLng();
+  onPointChange(p.lat, p.lng);
+  getUserLocation();
+}
+
+/* address search (Photon) */
+(function addressSearchInit(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const addressInput = $('addressSearch');
+    if (!addressInput) return;
+    let lastTimeout = null, resultsBox = null;
+
+    function createResultsBox(){
+      if (resultsBox) return resultsBox;
+      resultsBox = document.createElement('div');
+      resultsBox.style.position = 'absolute';
+      resultsBox.style.zIndex = 1000;
+      resultsBox.style.background = '#fff';
+      resultsBox.style.border = '1px solid #ccc';
+      resultsBox.style.width = addressInput.offsetWidth + 'px';
+      resultsBox.style.maxHeight = '200px';
+      resultsBox.style.overflowY = 'auto';
+      resultsBox.className = 'leaflet-geocode-results';
+      addressInput.parentNode.appendChild(resultsBox);
+      positionResultsBox();
+      return resultsBox;
+    }
+
+    function positionResultsBox(){
+      if (!resultsBox) return;
+      resultsBox.style.left = (addressInput.offsetLeft) + 'px';
+      resultsBox.style.top = (addressInput.offsetTop + addressInput.offsetHeight) + 'px';
+      resultsBox.style.width = addressInput.offsetWidth + 'px';
+    }
+
+    function clearResults(){ if (resultsBox) resultsBox.innerHTML = ''; }
+
+    window.addEventListener('resize', positionResultsBox);
+    window.addEventListener('scroll', positionResultsBox, true);
+
+    addressInput.addEventListener('input', function(){
+      if (window._addressProgrammaticUpdate) return; // ignore programmatic changes
+      clearResults();
+      if (lastTimeout) clearTimeout(lastTimeout);
+      const query = addressInput.value.trim();
+      if (!query) return;
+      lastTimeout = setTimeout(function(){
+        fetch('https://photon.komoot.io/api/?q=' + encodeURIComponent(query) + '&lang={{ LANGUAGE_CODE }}')
+          .then(r => r.json().catch(() => ({}))).then(data => {
+            clearResults();
+            if (data && data.features && data.features.length){
+              const box = createResultsBox();
+              data.features.forEach(f => {
+                const name = f.properties?.name || '';
+                const city = f.properties?.city ? ', ' + f.properties.city : '';
+                const country = f.properties?.country ? ', ' + f.properties.country : '';
+                const item = document.createElement('div');
+                item.textContent = name + city + country;
+                item.style.padding = '6px 10px';
+                item.style.cursor = 'pointer';
+                item.addEventListener('mousedown', function(e){
+                  e.preventDefault();
+                  addressInput.value = item.textContent;
+                  clearResults();
+                  if (window.map && window.marker && f.geometry?.coordinates){
+                    const lat = f.geometry.coordinates[1], lng = f.geometry.coordinates[0];
+                    window.map.setView([lat, lng], 17);
+                    window.marker.setLatLng([lat, lng]);
+                    setCurrentLocation(lat, lng);
+                    window.updateNextStep1Btn?.();
+                    updateSummary();
+                    checkPoint(lat, lng);
+                    fetchInstallFee(lat, lng).then(() => updateSummary());
+                  }
+                });
+                box.appendChild(item);
+              });
+              positionResultsBox();
+            }
+          }).catch(() => {});
+      }, 350);
+    });
+
+    // Enter key or blur triggers a forward geocode to top result
+    addressInput.addEventListener('keydown', function(e){
+      if (e.key === 'Enter'){
+        e.preventDefault();
+        forwardGeocodeAndMove(addressInput.value);
+        clearResults();
+      }
+    });
+    addressInput.addEventListener('blur', function(){
+      // small delay so click on a suggestion still works
+      setTimeout(() => {
+        if (resultsBox && resultsBox.childElementCount){ return; }
+        forwardGeocodeAndMove(addressInput.value);
+      }, 120);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (resultsBox && !resultsBox.contains(e.target) && e.target !== addressInput) clearResults();
+    });
+  });
+})();
+
+function getUserLocation(){
+  if (!("geolocation" in navigator)) return;
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const userLoc = [pos.coords.latitude, pos.coords.longitude];
+      if (window.map && window.marker){
+        window.map.setView(userLoc, 13);
+        window.marker.setLatLng(userLoc);
+        const p = window.marker.getLatLng();
+        setCurrentLocation(p.lat, p.lng);
+        window.updateNextStep1Btn?.();
+        checkPoint(userLoc[0], userLoc[1]);
+        fetchInstallFee(userLoc[0], userLoc[1]).then(() => updateSummary());
+      }
+    },
+    (err) => console.warn("Geolocation error:", err?.message || err),
+    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+  );
+}
+
+/* ====================== INSTALL FEE ====================== */
+window._installFeeState = { ctrl: null, lastKey: null, cache: new Map() };
+function _round5(n){ return Math.round(Number(n) * 1e5) / 1e5; }
+
+async function fetchInstallFee(lat, lng){
+  try{
+    const latNum = Number(lat), lngNum = Number(lng);
+    if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) return 0;
+    const latR = _round5(latNum), lngR = _round5(lngNum), key = `${latR},${lngR}`;
+    if (window._installFeeState.cache.has(key)) return window._installFeeState.cache.get(key);
+    if (window._installFeeState.ctrl){ try { window._installFeeState.ctrl.abort(); } catch{} }
+    window._installFeeState.ctrl = new AbortController();
+    window._installFeeState.lastKey = key;
+
+    const url = new URL("{% url 'get_installation_fee' %}", window.location.origin);
+    url.searchParams.set("lat", latR);
+    url.searchParams.set("lng", lngR);
+    url.searchParams.set("lon", lngR);
+
+    const res = await fetch(url.toString(), {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      signal: window._installFeeState.ctrl.signal
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json().catch(() => ({}));
+    const amt = Number.parseFloat(data?.amount_usd);
+    const value = (data?.success && Number.isFinite(amt) && amt >= 0) ? amt : 0;
+    if (key === window._installFeeState.lastKey) window._installFeeState.cache.set(key, value);
+    return value;
+  }catch(e){
+    if (e?.name === "AbortError") return 0;
+    console.error("fetchInstallFee failed:", e);
+    return 0;
+  }
+}
+
+async function checkPoint(lat, lng){
+  try{
+    const feeValueEl = $("installFeeValue"), feeUsdEl = $("installFeeUsdField"),
+          feeDisplayEl = $("installFeeDisplay");
+    const haveUI = !!(feeValueEl && feeUsdEl && feeDisplayEl);
+    const response = await fetch(`/geo_regions/check-point/?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}`, { headers: { "X-Requested-With": "XMLHttpRequest" }});
+    if (!response.ok){ if (haveUI) feeDisplayEl.classList.add("hidden"); return; }
+    const data = await response.json().catch(() => ({}));
+    const regions = Array.isArray(data?.regions) ? data.regions : (data?.regions?.features || []);
+    if (regions.length > 0){
+      const installFee = await fetchInstallFee(lat, lng);
+      if (Number.isFinite(installFee) && installFee > 0){
+        if (haveUI){
+          feeValueEl.textContent = _fmtUSD(installFee);
+          feeUsdEl.value = installFee;
+          feeDisplayEl.classList.remove("hidden");
+        }
+      }else if (haveUI){
+        feeDisplayEl.classList.add("hidden");
+      }
+    }else if (haveUI){
+      feeDisplayEl.classList.add("hidden");
+    }
+  }catch(error){
+    console.error("Error checking point:", error);
+    $("installFeeDisplay")?.classList.add("hidden");
+  }
+}
+
+/* ====================== ORDER SUMMARY ====================== */
+function getBillingCycle(){
+  return (document.querySelector('input[name="billing_cycle"]:checked')?.value || "monthly").toLowerCase();
+}
+function getCycleMultiplier(cycle){
+  if (cycle === "quarterly") return 3;
+  if (cycle === "yearly")     return 12;
+  return 1;
+}
+
+function _setRow(id1, id2, show, textTargetId1 = null, text1 = null, textTargetId2 = null, text2 = null){
+  const r1 = $(id1), r2 = $(id2);
+  if (r1) r1.classList.toggle('hidden', !show);
+  if (r2) r2.classList.toggle('hidden', !show);
+  if (textTargetId1 && $(textTargetId1) && (text1 !== null)) $(textTargetId1).textContent = text1;
+  if (textTargetId2 && $(textTargetId2) && (text2 !== null)) $(textTargetId2).textContent = text2;
+}
+
+async function updateSummary(){
+  const kitSelect  = $("kitType");
+  const planSelect = $("subscriptionPlan");
+  const onStep1 = !($("orderStep1")?.classList.contains("hidden"));
+  const onStep2 = !($("orderStep2")?.classList.contains("hidden"));
+
+  const kitText      = kitSelect?.selectedOptions[0]?.text?.trim() || "";
+  const planText     = planSelect?.selectedOptions[0]?.text?.trim() || "";
+  const kitPrice     = parseFloat(kitText.match(/\$([\d,]+(\.\d+)?)/)?.[1]?.replace(/,/g, "") || 0);
+  const monthlyPrice = parseFloat(planText.match(/\$([\d,]+(\.\d+)?)/)?.[1]?.replace(/,/g, "") || 0);
+
+  const latVal = parseFloat($("latitude")?.value);
+  const lngVal = parseFloat($("longitude")?.value);
+  const installPrice = await fetchInstallFee(latVal, lngVal);
+
+  const cycle = getBillingCycle();
+  const mult  = getCycleMultiplier(cycle);
+  const cycleFee = (monthlyPrice || 0) * mult;
+
+  const totalNowHT_step1 = (installPrice || 0);
+  const totalNowHT_full  = (kitPrice || 0) + (installPrice || 0) + (cycleFee || 0);
+  const cycleTotal = cycleFee;
+  const cycleName  = cycle === "monthly"   ? "{% trans 'Monthly' %}"
+                    : cycle === "quarterly"? "{% trans 'Quarterly' %}"
+                    :                        "{% trans 'Yearly' %}";
+
+  _setRow("rowKit", "rowKit2", false);
+  _setRow("rowPlan","rowPlan2", false);
+  _setRow("rowKitFee","rowKitFee2", false);
+  _setRow("rowCycleFee","rowCycleFee2", (onStep2 && (monthlyPrice > 0)), null, null, "cycleFeeLabel2", cycleName + " {% trans 'Fee' %}:");
+  _setRow("rowCycleTotal","rowCycleTotal2", (onStep2 && (monthlyPrice > 0)), null, null, "cycleTotalLabel2", cycleName + " {% trans 'Total' %}:");
+
+  if ($("installFee"))  $("installFee").textContent  = _fmtUSD(installPrice);
+  if ($("installFee2")) $("installFee2").textContent = _fmtUSD(installPrice);
+
+  const hasKit  = !!kitText  && Number.isFinite(kitPrice)     && kitPrice > 0;
+  const hasPlan = !!planText && Number.isFinite(monthlyPrice) && monthlyPrice > 0;
+
+  if (onStep2){
+    _setRow("rowKit", "rowKit2", hasKit, "kitLabel", kitText, "kitLabel2", kitText);
+    _setRow("rowPlan","rowPlan2", hasPlan,"planLabel",planText,"planLabel2",planText);
+    _setRow("rowKitFee","rowKitFee2",hasKit,"kitFee",_fmtUSD(kitPrice),"kitFee2",_fmtUSD(kitPrice));
+    if (hasPlan){
+      if ($("cycleFeeLabel"))   $("cycleFeeLabel").textContent   = cycleName + " {% trans 'Fee' %}:";
+      if ($("cycleFeeLabel2"))  $("cycleFeeLabel2").textContent  = cycleName + " {% trans 'Fee' %}:";
+      if ($("cycleTotalLabel")) $("cycleTotalLabel").textContent = cycleName + " {% trans 'Total' %}:";
+      if ($("cycleTotalLabel2"))$("cycleTotalLabel2").textContent= cycleName + " {% trans 'Total' %}:";
+      if ($("monthlyFee"))      $("monthlyFee").textContent      = _fmtUSD(cycleFee);
+      if ($("monthlyFee2"))     $("monthlyFee2").textContent     = _fmtUSD(cycleFee);
+      if ($("totalMonthly"))    $("totalMonthly").textContent    = _fmtUSD(cycleTotal);
+      if ($("totalMonthly2"))   $("totalMonthly2").textContent   = _fmtUSD(cycleTotal);
+      _setRow("rowCycleFee","rowCycleFee2", true);
+      _setRow("rowCycleTotal","rowCycleTotal2", true);
+    }
+  }
+
+  if ($("totalDueNow"))  $("totalDueNow").textContent  = _fmtUSD(onStep1 ? totalNowHT_step1 : totalNowHT_full);
+  if ($("totalDueNow2")) $("totalDueNow2").textContent = _fmtUSD(onStep2 ? totalNowHT_full : totalNowHT_step1);
+}
+
+/* ====================== KITS & PLANS ====================== */
+function showRegionBadge(region){
+  const el = $("regionBadge");
+  if (!el) return;
+  if (region && region.name){
+    el.style.display = "inline-block";
+    el.className = "text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200";
+    el.textContent = `Stock for: ${region.name}`;
+  }else{
+    el.style.display = "none";
+  }
+}
+
+document.addEventListener("DOMContentLoaded", function(){
+  const kitSelect  = $("kitType");
+  const planSelect = $("subscriptionPlan");
+
+  let kitBadge = $("kitStockBadge");
+  if (!kitBadge && kitSelect){
+    kitBadge = document.createElement("span");
+    kitBadge.id = "kitStockBadge";
+    kitBadge.className = "ml-2 text-xs px-2 py-0.5 rounded-full font-semibold hidden";
+    kitSelect.parentNode.insertBefore(kitBadge, kitSelect.nextSibling);
+  }
+
+  function updateKitStockBadge(){
+    if (!kitSelect || !kitBadge) return;
+    const opt = kitSelect.options[kitSelect.selectedIndex];
+    if (!opt || typeof opt.dataset.quantity === "undefined"){ kitBadge.classList.add("hidden"); return; }
+    const qty = parseInt(opt.dataset.quantity, 10);
+    if (Number.isNaN(qty)){ kitBadge.classList.add("hidden"); return; }
+    if (qty === 0){
+      kitBadge.textContent = "{% trans 'Not available' %}";
+      kitBadge.className   = "ml-2 text-xs px-2 py-0.5 rounded-full font-semibold bg-red-100 text-red-700";
+      kitBadge.classList.remove("hidden");
+    }else{
+      kitBadge.textContent = "{% trans 'Available' %}";
+      kitBadge.className   = "ml-2 text-xs px-2 py-0.5 rounded-full font-semibold bg-green-100 text-green-700";
+      kitBadge.classList.remove("hidden");
+    }
+  }
+
+  window._plansCache = new Map();
+  window.loadPlans = async function loadPlans({ kitType = null, force = false } = {}){
+    const cacheKey = kitType || "__ALL__";
+    if (!force && window._plansCache.has(cacheKey)){
+      fillPlansDropdown(window._plansCache.get(cacheKey));
+      return { success: true, cached: true };
+    }
+    const url = new URL(window.ENDPOINTS.plans, window.location.origin);
+    if (kitType) url.searchParams.set("kit_type", kitType);
+    const res  = await fetch(url.toString(), { headers: { "X-Requested-With": "XMLHttpRequest" }, cache: "no-cache" });
+    const data = await res.json().catch(() => ({}));
+    showRegionBadge(data?.region);
+    const plans = Array.isArray(data?.plans) ? data.plans : [];
+    window._plansCache.set(cacheKey, plans);
+    fillPlansDropdown(plans);
+    return { success: !!data?.success, plans };
+  };
+
+  function fillPlansDropdown(plans){
+    if (!planSelect) return;
+    planSelect.innerHTML = `<option value="">{% trans "-- Select Plan --" %}</option>`;
+    (plans || []).forEach(plan => {
+      const option = document.createElement("option");
+      option.value = plan.id;
+      option.textContent = `${plan.name} – $${Number(plan.price_usd || 0).toFixed(2)} (${plan.data_cap_gb || 'Unlimited'}GB)`;
+      if (plan.description) option.title = plan.description;
+      planSelect.appendChild(option);
+    });
+  }
+
+  window.loadKitsByLocation = function loadKitsByLocation({ lat = null, lng = null, regionId = null, requireRegion = false } = {}){
+    if (window.isLoadingKits) return Promise.resolve({ success: false, message: "busy" });
+    window.isLoadingKits = true;
+    const url = new URL(window.ENDPOINTS.kitsByLocation, window.location.origin);
+    const latNum = Number(lat), lngNum = Number(lng);
+    if (Number.isFinite(latNum) && Number.isFinite(lngNum)){
+      const latR = Math.round(latNum * 1e5) / 1e5, lonR = Math.round(lngNum * 1e5) / 1e5;
+      url.searchParams.set("lat", latR);
+      url.searchParams.set("lon", lonR);
+      url.searchParams.set("lng", lonR);
+    }else if (regionId){
+      url.searchParams.set("region_id", regionId);
+    }
+
+    return fetch(url.toString(), { headers: { "X-Requested-With": "XMLHttpRequest" }, cache: "no-cache" })
+      .then(async (res) => {
+        if (res.status === 401) return { success: false, message: "Authentication required" };
+        const data = await res.json().catch(() => ({}));
+        if (requireRegion && (!data || !data.region || !data.region.id)){ /* optional gate */ }
+        if (!kitSelect || !planSelect) return data || { success: false };
+
+        kitSelect.innerHTML  = `<option value="">{% trans "-- Choose Kit --" %}</option>`;
+        planSelect.innerHTML = `<option value="">{% trans "-- Select Plan --" %}</option>`;
+
+        const kits = data?.kits || {};
+        for (const [type, items] of Object.entries(kits)){
+          const available = (items || []).filter(k => (k.quantity || 0) > 0);
+          if (!available.length) continue;
+          const og = document.createElement("optgroup");
+          og.label = type.charAt(0).toUpperCase() + type.slice(1);
+          available.forEach(kit => {
+            const option = document.createElement("option");
+            option.value = kit.id;
+            option.dataset.quantity = kit.quantity;
+            option.dataset.kitType  = kit.kit_type || type;
+            option.textContent = `${kit.name} – $${Number(kit.price_usd || 0).toFixed(2)} ({% trans 'Available' %})`;
+            og.appendChild(option);
+          });
+          kitSelect.appendChild(og);
+        }
+        updateKitStockBadge();
+
+        const latVal = parseFloat($("latitude")?.value);
+        const lngVal = parseFloat($("longitude")?.value);
+        if (Number.isFinite(latVal) && Number.isFinite(lngVal)){
+          fetchInstallFee(latVal, lngVal).then(() => updateSummary());
+        }else{
+          updateSummary();
+        }
+        window.updateNextStep2Btn?.();
+        return data;
+      })
+      .catch(err => {
+        console.error("Error loading kits:", err);
+        return { success: false, message: err?.message || "Network error" };
+      })
+      .finally(() => { window.isLoadingKits = false; });
+  };
+
+  kitSelect?.addEventListener("change", () => {
+    const selectedOption = kitSelect.selectedOptions[0];
+    const kitType = selectedOption ? selectedOption.dataset.kitType : null;
+    if (kitType) window.loadPlans({ kitType });
+    updateKitStockBadge();
+    updateSummary();
+    window.updateNextStep2Btn?.();
+  });
+  planSelect?.addEventListener("change", () => {
+    updateSummary();
+    window.updateNextStep2Btn?.();
+  });
+});
+
+/* ====================== RENDER HELPERS (checkout) ====================== */
+function renderLinesIntoDOM(lines){
+  const tbody = $("checkoutLines");
+  const cards = $("checkoutLinesList");
+  if (tbody){
+    if (!lines.length){
+      tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-3 text-center text-gray-500">{% trans "No items to display." %}</td></tr>`;
+    }else{
+      tbody.innerHTML = lines.map(l => `
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-2">${l.kind || ""}</td>
+          <td class="px-4 py-2">${l.description || ""}</td>
+          <td class="px-4 py-2 text-right">${l.quantity || "1"}</td>
+          <td class="px-4 py-2 text-right">${_fmtUSD(l.unit_price)}</td>
+          <td class="px-4 py-2 text-right font-semibold">${_fmtUSD(l.line_total)}</td>
+        </tr>`).join("");
+    }
+  }
+  if (cards){
+    if (!lines.length){
+      cards.innerHTML = `<div class="p-4 text-gray-500">{% trans "No items to display." %}</div>`;
+    }else{
+      cards.innerHTML = lines.map(l => `
+        <div class="p-4 flex items-start justify-between">
+          <div class="space-y-1">
+            <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "Kind" %}</div>
+            <div class="font-medium text-gray-900">${l.kind || ""}</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 mt-2">{% trans "Description" %}</div>
+            <div class="text-gray-800">${l.description || ""}</div>
+            <div class="text-xs uppercase tracking-wide text-gray-500 mt-2">{% trans "Qty • Unit" %}</div>
+            <div class="text-gray-800">${l.quantity || "1"} • ${_fmtUSD(l.unit_price)}</div>
+          </div>
+          <div class="text-right ml-4">
+            <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "Total" %}</div>
+            <div class="text-base font-semibold text-gray-900">${_fmtUSD(l.line_total)}</div>
+          </div>
+        </div>`).join("");
+    }
+  }
+}
+
+function renderTaxesIntoDOM(taxes){
+  const tbody = $("checkoutTaxes");
+  const cards = $("checkoutTaxesList");
+  if (tbody){
+    if (!taxes.length){
+      tbody.innerHTML = `<tr><td colspan="2" class="px-4 py-3 text-center text-gray-500">{% trans "No taxes applied." %}</td></tr>`;
+    }else{
+      tbody.innerHTML = taxes.map(t => `
+        <tr class="hover:bg-gray-50 transition">
+          <td class="px-4 py-2">${(t.kind || "")} (${t.rate || "0"}%)</td>
+          <td class="px-4 py-2 text-right font-semibold">${_fmtUSD(t.amount)}</td>
+        </tr>`).join("");
+    }
+  }
+  if (cards){
+    if (!taxes.length){
+      cards.innerHTML = `<div class="p-4 text-gray-500">{% trans "No taxes applied." %}</div>`;
+    }else{
+      cards.innerHTML = taxes.map(t => `
+        <div class="p-4 flex items-start justify-between">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "Tax" %}</div>
+            <div class="font-medium text-gray-900">${(t.kind || "")} (${t.rate || "0"}%)</div>
+          </div>
+          <div class="text-right">
+            <div class="text-xs uppercase tracking-wide text-gray-500">{% trans "Amount" %}</div>
+            <div class="text-base font-semibold text-gray-900">${_fmtUSD(t.amount)}</div>
+          </div>
+        </div>`).join("");
+    }
+  }
+}
+
+function renderDiscountInfo(orderObj){
+  const discounts = Array.isArray(orderObj?.discounts) ? orderObj.discounts : [];
+  const applied   = !!orderObj?.coupon_applied;
+  const error     = orderObj?.coupon_error || "";
+
+  const discBox = $("checkoutDiscounts");
+  const badge   = $("checkoutCouponBadge");
+  const banner  = $("checkoutCouponBanner");
+  const errBox  = $("checkoutCouponError");
+
+  toggleElement("checkoutDiscounts", false);
+  toggleElement("checkoutCouponBanner", false);
+  toggleElement("checkoutCouponError", false);
+  if (discBox) discBox.innerHTML = "";
+  if (badge)   badge.textContent = "";
+  if (errBox)  errBox.textContent = "";
+
+  if (discounts.length){
+    toggleElement("checkoutDiscounts", true);
+    discBox.innerHTML = discounts.map(d => {
+      const label = (d.label || "").toString();
+      const amt   = Number(d.amount || 0);
+      return `<div>• ${label} <span class="font-semibold">(${_fmtUSD(amt)})</span></div>`;
+    }).join("");
+  }
+  if (applied){
+    if (badge) badge.textContent = "{% trans 'Coupon applied' %}";
+    toggleElement("checkoutCouponBanner", true);
+  }
+  if (error){
+    if (errBox) errBox.textContent = error;
+    toggleElement("checkoutCouponError", true);
+  }
+
+  const inlineErr = $("couponInlineError");
+  const inlineOk  = $("couponInlineOk");
+  if (inlineErr && inlineOk){
+    inlineErr.classList.add("hidden");
+    inlineOk.classList.add("hidden");
+    if (error){
+      inlineErr.textContent = error;
+      inlineErr.classList.remove("hidden");
+    }else if (applied){
+      inlineOk.textContent = "{% trans 'Coupon accepted and applied to your plan.' %}";
+      inlineOk.classList.remove("hidden");
+    }
+  }
+}
+
+/* ====================== OPEN/CLOSE MODALS ====================== */
+async function _preloadInstallFeeAndStock(){
+  try{
+    let { lat, lng } = window.CURRENT_LOCATION || {};
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)){
+      const latVal = parseFloat($("latitude")?.value);
+      const lngVal = parseFloat($("longitude")?.value);
+      if (Number.isFinite(latVal) && Number.isFinite(lngVal)){ lat = latVal; lng = lngVal; }
+    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    await checkPoint(lat, lng);
+    await fetchInstallFee(lat, lng).then(() => updateSummary());
+    await window.loadKitsByLocation({ lat, lng, requireRegion: false });
+  }catch(e){ console.warn("Preload fee/stock failed:", e); }
+}
+
+function openOrderModal(){
+  toggleElement("orderModal", true);
+  setTimeout(() => {
+    if (typeof initLeafletMap === 'function') initLeafletMap();
+    if (window.map?.invalidateSize) window.map.invalidateSize();
+  }, 100);
+  setTimeout(() => { _preloadInstallFeeAndStock(); }, 120);
+}
+function closeOrderModal(){ toggleElement("orderModal", false); }
+function closeCheckoutModal(){ toggleElement("checkoutModal", false); }
+
+window.openOrderModal     = openOrderModal;
+window.closeOrderModal    = closeOrderModal;
+window.closeCheckoutModal = closeCheckoutModal;
+
+/* ====================== ORDER SUBMIT → CHECKOUT ====================== */
+window._orderSubmitting = false;
+window._orderAbortController = null;
+
+function makeIdemKey(){
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c => (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> (c / 4))).toString(16));
+}
+
+/* Ensure the server sees the expected field names */
+function normalizeOrderFormData(formData){
+  const lat = $("latitude")?.value || $("lat")?.value;
+  const lng = $("longitude")?.value || $("lng")?.value;
+  if (lat) formData.set("lat", String(lat));
+  if (lng) formData.set("lng", String(lng));
+
+  const kitSel  = $("kitType");
+  const planSel = $("subscriptionPlan");
+  if (kitSel && kitSel.value)   formData.set("kit_id", kitSel.value);
+  if (planSel && planSel.value) formData.set("subscription_plan_id", planSel.value);
+
+  const cycle = document.querySelector('input[name="billing_cycle"]:checked')?.value || "monthly";
+  formData.set("billing_cycle", cycle.toLowerCase());
+
+  const coupon = $("couponCode")?.value?.trim();
+  if (coupon){
+    formData.set("coupon", coupon.toUpperCase());
+    formData.append("coupon_code[]", coupon.toUpperCase());
+  }
+
+  const ai = $("assistedInstallation") || document.querySelector('input[name="assisted_installation"]');
+  if (ai && ai.checked) formData.set("assisted_installation", "on");
+
+  const pm = (window.selectedPaymentMethod || "").toString().trim();
+  if (pm){ formData.set("payment_method", pm); }
+
+  return formData;
+}
+
+/* Bind form (just once) */
+(function attachOrderHandlerOnce(){
+  const form = $("orderForm");
+  if (!form) return;
+  if (form.dataset.bound === "1") return;
+  form.dataset.bound = "1";
+  form.setAttribute("action", "javascript:void(0)");
+  form.onsubmit = null;
+  form.addEventListener("submit", function(e){
+    e.preventDefault();
+    window.openCheckoutModalFromOrderForm();
+  }, { passive: false });
+})();
+
+/* MAIN submit flow */
+window.openCheckoutModalFromOrderForm = async function(){
+  if (window._orderSubmitting) return;
+  window._orderSubmitting = true;
+  if (window._orderAbortController){ try{ window._orderAbortController.abort(); }catch{} }
+  window._orderAbortController = new AbortController();
+
+  const submitBtn = document.querySelector("#orderForm [type='submit']");
+  const originalBtnText = submitBtn ? submitBtn.textContent : "";
+  if (submitBtn){
+    submitBtn.disabled = true;
+    submitBtn.textContent = submitBtn.getAttribute("data-loading-text") || "Submitting…";
+  }
+
+  try{
+    const form = $("orderForm");
+    if (!form) throw new Error("Form not found");
+
+    const formData = normalizeOrderFormData(new FormData(form));
+    const idemKey  = makeIdemKey();
+    formData.append("idem_key", idemKey);
+
+    const response = await fetch("{% url 'submit_order' %}", {
+      method: "POST",
+      headers: {
+        "X-Requested-With": "XMLHttpRequest",
+        "X-CSRFToken": getCSRFToken(),
+        "X-Idempotency-Key": idemKey
+      },
+      body: formData,
+      signal: window._orderAbortController.signal
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok || !payload || payload.success !== true){
+      const msg = payload?.message || `Submit failed (${response.status})`;
+      const firstErr = (Array.isArray(payload?.results) ? payload.results.find(r => r && r.success === false) : null);
+      alert(firstErr?.message || msg);
+      return;
+    }
+
+    const results = Array.isArray(payload.results) ? payload.results : [];
+    const okBlock = results.find(r => r && r.success && r.order);
+    if (!okBlock){
+      const firstErr = results.find(r => r && r.success === false);
+      alert(firstErr?.message || orderModalTranslations.noOrdersCreated);
+      return;
+    }
+
+    const o = okBlock.order || {};
+    $("checkoutOrderId") && ($("checkoutOrderId").textContent = o.id || "");
+    $("flexpayOrderId") && ($("flexpayOrderId").value       = o.id || "");
+
+    /* ==== NEW: persist order_reference for cancel flow & UI ==== */
+    if (o.order_reference){
+      document.body.dataset.orderReference = o.order_reference; // used by getOrderReference()
+      if ($("checkoutOrderReference")) $("checkoutOrderReference").textContent = o.order_reference;
+    }
+
+    if ($("checkoutExpiresAt") && o.expires_at){
+      try{
+        const expiresDate     = new Date(o.expires_at);
+        const localTimeString = expiresDate.toLocaleString('fr-FR', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit'
+        });
+        $("checkoutExpiresAt").textContent = localTimeString;
+      }catch(e){ $("checkoutExpiresAt").textContent = o.expires_at || ""; }
+    }
+    $("checkoutLat") && ($("checkoutLat").textContent = (o.latitude ?? ""));
+    $("checkoutLng") && ($("checkoutLng").textContent = (o.longitude ?? ""));
+
+    renderLinesIntoDOM(Array.isArray(o.lines) ? o.lines : []);
+    renderTaxesIntoDOM(Array.isArray(o.taxes) ? o.taxes : []);
+    renderDiscountInfo(o);
+
+    $("checkoutSubtotal")   && ($("checkoutSubtotal").textContent   = _fmtUSD(o.subtotal));
+    $("checkoutTaxTotal")   && ($("checkoutTaxTotal").textContent   = _fmtUSD(o.tax_total));
+    $("checkoutTotal")      && ($("checkoutTotal").textContent      = _fmtUSD(o.total_price));
+
+    const taxes    = Number(o.tax_total)   || 0;
+    const subtotal = Number(o.subtotal)    || 0;
+    const total    = Number(o.total_price) || (subtotal + taxes);
+
+    $("checkoutTotalFooterHT")    && ($("checkoutTotalFooterHT").textContent    = _fmtUSD(subtotal));
+    $("checkoutTotalFooterTaxes") && ($("checkoutTotalFooterTaxes").textContent = _fmtUSD(taxes));
+    $("checkoutTotalFooterTTC")   && ($("checkoutTotalFooterTTC").textContent   = _fmtUSD(total));
+
+    closeOrderModal();
+    toggleElement("checkoutModal", true);
+    loadCheckoutPaymentMethods({ force: true });
+
+  }catch(err){
+    if (err?.name !== "AbortError"){
+      console.error("Error submitting order:", err);
+      alert(orderModalTranslations.somethingWentWrong);
+    }
+  }finally{
+    window._orderSubmitting = false;
+    if (submitBtn){
+      submitBtn.disabled = false;
+      submitBtn.textContent = originalBtnText;
+    }
+  }
+};
+
+/* ====================== PAYMENT ====================== */
+window.selectedPaymentMethod = window.selectedPaymentMethod || null;
+window.paymentMethodConfig  = window.paymentMethodConfig  || {};
+
+function normalizeMethodKey(name){
+  const k = String(name || "").toLowerCase();
+  if (k.includes("mobile") || k.includes("momo") || k.includes("mpesa") || k.includes("m-pesa") || k.includes("airtel") || k.includes("orange money") || k.includes("vodacom")) return "mobile";
+  if (k.includes("card") || k.includes("credit") || k.includes("visa") || k.includes("mastercard")) return "card";
+  if (k.includes("bank") || k.includes("transfer") || k.includes("wire")) return "bank";
+  if (k.includes("book") || k.includes("shop") || k.includes("counter")) return "book";
+  return "other";
+}
+function getLabelForMethod(methodKey){
+  const k = String(methodKey || '').toLowerCase();
+  if (k === "mobile") return "{% trans 'Pay with Mobile Money' %}";
+  if (k === "card")   return "{% trans 'Pay with Credit Card' %}";
+  if (k === "bank")   return "{% trans 'Confirm and Pay (Pending Confirmation)' %}";
+  if (k === "book")   return "{% trans 'Book and Pay at Shop (24h)' %}";
+  return "{% trans 'Proceed to Payment' %}";
+}
+
+async function loadCheckoutPaymentMethods({ force = false } = {}){
+  const container = $("checkoutPaymentButtons");
+  if (!container) return;
+  if (window._pmIsLoading) return;
+  window._pmIsLoading = true;
+  if (window._pmAbortController){ try{ window._pmAbortController.abort(); }catch{} }
+  window._pmAbortController = new AbortController();
+
+  container.innerHTML = "";
+  window.paymentMethodConfig = {};
+  window.selectedPaymentMethod = null;
+
+  try{
+    const res  = await fetch("{% url 'get_payment_methods' %}", {
+      headers: { "X-Requested-With": "XMLHttpRequest" },
+      signal: window._pmAbortController.signal,
+      cache: "no-cache"
+    });
+    if (!res.ok) throw new Error("Network error");
+    const data = await res.json().catch(() => ({}));
+    if (!data?.success || !Array.isArray(data.methods) || data.methods.length === 0) throw new Error("No methods");
+
+    const signature = JSON.stringify(data.methods.map(m => (m && m.name ? String(m.name).trim().toLowerCase() : "")).sort());
+    if (!force && signature === window._pmLastSignature && container.children.length) return;
+    window._pmLastSignature = signature;
+
+    const seen = new Set();
+    let firstKey = null;
+    data.methods.forEach(method => {
+      const rawName  = (method && method.name) ? String(method.name) : "";
+      const methodKey = normalizeMethodKey(rawName);
+      if (!methodKey || seen.has(methodKey)) return;
+      seen.add(methodKey);
+      if (!firstKey) firstKey = methodKey;
+
+      window.paymentMethodConfig[methodKey] = {
+        label: getLabelForMethod(methodKey),
+        showPhone: methodKey === "mobile",
+        showEmail: methodKey === "card"
+      };
+
+      const btnId = `pm-btn-${methodKey}`;
+      const button = document.createElement("button");
+      button.type = "button";
+      button.id = btnId;
+      button.className = "flex items-center justify-center gap-2 w-full py-2 px-4 border rounded-md text-sm font-medium bg-white shadow hover:shadow-md hover:bg-gray-100";
+      const icon = methodKey === "mobile" ? "📱" : methodKey === "card" ? "💳" : methodKey === "bank" ? "🏦" : methodKey === "book" ? "🧾" : "💰";
+      button.textContent = `${icon} ${rawName || window.paymentMethodConfig[methodKey].label}`;
+      button.addEventListener("click", () => selectPaymentMethod(methodKey));
+      container.appendChild(button);
+    });
+
+    if (!container.children.length){
+      container.innerHTML = `<p class=\"text-gray-600 text-sm\">{% trans "No online payment methods available." %}</p>`;
+    } else {
+      // Auto-select the first method if none selected yet
+      if (!window.selectedPaymentMethod && firstKey){
+        selectPaymentMethod(firstKey);
+      }
+      // Robustness: delegate clicks in case individual listeners fail
+      if (!container.dataset.clickBound){
+        container.addEventListener('click', (e)=>{
+          const btn = e.target.closest('button[id^="pm-btn-"]');
+          if (btn){
+            const key = btn.id.replace('pm-btn-','');
+            selectPaymentMethod(key);
+          }
+        });
+        container.dataset.clickBound = "1";
+      }
+    }
+  }catch(e){
+    if (e?.name !== "AbortError"){
+      console.error("Failed to load payment methods:", e);
+      container.innerHTML = `<p class="text-red-600 text-sm">{% trans "Failed to load payment methods." %}</p>`;
+    }
+  }finally{
+    window._pmIsLoading = false;
+  }
+}
+
+function selectPaymentMethod(methodKey){
+  window.selectedPaymentMethod = methodKey;
+  const cfg = window.paymentMethodConfig[methodKey] || {};
+  $("mobileMoneyPhoneGroup")?.classList.toggle("hidden", !cfg.showPhone);
+  $("cardEmailWrapper")?.classList.toggle("hidden", !cfg.showEmail);
+  const proceedBtn = $("proceedToPaymentBtn");
+  if (proceedBtn) proceedBtn.textContent = cfg.label || "{% trans 'Proceed to Payment' %}";
+
+  ["mobile","card","bank","book","other"].forEach(k => {
+    const el = $("pm-btn-" + k);
+    if (!el) return;
+    if (k === methodKey) el.classList.add("ring-2","ring-emerald-500","bg-emerald-50");
+    else el.classList.remove("ring-2","ring-emerald-500","bg-emerald-50");
+  });
+}
+
+window._payInFlight = window._payInFlight || false;
+window._payAbortController = window._payAbortController || null;
+
+function normalizeCDPhone(raw){
+  const p = (raw || "").replace(/\D/g, "");
+  if (p.length === 10 && p.startsWith("0"))   return "243" + p.slice(1);
+  if (p.length === 12 && p.startsWith("243")) return p;
+  return raw || "";
+}
+
+/* ============ initiatePayment (includes the MOBILE two-step trigger) ============ */
+async function initiatePayment(e){
+  if (e?.preventDefault) e.preventDefault();
+  if (window._payInFlight) return;
+  window._payInFlight = true;
+
+  const orderId = $("flexpayOrderId")?.value;
+  const phone   = $("mobileMoneyPhone")?.value?.trim();
+  const email   = $("cardEmail")?.value?.trim();
+  const btn     = $("proceedToPaymentBtn");
+
+  if (!orderId){
+    alert(orderModalTranslations.missingOrderId);
+    window._payInFlight = false; return;
+  }
+  if (!window.selectedPaymentMethod){
+    // Fallback: infer from UI state
+    try{
+      const mobVisible = !document.getElementById('mobileMoneyPhoneGroup')?.classList.contains('hidden');
+      const cardVisible = !document.getElementById('cardEmailWrapper')?.classList.contains('hidden');
+      if (mobVisible) window.selectedPaymentMethod = 'mobile';
+      if (cardVisible) window.selectedPaymentMethod = 'card';
+      if (!window.selectedPaymentMethod){
+        const selBtn = document.querySelector('#checkoutPaymentMethods button.ring-emerald-500') || document.querySelector('#checkoutPaymentMethods [id^="pm-btn-"]');
+        if (selBtn && selBtn.id && selBtn.id.startsWith('pm-btn-')){
+          window.selectedPaymentMethod = selBtn.id.replace('pm-btn-','');
+        }
+      }
+    }catch(_e){}
+  }
+  if (!window.selectedPaymentMethod){
+    alert(orderModalTranslations.selectPaymentMethod);
+    window._payInFlight = false; return;
+  }
+  if (window.selectedPaymentMethod === "mobile" && !phone){
+    alert("{% trans 'Please enter your mobile number.' %}");
+    window._payInFlight = false; return;
+  }
+  if (window.selectedPaymentMethod === "card" && !email){
+    alert("{% trans 'Please enter your email.' %}");
+    window._payInFlight = false; return;
+  }
+
+  if (btn){ btn.disabled = true; btn.classList.add("opacity-60","pointer-events-none"); }
+
+  if (window._payAbortController){ try{ window._payAbortController.abort(); }catch{} }
+  window._payAbortController = new AbortController();
+
+  try{
+    /* ---- CARD BRANCH (updated modal + manual "Payment done" trigger) ---- */
+    if (window.selectedPaymentMethod === "card"){
+      const ok = await confirmCardRedirect();
+      if (!ok) return;
+
+      const res = await fetch(PAY_ENDPOINTS.card, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken(), "X-Requested-With": "XMLHttpRequest" },
+        body: JSON.stringify({ order_id: orderId, email }),
+        signal: window._payAbortController.signal
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data?.success) throw new Error(data?.message || "Payment initiation failed.");
+
+      closeCheckoutModal();
+
+      // Open secure payment page in a new tab and show the 8-minute countdown modal
+      try {
+        const payUrl = data.url || "";
+        if (payUrl) window.open(payUrl, "_blank", "noopener,noreferrer");
+      } catch(_) {}
+      await showCardSentNotice({ order_number: orderId });
+      return;
+    }
+
+    /* ---- MOBILE BRANCH (two-step modal, polls /mobile_probe) ---- */
+    if (window.selectedPaymentMethod === "mobile"){
+      const res = await fetch(PAY_ENDPOINTS.mobile, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCSRFToken(),
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: JSON.stringify({ order_id: orderId, phone_number: normalizeCDPhone(phone) }),
+        signal: window._payAbortController.signal
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.status === 200) {
+        closeCheckoutModal();
+        showMobileSentNotice(data || {});   // two-step modal with live countdown + verification
+        return;
+      }
+
+      const errMsg = data?.message || `{% trans 'Payment initiation failed.' %} (HTTP ${res.status})`;
+      throw new Error(errMsg);
+    }
+
+  }catch(err){
+    if (err?.name !== "AbortError"){
+      console.error(err);
+      alert(err?.message || "{% trans 'Payment failed. Please try again.' %}");
+    }
+  }finally{
+    window._payInFlight = false;
+    if (btn){ btn.disabled = false; btn.classList.remove("opacity-60","pointer-events-none"); }
+  }
+}
+
+(function bindProceedButtonOnce(){
+  const btn = $("proceedToPaymentBtn");
+  if (!btn || btn.dataset.bound === "1") return;
+  btn.addEventListener("click", initiatePayment);
+  btn.dataset.bound = "1";
+})();
+window.initiatePayment = initiatePayment;
+
+/* ====================== MULTISTEP & TERMS ====================== */
+document.addEventListener('DOMContentLoaded', function(){
+  function setOrderStepTitle(step){
+    const title = $('orderStepTitle');
+    const indicator = $('orderStepIndicatorNum');
+    if (indicator) indicator.textContent = step;
+    if (!title) return;
+    if (step === 1)      title.textContent = "Select Your Installation Address";
+    else if (step === 2) title.textContent = "Select your Installation Kit & Subscription Plan";
+    else if (step === 3) title.textContent = "Terms and Conditions  Agreement";
+  }
+
+  const step1 = $('orderStep1'), step2 = $('orderStep2'), step3 = $('orderStep3');
+  const nextStep1 = $('nextStep1'), prevStep2 = $('prevStep2'), nextStep2 = $('nextStep2'), prevStep3 = $('prevStep3');
+  const submitOrderBtn = $('submitOrderBtn');
+  const orderTerms = $('order-terms'), orderTermsError = $('order-terms-error'),
+        orderTermsText = $('order-terms-text-container'), orderTermsScrollHint = $('order-terms-scroll-hint');
+
+  function showFormError(message){
+    document.querySelectorAll('.form-error-message').forEach(e => e.remove());
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'form-error-message bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mt-4';
+    errorDiv.innerHTML = `<div class="flex"><svg class="h-5 w-5 text-red-400 mt-0.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/></svg><p class="text-sm ml-3">${message}</p></div>`;
+    $('orderForm').insertBefore(errorDiv, $('orderForm').firstChild);
+    setTimeout(() => errorDiv.remove(), 5000);
+  }
+
+  function validateStep1(){
+    const lat = $('latitude')?.value;
+    const lng = $('longitude')?.value;
+    if (!lat || !lng){ alert('{% trans "Please select an address on the map." %}'); return false; }
+    return true;
+  }
+
+  function validateStep2(){
+    const kit   = $('kitType');
+    const plan  = $('subscriptionPlan');
+    const cycle = document.querySelector('input[name="billing_cycle"]:checked');
+    let valid = true;
+    kit?.classList.remove('border-red-500');
+    plan?.classList.remove('border-red-500');
+    if (!kit?.value){
+      kit?.classList.add('border-red-500');
+      showFormError(orderModalTranslations.selectStarlinkKit);
+      valid = false;
+    }else if (kit.selectedOptions[0]?.disabled){
+      kit?.classList.add('border-red-500');
+      showFormError(orderModalTranslations.kitNotAvailable);
+      valid = false;
+    }
+    if (!plan?.value){
+      plan?.classList.add('border-red-500');
+      if (valid) showFormError(orderModalTranslations.selectSubscriptionPlan);
+      valid = false;
+    }
+    if (!cycle){
+      showFormError(orderModalTranslations.chooseBillingCycle);
+      valid = false;
+    }
+    return valid;
+  }
+
+  function updateNextStep1Btn(){
+    const lat = $('latitude')?.value;
+    const lng = $('longitude')?.value;
+    nextStep1 && (nextStep1.disabled = !(lat && lng));
+  }
+  function updateNextStep2Btn(){
+    const kit = $('kitType')?.value;
+    const plan = $('subscriptionPlan')?.value;
+    const cycleChecked = !!document.querySelector('input[name="billing_cycle"]:checked');
+    nextStep2 && (nextStep2.disabled = !(kit && plan && cycleChecked));
+  }
+
+  window.updateNextStep1Btn = updateNextStep1Btn;
+  window.updateNextStep2Btn = updateNextStep2Btn;
+
+  if (nextStep1 && nextStep1.dataset.bound !== '1'){
+    nextStep1.dataset.bound = '1';
+    let isBusy = false;
+    nextStep1.addEventListener('click', async function(){
+      if (!step1 || step1.classList.contains('hidden')) return;
+      if (isBusy) return;
+      if (!validateStep1()) return;
+      isBusy = true;
+      let { lat, lng } = window.CURRENT_LOCATION || {};
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)){
+        const latInput = parseFloat($('latitude')?.value), lngInput = parseFloat($('longitude')?.value);
+        lat = Number.isFinite(latInput) ? latInput : lat;
+        lng = Number.isFinite(lngInput) ? lngInput : lng;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)){
+          alert("{% trans 'Please select an address on the map.' %}");
+          isBusy = false;
+          return;
+        }
+      }
+      const original = nextStep1.textContent;
+      nextStep1.disabled = true;
+      nextStep1.textContent = "{{ _('Loading availability…') }}";
+      try{
+        const data = await window.loadKitsByLocation({ lat, lng, requireRegion: true });
+        const hasAnyKits = Object.values(data?.kits ?? {}).some(arr => Array.isArray(arr) && arr.some(k => (k?.quantity ?? 0) > 0));
+        if (!hasAnyKits){
+          alert("{% trans 'No stock available for the selected location yet. Please adjust the pin within availability regions Kinshasha, Lubumbashi, Kolwezi or Please contact sales@nexus.cd' %}");
+          return;
+        }
+        step1.classList.add('hidden');
+        step2.classList.remove('hidden');
+        setOrderStepTitle(2);
+        updateSummary();
+      }catch(err){
+        console.error(err);
+        alert("{% trans 'Failed to load availability. Please try again.' %}");
+      }finally{
+        nextStep1.disabled = false;
+        nextStep1.textContent = original;
+        isBusy = false;
+      }
+    });
+  }
+  if (prevStep2 && prevStep2.dataset.bound !== '1'){
+    prevStep2.dataset.bound = '1';
+    prevStep2.addEventListener('click', function(){
+      step2.classList.add('hidden');
+      step1.classList.remove('hidden');
+      setOrderStepTitle(1);
+      updateSummary();
+    });
+  }
+  if (nextStep2 && nextStep2.dataset.bound !== '1'){
+    nextStep2.dataset.bound = '1';
+    nextStep2.addEventListener('click', function(){
+      if (!validateStep2()) return;
+      step2.classList.add('hidden');
+      step3.classList.remove('hidden');
+      setOrderStepTitle(3);
+      updateSummary();
+    });
+  }
+  if (prevStep3 && prevStep3.dataset.bound !== '1'){
+    prevStep3.dataset.bound = '1';
+    prevStep3.addEventListener('click', function(){
+      step3.classList.add('hidden');
+      step2.classList.remove('hidden');
+      setOrderStepTitle(2);
+      updateSummary();
+    });
+  }
+
+  /* Terms scroll gate */
+  const termsResizeObserver = new ResizeObserver(() => {
+    if (!orderTermsText) return;
+    const isScrollable = orderTermsText.scrollHeight > orderTermsText.clientHeight + 1;
+    if (!isScrollable){
+      if (orderTerms) orderTerms.disabled = false;
+      orderTermsScrollHint?.classList.add('hidden');
+    }else{
+      if (orderTerms && !orderTerms.checked) orderTerms.disabled = true;
+      orderTermsScrollHint?.classList.remove('hidden');
+    }
+  });
+  if (orderTermsText) termsResizeObserver.observe(orderTermsText);
+  orderTermsText?.addEventListener('scroll', function(){
+    const atBottom = this.scrollTop + this.clientHeight >= this.scrollHeight - 2;
+    if (atBottom){ if (orderTerms) orderTerms.disabled = false; orderTermsScrollHint?.classList.add('hidden'); }
+  });
+  if (orderTerms && orderTerms.dataset.bound !== '1'){
+    orderTerms.dataset.bound = '1';
+    orderTerms.addEventListener('change', () => {
+      submitOrderBtn && (submitOrderBtn.disabled = !orderTerms.checked);
+      orderTermsError?.classList.add('hidden');
+    });
+  }
+  if (submitOrderBtn && submitOrderBtn.dataset.bound !== '1'){
+    submitOrderBtn.dataset.bound = '1';
+    submitOrderBtn.addEventListener('click', function(){
+      if (!orderTerms?.checked){ orderTermsError?.classList.remove('hidden'); return; }
+      orderTermsError?.classList.add('hidden');
+      window.openCheckoutModalFromOrderForm();
+    });
+  }
+
+  /* Coupon helpers */
+  const couponInput = $("couponCode");
+  const clearBtn    = $("clearCouponBtn");
+  if (couponInput){
+    couponInput.addEventListener("input", () => {
+      const caret = couponInput.selectionStart;
+      couponInput.value = couponInput.value.toUpperCase();
+      couponInput.setSelectionRange(caret, caret);
+    });
+    couponInput.addEventListener("blur", () => {
+      couponInput.value = couponInput.value.trim().toUpperCase();
+    });
+  }
+  clearBtn?.addEventListener("click", () => {
+    if (couponInput) couponInput.value = "";
+    $("couponInlineError")?.classList.add("hidden");
+    $("couponInlineOk")?.classList.add("hidden");
+  });
+
+  /* Initialize */
+  updateNextStep1Btn();
+  updateNextStep2Btn();
+  updateSummary();
+
+  /* Patch initLeafletMap to keep sync */
+  if (typeof initLeafletMap === 'function'){
+    const origInitLeafletMap = initLeafletMap;
+    window.initLeafletMap = function(){
+      origInitLeafletMap();
+      if (window.marker && window.map){
+        window.marker.on('dragend', function(){
+          const p = window.marker.getLatLng();
+          setCurrentLocation(p.lat, p.lng);
+          window.updateNextStep1Btn?.();
+          fetchInstallFee(p.lat, p.lng).then(() => updateSummary());
+        });
+        window.map.on('click', function(e){
+          const p = e.latlng;
+          setCurrentLocation(p.lat, p.lng);
+          window.updateNextStep1Btn?.();
+          fetchInstallFee(p.lat, p.lng).then(() => updateSummary());
+        });
+      }
+    };
+  }
+});
+
+/* ====================== DEV-ONLY: mute chrome-extension console noise ====================== */
+(function muteExtensionNoise(){
+  const origErr = console.error, origWarn = console.warn;
+  const isExtNoise = (args) => args.some(a => typeof a === 'string' && a.includes('chrome-extension://'));
+  console.error = function(...args){ if (isExtNoise(args)) return; origErr.apply(console, args); };
+  console.warn  = function(...args){ if (isExtNoise(args)) return; origWarn.apply(console, args); };
+})();
+</script>

@@ -1,0 +1,78 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- Upload Stock Excel Modal -->
+<div id="uploadStockModal" class="fixed inset-0 z-50 hidden bg-black bg-opacity-50 flex items-center justify-center">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+        <h3 class="text-lg font-semibold mb-4">
+            {% trans "Upload Stock from Excel" %}
+        </h3>
+
+        <!-- Download Sample Link -->
+    <a href="/{{ LANGUAGE_CODE }}{% url 'download_stock_sample' %}" class="inline-block mb-4 text-sm text-blue-600 hover:underline">
+            <i class="fas fa-download mr-1"></i>{% trans "Download Sample Excel File" %}
+        </a>
+
+        <!-- Upload Form -->
+        <form id="excelUploadForm" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="mb-4">
+                <label for="excelFile" class="block text-sm font-medium text-gray-700 mb-1">
+                    {% trans "Excel File" %}
+                </label>
+                <input type="file" name="file"/>
+            </div>
+
+            <!-- Feedback Message -->
+            <div id="uploadMessage" class="mt-2 text-sm font-medium"></div>
+
+            <!-- Action Buttons -->
+            <div class="flex justify-end space-x-2 mt-4">
+                <button type="button" onclick="closeModal('uploadStockModal')"
+                        class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 text-sm">
+                    {% trans "Cancel" %}
+                </button>
+                <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">
+                    {% trans "Upload" %}
+                </button>
+            </div>
+        </form>
+
+        <!-- Close Modal Button -->
+        <button onclick="closeModal('uploadStockModal')"
+                class="absolute top-2 right-2 text-gray-500 hover:text-gray-800">
+            <i class="fas fa-times"></i>
+        </button>
+    </div>
+</div>
+
+<!-- AJAX Script -->
+<script>
+    document.getElementById("excelUploadForm").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const messageBox = document.getElementById("uploadMessage");
+
+    fetch(`/${LANGUAGE_CODE}{% url 'upload_stock_excel' %}`, {
+            method: "POST",
+            headers: {
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        })
+            .then(response => response.json())
+            .then(data => {
+                messageBox.textContent = data.message;
+                messageBox.className = `mt-2 text-sm font-medium ${data.success ? 'text-green-600' : 'text-red-600'}`;
+                if (data.success) form.reset();
+            })
+            .catch(error => {
+                console.error("Upload error:", error);
+                messageBox.textContent = "{% trans 'Something went wrong.' %}";
+                messageBox.className = "text-red-600 mt-2 text-sm font-medium";
+            });
+    });
+</script>

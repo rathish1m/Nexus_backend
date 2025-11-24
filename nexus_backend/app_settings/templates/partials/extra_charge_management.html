@@ -1,0 +1,828 @@
+{% load static i18n %}
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Extra Charges Management" %}</h2>
+      <p class="text-sm text-gray-500">{% trans "Manage predefined additional equipment and services with fixed pricing." %}</p>
+    </div>
+    <button onclick="openExtraChargeModal()"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+      <i class="fas fa-plus text-xs"></i> {% trans "Add Extra Charge" %}
+    </button>
+  </div>
+
+  <!-- Mobile cards -->
+  <div id="extraChargeCards" class="md:hidden grid grid-cols-1 gap-3">
+    <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+        <tr>
+          <th class="py-3 px-4">{% trans "Category" %}</th>
+          <th class="py-3 px-4">{% trans "Item Name" %}</th>
+          <th class="py-3 px-4">{% trans "Brand/Model" %}</th>
+          <th class="py-3 px-4">{% trans "Unit Price" %}</th>
+          <th class="py-3 px-4">{% trans "Order" %}</th>
+          <th class="py-3 px-4">{% trans "Status" %}</th>
+          <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="extraChargeTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
+    <!-- Results info -->
+    <div class="text-sm text-gray-700 order-2 sm:order-1">
+      {% trans "Showing" %} <span id="extracharge-showing-start">1</span> {% trans "to" %} <span id="extracharge-showing-end">10</span> {% trans "of" %} <span id="extracharge-total-items">0</span> {% trans "results" %}
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="flex items-center space-x-2 order-1 sm:order-2">
+      <button id="extracharge-prev-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="fas fa-chevron-left mr-1"></i>{% trans "Previous" %}
+      </button>
+      <span id="extracharge-page-info" class="px-3 py-2 text-sm text-gray-600">
+        {% trans "Page" %} <span id="extracharge-current-page">1</span> {% trans "of" %} <span id="extracharge-total-pages">1</span>
+      </span>
+      <button id="extracharge-next-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        {% trans "Next" %}<i class="fas fa-chevron-right ml-1"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Extra Charge Modal -->
+<div id="extraChargeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-screen overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+      <div class="flex items-center justify-between">
+        <h3 id="extraChargeModalTitle" class="text-lg font-semibold text-gray-900">{% trans "Add Extra Charge" %}</h3>
+        <button onclick="closeExtraChargeModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <form id="extraChargeForm">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+    <input type="hidden" id="extraChargeId" name="extracharge_id">
+
+        <!-- Category -->
+        <div class="mb-4">
+          <label for="extraChargeCategory" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Category" %} <span class="text-red-500">*</span>
+          </label>
+          <select id="extraChargeCategory" name="cost_type" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+            <option value="">{% trans "Select Category" %}</option>
+            <option value="equipment">{% trans "Additional Equipment" %}</option>
+            <option value="cable">{% trans "Extra Cables" %}</option>
+            <option value="extender">{% trans "Signal Extender" %}</option>
+            <option value="router">{% trans "Router/Gateway" %}</option>
+            <option value="mounting">{% trans "Specialized Mounting" %}</option>
+            <option value="labor">{% trans "Additional Labor" %}</option>
+            <option value="power">{% trans "Power Infrastructure" %}</option>
+            <option value="access">{% trans "Access Infrastructure" %}</option>
+            <option value="safety">{% trans "Safety Equipment" %}</option>
+            <option value="other">{% trans "Other" %}</option>
+          </select>
+        </div>
+
+        <!-- Item Name -->
+        <div class="mb-4">
+          <label for="extraChargeItemName" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Item Name" %} <span class="text-red-500">*</span>
+          </label>
+          <input type="text" id="extraChargeItemName" name="item_name" required
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                 placeholder="{% trans 'Enter item name...' %}">
+        </div>
+
+        <!-- Description -->
+        <div class="mb-4">
+          <label for="extraChargeDescription" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Description" %}
+          </label>
+          <textarea id="extraChargeDescription" name="description" rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="{% trans 'Enter item description...' %}"></textarea>
+        </div>
+
+        <!-- Brand and Model -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+          <div>
+            <label for="extraChargeBrand" class="block text-sm font-medium text-gray-700 mb-2">
+              {% trans "Brand" %}
+            </label>
+            <input type="text" id="extraChargeBrand" name="brand"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                   placeholder="{% trans 'Brand name...' %}">
+          </div>
+          <div>
+            <label for="extraChargeModel" class="block text-sm font-medium text-gray-700 mb-2">
+              {% trans "Model" %}
+            </label>
+            <input type="text" id="extraChargeModel" name="model"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                   placeholder="{% trans 'Model number...' %}">
+          </div>
+        </div>
+
+        <!-- Unit Price -->
+        <div class="mb-4">
+          <label for="extraChargeUnitPrice" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Unit Price (USD)" %} <span class="text-red-500">*</span>
+          </label>
+          <input type="number" id="extraChargeUnitPrice" name="unit_price" required
+                 min="0" step="0.01"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                 placeholder="0.00">
+        </div>
+
+        <!-- Display Order -->
+        <div class="mb-4">
+          <label for="extraChargeDisplayOrder" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Display Order" %}
+          </label>
+          <input type="number" id="extraChargeDisplayOrder" name="display_order" min="0" value="0"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+          <p class="text-xs text-gray-500 mt-1">{% trans "Lower numbers appear first in selection lists" %}</p>
+        </div>
+
+        <!-- Active Status -->
+        <div class="mb-6">
+          <label class="flex items-center">
+            <input type="checkbox" id="extraChargeIsActive" name="is_active" checked
+                   class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+            <span class="ml-2 text-sm text-gray-700">{% trans "This item is active and available for selection" %}</span>
+          </label>
+        </div>
+      </form>
+    </div>
+
+    <div class="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200">
+      <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+        <button onclick="closeExtraChargeModal()"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button onclick="saveExtraCharge()"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 transition-colors">
+          <i class="fas fa-save mr-2"></i>{% trans "Save" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+// JavaScript functions for Extra Charge Management
+
+// Global variables
+let extraChargeCurrentPage = 1;
+let extraChargeIsEditing = false;
+let extraChargeEditingId = null;
+
+// Initialize the extra charge management
+document.addEventListener('DOMContentLoaded', function() {
+    loadExtraCharges();
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(event) {
+        const modal = document.getElementById('extraChargeModal');
+        if (modal && event.target === modal) {
+            closeExtraChargeModal();
+        }
+    });
+
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            const modal = document.getElementById('extraChargeModal');
+            if (modal && !modal.classList.contains('hidden')) {
+                closeExtraChargeModal();
+            }
+        }
+    });
+});
+
+// Load extra charges with pagination
+function loadExtraCharges(page = 1) {
+    extraChargeCurrentPage = page;
+
+    fetch(`/settings/extra_charges/get_extra_charges/?page=${page}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.error) {
+            throw new Error(data.error);
+        }
+
+        renderExtraCharges(data.extra_charges);
+        renderExtraChargePagination(data.pagination);
+        updateExtraChargeStats(data.pagination.total_items);
+    })
+    .catch(error => {
+        console.error('Error loading extra charges:', error);
+        showExtraChargeAlert('Error loading extra charges: ' + error.message, 'error');
+    });
+}
+
+// Render extra charges in both table and card views
+function renderExtraCharges(extraCharges) {
+    const tableBody = document.getElementById('extraChargeTableBody');
+    const cardContainer = document.getElementById('extraChargeCardContainer');
+
+    if (!tableBody || !cardContainer) return;
+
+    // Clear existing content
+    tableBody.innerHTML = '';
+    cardContainer.innerHTML = '';
+
+    if (extraCharges.length === 0) {
+        const emptyMessage = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-box-open text-4xl mb-4 text-gray-300"></i>
+                    <p class="text-lg font-medium">No extra charges found</p>
+                    <p class="text-sm">Start by adding your first extra charge item.</p>
+                </td>
+            </tr>
+        `;
+        tableBody.innerHTML = emptyMessage;
+
+        const emptyCard = `
+            <div class="text-center py-12">
+                <i class="fas fa-box-open text-4xl mb-4 text-gray-300"></i>
+                <p class="text-lg font-medium text-gray-500">No extra charges found</p>
+                <p class="text-sm text-gray-400">Start by adding your first extra charge item.</p>
+            </div>
+        `;
+        cardContainer.innerHTML = emptyCard;
+        return;
+    }
+
+    // Render table rows
+    extraCharges.forEach(charge => {
+        const row = createExtraChargeTableRow(charge);
+        tableBody.appendChild(row);
+    });
+
+    // Render cards
+    extraCharges.forEach(charge => {
+        const card = createExtraChargeCard(charge);
+        cardContainer.appendChild(card);
+    });
+}
+
+// Create table row for extra charge
+function createExtraChargeTableRow(charge) {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50 transition-colors';
+
+    const statusBadge = charge.is_active
+        ? '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>'
+        : '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>';
+
+    row.innerHTML = `
+        <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm font-medium text-gray-900">${escapeHtml(charge.cost_type_display)}</div>
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+            <div class="text-sm font-medium text-gray-900">${escapeHtml(charge.item_name)}</div>
+            ${charge.description ? '<div class="text-sm text-gray-500">' + escapeHtml(charge.description) + '</div>' : ''}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            ${charge.brand && charge.model ? escapeHtml(charge.brand) + ' / ' + escapeHtml(charge.model) :
+              charge.brand ? escapeHtml(charge.brand) :
+              charge.model ? escapeHtml(charge.model) : '-'}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            $${parseFloat(charge.unit_price).toFixed(2)}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+            ${charge.display_order}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap">
+            ${statusBadge}
+        </td>
+        <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <div class="flex justify-end space-x-2">
+                <button onclick="editExtraCharge(${charge.id})"
+                        class="text-blue-600 hover:text-blue-900 transition-colors"
+                        title="Edit">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button onclick="deleteExtraCharge(${charge.id}, '${escapeHtml(charge.item_name)}')"
+                        class="text-red-600 hover:text-red-900 transition-colors"
+                        title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </td>
+    `;
+
+    return row;
+}
+
+// Create card for extra charge
+function createExtraChargeCard(charge) {
+    const card = document.createElement('div');
+    card.className = 'bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow';
+
+    const statusBadge = charge.is_active
+        ? '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Active</span>'
+        : '<span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Inactive</span>';
+
+    card.innerHTML = `
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">${escapeHtml(charge.item_name)}</h3>
+            ${statusBadge}
+        </div>
+
+        <div class="space-y-2 mb-4">
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-500">Type:</span>
+                <span class="text-sm font-medium">${escapeHtml(charge.cost_type_display)}</span>
+            </div>
+
+            ${charge.brand ? `
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-500">Brand:</span>
+                    <span class="text-sm font-medium">${escapeHtml(charge.brand)}</span>
+                </div>
+            ` : ''}
+
+            ${charge.model ? `
+                <div class="flex justify-between">
+                    <span class="text-sm text-gray-500">Model:</span>
+                    <span class="text-sm font-medium">${escapeHtml(charge.model)}</span>
+                </div>
+            ` : ''}
+
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-500">Unit Price:</span>
+                <span class="text-lg font-bold text-green-600">$${parseFloat(charge.unit_price).toFixed(2)}</span>
+            </div>
+
+            <div class="flex justify-between">
+                <span class="text-sm text-gray-500">Display Order:</span>
+                <span class="text-sm font-medium">${charge.display_order}</span>
+            </div>
+        </div>
+
+        ${charge.description ? `
+            <div class="mb-4">
+                <p class="text-sm text-gray-600">${escapeHtml(charge.description)}</p>
+            </div>
+        ` : ''}
+
+        <div class="flex justify-end space-x-2">
+            <button onclick="editExtraCharge(${charge.id})"
+                    class="px-3 py-2 text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">
+                <i class="fas fa-edit mr-1"></i>Edit
+            </button>
+            <button onclick="deleteExtraCharge(${charge.id}, '${escapeHtml(charge.item_name)}')"
+                    class="px-3 py-2 text-sm font-medium text-red-600 hover:text-red-800 transition-colors">
+                <i class="fas fa-trash mr-1"></i>Delete
+            </button>
+        </div>
+    `;
+
+    return card;
+}
+
+// Render pagination for extra charges
+function renderExtraChargePagination(pagination) {
+    const paginationContainer = document.getElementById('extraChargePagination');
+    if (!paginationContainer) return;
+
+    if (pagination.total_pages <= 1) {
+        paginationContainer.innerHTML = '';
+        return;
+    }
+
+    let paginationHTML = `
+        <div class="flex items-center justify-between px-4 py-3 sm:px-6">
+            <div class="flex-1 flex justify-between sm:hidden">
+                ${pagination.has_previous ?
+                    `<button onclick="loadExtraCharges(${pagination.page_number - 1})"
+                             class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Previous
+                    </button>` :
+                    `<span class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-100 cursor-not-allowed">
+                        Previous
+                    </span>`
+                }
+                ${pagination.has_next ?
+                    `<button onclick="loadExtraCharges(${pagination.page_number + 1})"
+                             class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                        Next
+                    </button>` :
+                    `<span class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-400 bg-gray-100 cursor-not-allowed">
+                        Next
+                    </span>`
+                }
+            </div>
+            <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                    <p class="text-sm text-gray-700">
+                        Showing page <span class="font-medium">${pagination.page_number}</span> of
+                        <span class="font-medium">${pagination.total_pages}</span>
+                        (${pagination.total_items} total items)
+                    </p>
+                </div>
+                <div>
+                    <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+    `;
+
+    // Previous button
+    if (pagination.has_previous) {
+        paginationHTML += `
+            <button onclick="loadExtraCharges(${pagination.page_number - 1})"
+                    class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+        `;
+    } else {
+        paginationHTML += `
+            <span class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <i class="fas fa-chevron-left"></i>
+            </span>
+        `;
+    }
+
+    // Page numbers
+    for (let i = 1; i <= pagination.total_pages; i++) {
+        if (i === pagination.page_number) {
+            paginationHTML += `
+                <span class="relative inline-flex items-center px-4 py-2 border border-green-500 bg-green-50 text-sm font-medium text-green-600">
+                    ${i}
+                </span>
+            `;
+        } else if (Math.abs(i - pagination.page_number) <= 2 || i === 1 || i === pagination.total_pages) {
+            paginationHTML += `
+                <button onclick="loadExtraCharges(${i})"
+                        class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50">
+                    ${i}
+                </button>
+            `;
+        } else if (Math.abs(i - pagination.page_number) === 3) {
+            paginationHTML += `
+                <span class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    ...
+                </span>
+            `;
+        }
+    }
+
+    // Next button
+    if (pagination.has_next) {
+        paginationHTML += `
+            <button onclick="loadExtraCharges(${pagination.page_number + 1})"
+                    class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        `;
+    } else {
+        paginationHTML += `
+            <span class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-gray-100 text-sm font-medium text-gray-400 cursor-not-allowed">
+                <i class="fas fa-chevron-right"></i>
+            </span>
+        `;
+    }
+
+    paginationHTML += `
+                    </nav>
+                </div>
+            </div>
+        </div>
+    `;
+
+    paginationContainer.innerHTML = paginationHTML;
+}
+
+// Update extra charge statistics
+function updateExtraChargeStats(totalItems) {
+    const statsElement = document.getElementById('extraChargeStats');
+    if (statsElement) {
+        statsElement.textContent = `${totalItems} item${totalItems !== 1 ? 's' : ''} total`;
+    }
+}
+
+// Open extra charge modal
+function openExtraChargeModal() {
+    extraChargeIsEditing = false;
+    extraChargeEditingId = null;
+
+    // Reset form
+    const form = document.getElementById('extraChargeForm');
+    if (form) form.reset();
+
+    // Set active checkbox to checked by default
+    const activeCheckbox = document.getElementById('extraChargeIsActive');
+    if (activeCheckbox) activeCheckbox.checked = true;
+
+    // Update modal title
+    const modalTitle = document.getElementById('extraChargeModalTitle');
+    if (modalTitle) modalTitle.textContent = 'Add New Extra Charge';
+
+    // Show modal
+    const modal = document.getElementById('extraChargeModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+// Close extra charge modal
+function closeExtraChargeModal() {
+    const modal = document.getElementById('extraChargeModal');
+    if (modal) modal.classList.add('hidden');
+
+    // Reset form
+    const form = document.getElementById('extraChargeForm');
+    if (form) form.reset();
+
+    extraChargeIsEditing = false;
+    extraChargeEditingId = null;
+}
+
+// Edit extra charge
+function editExtraCharge(id) {
+    // Find the charge data from the current loaded data
+    // For simplicity, we'll make another API call to get the specific charge
+    fetch(`/settings/extra_charges/get_extra_charges/`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        const charge = data.extra_charges.find(c => c.id === id);
+        if (charge) {
+            populateExtraChargeForm(charge);
+            extraChargeIsEditing = true;
+            extraChargeEditingId = id;
+
+            // Update modal title
+            const modalTitle = document.getElementById('extraChargeModalTitle');
+            if (modalTitle) modalTitle.textContent = 'Edit Extra Charge';
+
+            // Show modal
+            const modal = document.getElementById('extraChargeModal');
+            if (modal) modal.classList.remove('hidden');
+        }
+    })
+    .catch(error => {
+        console.error('Error loading charge for editing:', error);
+        showExtraChargeAlert('Error loading charge data: ' + error.message, 'error');
+    });
+}
+
+// Populate form with extra charge data
+function populateExtraChargeForm(charge) {
+    const form = document.getElementById('extraChargeForm');
+    if (!form) return;
+
+    document.getElementById('extraChargeCategory').value = charge.cost_type || '';
+    document.getElementById('extraChargeItemName').value = charge.item_name || '';
+    document.getElementById('extraChargeDescription').value = charge.description || '';
+    document.getElementById('extraChargeBrand').value = charge.brand || '';
+    document.getElementById('extraChargeModel').value = charge.model || '';
+    document.getElementById('extraChargeUnitPrice').value = charge.unit_price || '';
+    document.getElementById('extraChargeDisplayOrder').value = charge.display_order || 0;
+    document.getElementById('extraChargeIsActive').checked = charge.is_active;
+}
+
+// Save extra charge
+function saveExtraCharge() {
+    const form = document.getElementById('extraChargeForm');
+    if (!form) return;
+
+    // Validate form
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    // Gather form data
+    const formData = {
+        cost_type: document.getElementById('extraChargeCategory').value,
+        item_name: document.getElementById('extraChargeItemName').value,
+        description: document.getElementById('extraChargeDescription').value,
+        brand: document.getElementById('extraChargeBrand').value,
+        model: document.getElementById('extraChargeModel').value,
+        unit_price: document.getElementById('extraChargeUnitPrice').value,
+        display_order: document.getElementById('extraChargeDisplayOrder').value,
+        is_active: document.getElementById('extraChargeIsActive').checked,
+    };
+
+    // Add ID for editing
+    if (extraChargeIsEditing && extraChargeEditingId) {
+        formData.extracharge_id = extraChargeEditingId;
+    }
+
+    // Determine URL and method
+    const languageCode = window.LANGUAGE_CODE || 'fr';
+    const url = extraChargeIsEditing ?
+        `/${languageCode}/settings/extra_charges/update/` :
+        `/${languageCode}/settings/extra_charges/create/`;
+
+    // Show loading state
+    const saveButton = document.querySelector('#extraChargeModal button[onclick="saveExtraCharge()"]');
+    const originalText = saveButton.innerHTML;
+    saveButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Saving...';
+    saveButton.disabled = true;
+
+    // Submit data
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showExtraChargeAlert(data.message, 'success');
+            closeExtraChargeModal();
+            loadExtraCharges(extraChargeCurrentPage);
+        } else {
+            showExtraChargeAlert(data.message || 'An error occurred', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving extra charge:', error);
+        showExtraChargeAlert('Error saving extra charge: ' + error.message, 'error');
+    })
+    .finally(() => {
+        // Restore button state
+        saveButton.innerHTML = originalText;
+        saveButton.disabled = false;
+    });
+}
+
+// Delete extra charge
+function deleteExtraCharge(id, itemName) {
+    if (!confirm(`Are you sure you want to delete "${itemName}"? This action cannot be undone.`)) {
+        return;
+    }
+
+    const languageCode = window.LANGUAGE_CODE || 'fr';
+    fetch(`/${languageCode}/settings/extra_charges/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCsrfToken(),
+        },
+        body: JSON.stringify({extracharge_id: id})
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showExtraChargeAlert(data.message, 'success');
+            loadExtraCharges(extraChargeCurrentPage);
+        } else {
+            showExtraChargeAlert(data.message || 'An error occurred', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting extra charge:', error);
+        showExtraChargeAlert('Error deleting extra charge: ' + error.message, 'error');
+    });
+}
+
+// Helper function to get CSRF token
+function getCsrfToken() {
+    const csrfElement = document.querySelector('[name=csrfmiddlewaretoken]');
+    return csrfElement ? csrfElement.value : '';
+}
+
+// Show alert for extra charges
+function showExtraChargeAlert(message, type = 'info') {
+    // Find or create alert container
+    let alertContainer = document.getElementById('extraChargeAlerts');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'extraChargeAlerts';
+        alertContainer.className = 'fixed top-4 right-4 z-50 space-y-2';
+        document.body.appendChild(alertContainer);
+    }
+
+    const alertId = 'alert-' + Date.now();
+    const alertClass = type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+                     type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+                     'bg-blue-50 border-blue-200 text-blue-800';
+
+    const iconClass = type === 'error' ? 'fas fa-exclamation-circle text-red-400' :
+                     type === 'success' ? 'fas fa-check-circle text-green-400' :
+                     'fas fa-info-circle text-blue-400';
+
+    const alertHTML = `
+        <div id="${alertId}" class="${alertClass} border-l-4 p-4 rounded-r-md shadow-md max-w-sm">
+            <div class="flex">
+                <div class="flex-shrink-0">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="ml-3">
+                    <p class="text-sm font-medium">${message}</p>
+                </div>
+                <div class="ml-auto pl-3">
+                    <div class="-mx-1.5 -my-1.5">
+                        <button onclick="document.getElementById('${alertId}').remove()"
+                                class="inline-flex rounded-md p-1.5 text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <i class="fas fa-times text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    alertContainer.insertAdjacentHTML('beforeend', alertHTML);
+
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        const alertElement = document.getElementById(alertId);
+        if (alertElement) {
+            alertElement.remove();
+        }
+    }, 5000);
+}
+
+// Helper function to escape HTML
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text ? text.replace(/[&<>"']/g, m => map[m]) : '';
+}
+
+// Update the table/card rendering functions to fix missing elements
+function renderExtraCharges(extraCharges) {
+    const tableBody = document.getElementById('extraChargeTableBody');
+    const cardsContainer = document.getElementById('extraChargeCards');
+
+    if (!tableBody || !cardsContainer) return;
+
+    // Clear existing content
+    tableBody.innerHTML = '';
+    cardsContainer.innerHTML = '';
+
+    if (extraCharges.length === 0) {
+        const emptyMessage = `
+            <tr>
+                <td colspan="7" class="px-6 py-12 text-center text-gray-500">
+                    <i class="fas fa-box-open text-4xl mb-4 text-gray-300"></i>
+                    <p class="text-lg font-medium">No extra charges found</p>
+                    <p class="text-sm">Start by adding your first extra charge item.</p>
+                </td>
+            </tr>
+        `;
+        tableBody.innerHTML = emptyMessage;
+
+        const emptyCard = `
+            <div class="text-center py-12">
+                <i class="fas fa-box-open text-4xl mb-4 text-gray-300"></i>
+                <p class="text-lg font-medium text-gray-500">No extra charges found</p>
+                <p class="text-sm text-gray-400">Start by adding your first extra charge item.</p>
+            </div>
+        `;
+        cardsContainer.innerHTML = emptyCard;
+        return;
+    }
+
+    // Render table rows
+    extraCharges.forEach(charge => {
+        const row = createExtraChargeTableRow(charge);
+        tableBody.appendChild(row);
+    });
+
+    // Render cards
+    extraCharges.forEach(charge => {
+        const card = createExtraChargeCard(charge);
+        cardsContainer.appendChild(card);
+    });
+}
+</script>

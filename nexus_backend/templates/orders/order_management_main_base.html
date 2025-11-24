@@ -1,0 +1,161 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8" />
+  <title>{% trans "Nexus | Orders Management" %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <style>
+    .sidebar-slide { transform: translateX(100%); transition: transform .3s ease-in-out; }
+    .sidebar-slide.open { transform: translateX(0); }
+    main { min-width: 0; } /* prevent overflow on narrow screens */
+    :root { --safe-bottom: env(safe-area-inset-bottom, 0px); }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+  <!-- Mobile Topbar -->
+  <div class="bg-white px-4 py-3 flex justify-between items-center shadow md:hidden sticky top-0 z-50">
+    <img src="{% static 'images/logo/logo.png' %}" class="h-8 w-auto" alt="Logo" />
+    <button onclick="toggleMobileSidebar()" class="p-2 rounded hover:bg-gray-100 text-gray-700" aria-label="Open menu">
+      <i class="fas fa-bars fa-lg"></i>
+    </button>
+  </div>
+
+  <div class="flex flex-1 w-full">
+    <!-- Desktop Sidebar (unchanged placement) -->
+    {% include 'menus/desktop_client/desktop_menus.html' %}
+
+    <!-- Mobile Sidebar Overlay (unchanged placement) -->
+    <div id="mobile-overlay"
+         class="fixed inset-0 bg-black/40 hidden z-40 md:hidden"
+         onclick="toggleMobileSidebar()"></div>
+
+    <!-- Mobile Sidebar (unchanged placement; ensure it has id="mobileSidebar" & class "sidebar-slide hidden md:hidden") -->
+    {% include 'menus/desktop_client/desktop_mobile_menus.html' %}
+
+    <!-- Main Content -->
+    <main class="flex-1 w-full p-4 sm:p-6 lg:p-8">
+      {% block content %}
+      <!-- Example page header bar that wraps on mobile -->
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <h1 class="text-xl sm:text-2xl font-bold text-gray-900">{% trans "Orders Management" %}</h1>
+        <div class="flex flex-wrap gap-2">
+          <a href="{% url 'order_create' %}"
+             class="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <i class="fas fa-plus"></i>
+            <span class="whitespace-nowrap">{% trans "New Order" %}</span>
+          </a>
+          <button
+            class="inline-flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <i class="fas fa-download"></i>
+            <span class="whitespace-nowrap">{% trans "Export" %}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Example responsive table wrapper -->
+      <section class="bg-white rounded-xl border border-gray-200 shadow-sm">
+        <div class="p-4 sm:p-5">
+          <!-- Filters: stack on mobile -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+            <input type="text" placeholder="{% trans 'Search by reference or customer' %}"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <select class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <option value="">{% trans "All Statuses" %}</option>
+              <option value="pending_payment">{% trans "Pending payment" %}</option>
+              <option value="awaiting_confirmation">{% trans "Awaiting confirmation" %}</option>
+              <option value="paid">{% trans "Paid" %}</option>
+              <option value="cancelled">{% trans "Cancelled" %}</option>
+            </select>
+            <input type="date"
+                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+            <button
+              class="w-full sm:w-auto inline-flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <i class="fas fa-filter"></i>
+              <span>{% trans "Filter" %}</span>
+            </button>
+          </div>
+
+          <!-- Scrollable table on small screens -->
+          <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+                <tr>
+                  <th class="px-4 py-3 text-left">{% trans "Order Ref" %}</th>
+                  <th class="px-4 py-3 text-left">{% trans "Customer" %}</th>
+                  <th class="px-4 py-3 text-left">{% trans "Amount" %}</th>
+                  <th class="px-4 py-3 text-left">{% trans "Status" %}</th>
+                  <th class="px-4 py-3 text-left">{% trans "Created" %}</th>
+                  <th class="px-4 py-3 text-left">{% trans "Actions" %}</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100 text-gray-800">
+                <!-- your rows here -->
+                {% comment %} Example row:
+                <tr class="hover:bg-gray-50">
+                  <td class="px-4 py-3 font-medium">ORD-ABC123</td>
+                  <td class="px-4 py-3">Jane Doe</td>
+                  <td class="px-4 py-3">$499.00</td>
+                  <td class="px-4 py-3">
+                    <span class="inline-flex items-center px-2 py-1 text-xs rounded-full bg-yellow-100 text-yellow-700">
+                      {% trans "Awaiting confirmation" %}
+                    </span>
+                  </td>
+                  <td class="px-4 py-3">2025-03-01</td>
+                  <td class="px-4 py-3">
+                    <a href="#" class="text-blue-600 hover:underline">{% trans "View" %}</a>
+                  </td>
+                </tr>
+                {% endcomment %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+      {% endblock %}
+    </main>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-white border-t text-center py-4 text-sm text-gray-500 mt-auto"
+          style="padding-bottom: calc(1rem + var(--safe-bottom));">
+    <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+  </footer>
+
+  <script>
+    function toggleMobileSidebar() {
+      const sidebar = document.getElementById('mobileSidebar'); // ensure your mobile include uses this id
+      const overlay = document.getElementById('mobile-overlay');
+      const body = document.body;
+
+      const isHidden = sidebar.classList.contains('hidden');
+      if (isHidden) {
+        overlay.classList.remove('hidden');
+        sidebar.classList.remove('hidden');
+        body.style.overflow = 'hidden';
+        requestAnimationFrame(() => sidebar.classList.add('open'));
+      } else {
+        sidebar.classList.remove('open');
+        overlay.classList.add('hidden');
+        setTimeout(() => {
+          sidebar.classList.add('hidden');
+          body.style.overflow = '';
+        }, 250);
+      }
+    }
+
+    // Close with ESC
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const sidebar = document.getElementById('mobileSidebar');
+        if (sidebar && !sidebar.classList.contains('hidden')) toggleMobileSidebar();
+      }
+    });
+  </script>
+</body>
+</html>

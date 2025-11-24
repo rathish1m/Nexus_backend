@@ -1,0 +1,129 @@
+{% load static i18n %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE|default:'en' }}">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ invoice.number }}</title>
+
+  <!-- If you prefer embedded styles, you can paste CSS here in a <style> tag.
+       This template assumes you’re using /static/css/invoice.css -->
+  <link rel="stylesheet" href="{% static 'css/invoice.css' %}">
+</head>
+<body>
+
+  <header class="inv-header">
+    <div class="brand">
+      {% if company.logo_url %}
+        <img src="{{ company.logo_url }}" alt="{{ company.name }}" class="logo">
+      {% else %}
+        <h1 class="brand-name">{{ company.name }}</h1>
+      {% endif %}
+      <div class="brand-meta">
+        <div>{{ company.address }}</div>
+        <div>{{ company.email }} • {{ company.phone }}</div>
+      </div>
+    </div>
+
+    <div class="inv-title">
+      <h1>{% trans "Invoice" %}</h1>
+      <div class="meta">
+        <div><strong>{% trans "Invoice No." %}:</strong> {{ invoice.number }}</div>
+        <div><strong>{% trans "Date" %}:</strong> {{ invoice.date }}</div>
+        {% if invoice.due_date %}
+        <div><strong>{% trans "Due Date" %}:</strong> {{ invoice.due_date }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <section class="billto">
+    <h2>{% trans "Bill To" %}</h2>
+    <div class="to-card">
+      <div class="to-name">{{ client.name }}</div>
+      {% if client.address %}<div class="to-line">{{ client.address }}</div>{% endif %}
+      {% if client.email %}<div class="to-line">{{ client.email }}</div>{% endif %}
+      {% if client.phone %}<div class="to-line">{{ client.phone }}</div>{% endif %}
+    </div>
+  </section>
+
+  <section class="items">
+    <table class="items-table">
+      <thead>
+        <tr>
+          <th class="tl">{% trans "Description" %}</th>
+          <th class="tr">{% trans "Qty" %}</th>
+          <th class="tr">{% trans "Unit Price" %}</th>
+          <th class="tr">{% trans "Line Total" %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if items and items|length %}
+          {% for it in items %}
+            {% with qty=it.qty|default:it.quantity|default:1 price=it.unit_price|default:it.price|default:0 %}
+            <tr>
+              <td class="tl">
+                <div class="desc" style="white-space: normal; word-break: break-word;">{{ it.name }}</div>
+                {% if it.description %}<div class="muted" style="white-space: normal; word-break: break-word;">{{ it.description }}</div>{% endif %}
+              </td>
+              <td class="tr">{{ qty }}</td>
+              <td class="tr">{{ invoice.currency }} {{ price|floatformat:2 }}</td>
+              <td class="tr">{{ invoice.currency }} {{ it.line_total|default:it.total|default:0|floatformat:2 }}</td>
+            </tr>
+            {% endwith %}
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="4" class="tl muted">{% trans "No items" %}</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="taxes">
+    <h3>{% trans "Taxes" %}</h3>
+    <table class="totals-table">
+      <tbody>
+        <tr>
+          <td class="label">{% trans "Excise" %}</td>
+          <td class="value">{{ invoice.currency }} {{ totals.exc|floatformat:2 }}</td>
+        </tr>
+        <tr>
+          <td class="label">{% trans "VAT" %}</td>
+          <td class="value">{{ invoice.currency }} {{ totals.vat|floatformat:2 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="totals">
+    <table class="totals-table">
+      <tbody>
+        <tr>
+          <td class="label">{% trans "Subtotal" %}</td>
+          <td class="value">{{ invoice.currency }} {{ totals.subtotal|floatformat:2 }}</td>
+        </tr>
+        <tr class="grand">
+          <td class="label">{% trans "Total" %}</td>
+          <td class="value">{{ invoice.currency }} {{ totals.grand|floatformat:2 }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  {% if invoice.notes %}
+  <section class="notes">
+    <h3>{% trans "Notes" %}</h3>
+    <p class="muted">{{ invoice.notes }}</p>
+  </section>
+  {% endif %}
+
+  <footer class="inv-footer">
+    <div class="thanks">{% trans "Thank you for your business!" %}</div>
+    <div class="small muted">
+      {% trans "If you have any questions about this invoice, contact" %} {{ company.email }}.
+    </div>
+  </footer>
+
+</body>
+</html>

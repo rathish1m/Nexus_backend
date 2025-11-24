@@ -1,0 +1,100 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<aside class="hidden md:flex flex-col bg-white border-r">
+  <div class="p-6 border-b">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+  </div>
+
+  <nav class="p-4 space-y-1 text-sm font-medium">
+    <div class="px-4 pb-2 text-xs uppercase tracking-wider text-gray-500">{% trans "Navigation" %}</div>
+
+    <!-- Dashboard -->
+    <a href="{% if kyc_status == 'approved' %}{% url 'dashboard' %}{% endif %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl
+        {% if request.resolver_match.url_name == 'dashboard' %}
+          bg-blue-50 text-blue-700 ring-1 ring-blue-200
+        {% elif kyc_status != 'approved' %}
+          text-gray-400 opacity-50 cursor-not-allowed
+        {% else %}
+          hover:bg-blue-50 hover:text-blue-700 text-gray-700
+        {% endif %}">
+      <i class="fas fa-gauge w-5
+        {% if request.resolver_match.url_name == 'dashboard' %}text-blue-600{% elif kyc_status != 'approved' %}text-gray-400{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>
+      {% trans "Dashboard" %}
+    </a>
+
+    <!-- Subscription -->
+    <a href="{% if kyc_status == 'approved' %}{% url 'subscription_list' %}{% endif %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl
+        {% if request.resolver_match.url_name == 'subscription_list' %}
+          bg-blue-50 text-blue-700 ring-1 ring-blue-200
+        {% elif kyc_status != 'approved' %}
+          text-gray-400 opacity-50 cursor-not-allowed
+        {% else %}
+          hover:bg-blue-50 hover:text-blue-700 text-gray-700
+        {% endif %}">
+      <i class="fas fa-satellite-dish w-5
+        {% if request.resolver_match.url_name == 'subscription_list' %}text-blue-600{% elif kyc_status != 'approved' %}text-gray-400{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>
+      {% trans "Subscriptions" %}
+    </a>
+
+{#    {% if kyc_status == 'approved' %}#}
+{#    <!-- Orders -->#}
+{#    <a href="{% url 'orders_page' %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl#}
+{#        {% if request.resolver_match.url_name == 'orders_page' %}#}
+{#          bg-blue-50 text-blue-700 ring-1 ring-blue-200#}
+{#        {% else %}#}
+{#          hover:bg-blue-50 hover:text-blue-700 text-gray-700#}
+{#        {% endif %}">#}
+{#      <i class="fas fa-shopping-cart w-5#}
+{#        {% if request.resolver_match.url_name == 'orders_page' %}text-blue-600{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>#}
+{#      {% trans "Orders" %}#}
+{#    </a>#}
+{#    {% endif %}#}
+
+    <!-- Billing -->
+    <a href="{% if kyc_status == 'approved' %}{% url 'billing_page' %}{% endif %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl
+        {% if request.resolver_match.url_name == 'billing_page' %}
+          bg-blue-50 text-blue-700 ring-1 ring-blue-200
+        {% elif kyc_status != 'approved' %}
+          text-gray-400 opacity-50 cursor-not-allowed
+        {% else %}
+          hover:bg-blue-50 hover:text-blue-700 text-gray-700
+        {% endif %}">
+      <i class="fas fa-file-invoice-dollar w-5
+        {% if request.resolver_match.url_name == 'billing_page' %}text-blue-600{% elif kyc_status != 'approved' %}text-gray-400{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>
+      {% trans "Billing" %}
+    </a>
+
+    <!-- Support -->
+    <a href="{% url 'support_page' %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl
+        {% if request.resolver_match.url_name == 'support_page' %}
+          bg-blue-50 text-blue-700 ring-1 ring-blue-200
+        {% else %}
+          hover:bg-blue-50 hover:text-blue-700 text-gray-700
+        {% endif %}">
+      <i class="fas fa-comments w-5
+        {% if request.resolver_match.url_name == 'support_page' %}text-blue-600{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>
+      {% trans "Support" %}
+    </a>
+
+    <!-- Settings -->
+    <a href="{% url 'settings' %}" class="group flex items-center gap-3 px-4 py-2 rounded-xl
+        {% if request.resolver_match.url_name == 'settings' %}
+          bg-blue-50 text-blue-700 ring-1 ring-blue-200
+        {% else %}
+          hover:bg-blue-50 hover:text-blue-700 text-gray-700
+        {% endif %}">
+      <i class="fas fa-cog w-5
+        {% if request.resolver_match.url_name == 'settings' %}text-blue-600{% else %}text-blue-500 group-hover:text-blue-600{% endif %}"></i>
+      {% trans "Settings" %}
+    </a>
+
+    <div class="my-2 border-t"></div>
+
+    <!-- Logout -->
+    <a href="{% url 'logout_request' %}" class="flex items-center gap-3 px-4 py-2 rounded-xl text-red-600 hover:bg-red-50 hover:text-red-700">
+      <i class="fas fa-sign-out-alt w-5"></i>
+      {% trans "Logout" %}
+    </a>
+  </nav>
+</aside>

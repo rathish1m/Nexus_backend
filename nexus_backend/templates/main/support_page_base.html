@@ -1,0 +1,166 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Support Center – Nexus Dashboard" %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .sidebar-slide {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-slide.open {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+
+<!-- Mobile Topbar -->
+<div class="md:hidden bg-white shadow px-4 py-3 flex justify-between items-center">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="h-8">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600">
+        <i class="fas fa-bars fa-lg"></i>
+    </button>
+</div>
+
+<div class="flex flex-1 w-full">
+    <!-- Sidebar -->
+    <aside class="bg-white shadow-lg w-64 hidden md:block flex-shrink-0">
+        <div class="p-6 border-b">
+            <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+        </div>
+        <nav class="p-6 space-y-4 text-sm">
+            <a href="{% url 'dashboard' %}" class="block hover:text-blue-600"><i
+                    class="fas fa-gauge mr-2"></i>{% trans "Dashboard" %}</a>
+            <a href="{% url 'billing' %}" class="block hover:text-blue-600"><i
+                    class="fas fa-file-invoice-dollar mr-2"></i>{% trans "Billing" %}</a>
+            <a href="{% url 'support' %}" class="block text-blue-600 font-bold"><i
+                    class="fas fa-headset mr-2"></i>{% trans "Support" %}</a>
+            <a href="{% url 'settings' %}" class="block hover:text-blue-600"><i class="fas fa-cogs mr-2"></i>{% trans "Settings" %}</a>
+            <a href="{% url 'logout_request' %}" class="block text-red-500 hover:text-red-600"><i
+                    class="fas fa-sign-out-alt mr-2"></i>{% trans "Logout" %}</a>
+        </nav>
+    </aside>
+
+    <!-- Mobile Sidebar -->
+    <div class="fixed inset-0 z-40 bg-black bg-opacity-50 hidden md:hidden" id="mobile-overlay"
+         onclick="toggleMobileSidebar()"></div>
+    <aside id="mobileSidebar"
+           class="sidebar-slide fixed top-0 right-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden hidden">
+        <button class="mb-6 text-gray-500 hover:text-gray-700" onclick="toggleMobileSidebar()">
+            <i class="fas fa-times"></i>
+        </button>
+        <nav class="space-y-4 text-sm">
+            <a href="{% url 'dashboard' %}" class="block hover:text-blue-600">{% trans "Dashboard" %}</a>
+            <a href="{% url 'billing' %}" class="block hover:text-blue-600">{% trans "Billing" %}</a>
+            <a href="{% url 'support' %}" class="block text-blue-600 font-bold">{% trans "Support" %}</a>
+            <a href="{% url 'settings' %}" class="block hover:text-blue-600">{% trans "Settings" %}</a>
+            <a href="{% url 'logout_request' %}" class="block text-red-500 hover:text-red-600">{% trans "Logout" %}</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-4 sm:px-6 py-8 w-full">
+        <div class="flex flex-wrap justify-between items-center gap-2 mb-6">
+            <h1 class="text-xl sm:text-2xl font-bold">{% trans "Support Center" %}</h1>
+            <button onclick="toggleModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                <i class="fas fa-plus mr-2"></i>{% trans "Submit Ticket" %}
+            </button>
+        </div>
+
+        <!-- Ticket List -->
+        <div class="bg-white rounded shadow p-4 sm:p-6 border overflow-x-auto">
+            <h2 class="text-lg font-semibold text-gray-700 mb-4">{% trans "Your Tickets" %}</h2>
+            <table class="min-w-full text-sm">
+                <thead>
+                <tr class="bg-gray-100 text-left whitespace-nowrap">
+                    <th class="py-2 px-4">{% trans "Ticket ID" %}</th>
+                    <th class="py-2 px-4">{% trans "Subject" %}</th>
+                    <th class="py-2 px-4">{% trans "Status" %}</th>
+                    <th class="py-2 px-4">{% trans "Date Submitted" %}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for ticket in tickets %}
+                    <tr class="border-t">
+                        <td class="py-2 px-4">#{{ ticket.id }}</td>
+                        <td class="py-2 px-4">{{ ticket.subject }}</td>
+                        <td class="py-2 px-4">
+              <span class="font-medium {% if ticket.status == 'Open' %}text-yellow-600{% elif ticket.status == 'Resolved' %}text-green-600{% else %}text-gray-500{% endif %}">
+                {{ ticket.status }}
+              </span>
+                        </td>
+                        <td class="py-2 px-4">{{ ticket.created_at|date:"Y-m-d H:i" }}</td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="4"
+                            class="py-4 px-4 text-center text-gray-500">{% trans "No tickets submitted yet." %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </main>
+</div>
+
+<!-- Modal Overlay -->
+<div id="ticketOverlay" class="fixed inset-0 bg-black bg-opacity-50 hidden z-40"></div>
+
+<!-- Ticket Modal -->
+<div id="ticketModal"
+     class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-50 hidden w-full max-w-xl px-4">
+    <div class="bg-white rounded shadow-lg overflow-hidden">
+        <div class="flex justify-between items-center px-6 py-4 border-b">
+            <h3 class="text-lg font-bold">{% trans "New Support Ticket" %}</h3>
+            <button onclick="toggleModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form method="post" action="" class="px-6 py-4 space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium mb-1">{% trans "Subject" %}</label>
+                <input type="text" name="subject" required class="w-full border px-3 py-2 rounded text-sm">
+            </div>
+            <div>
+                <label class="block text-sm font-medium mb-1">{% trans "Message" %}</label>
+                <textarea name="message" rows="4" required class="w-full border px-3 py-2 rounded text-sm"></textarea>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">{% trans "Submit Ticket" %}</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4">
+        <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+    </div>
+</footer>
+
+<script>
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        sidebar.classList.toggle('hidden');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+    }
+
+    function toggleModal() {
+        document.getElementById('ticketModal').classList.toggle('hidden');
+        document.getElementById('ticketOverlay').classList.toggle('hidden');
+    }
+</script>
+
+</body>
+</html>

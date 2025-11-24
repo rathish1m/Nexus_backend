@@ -1,0 +1,1726 @@
+{% extends 'client/billing_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<style>
+@keyframes gradient-shift {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.animate-gradient-slow { background-size:200% 200%; animation: gradient-shift 10s ease infinite; }
+
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 var(--ring-color, rgba(0,0,0,.0)); }
+  70%  { box-shadow: 0 0 0 14px rgba(0,0,0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+}
+.glow-red    { --ring-color: rgba(244,63,94,.45);   animation: pulseRing 1.6s ease-out infinite; }
+.glow-green  { --ring-color: rgba(16,185,129,.35);  animation: pulseRing 2.0s ease-out infinite; }
+.glow-orange { --ring-color: rgba(245,158,11,.35);  animation: pulseRing 1.8s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-slow, .glow-red, .glow-green, .glow-orange { animation: none !important; }
+}
+
+/* Floating notice styles */
+.notice-card{display:flex;gap:.6rem;align-items:flex-start;border-radius:14px;padding:.75rem .9rem;
+  box-shadow:0 10px 25px rgba(2,6,23,.15);border:1px solid rgba(226,232,240,.9);background:#fff}
+.notice-card .icon{display:grid;place-items:center;width:34px;height:34px;border-radius:10px}
+.notice-success .icon{background:#ecfdf5;color:#059669}
+.notice-error   .icon{background:#fef2f2;color:#dc2626}
+.notice-info    .icon{background:#eff6ff;color:#2563eb}
+.notice-text{font-size:.9rem;color:#0f172a}
+.notice-close{margin-left:auto;line-height:0;border-radius:8px;padding:.25rem .35rem;color:#64748b}
+.notice-close:hover{background:#f1f5f9}
+</style>
+
+{% include 'partials/pay_now_modal.html' %}
+
+<!-- host for pretty notices -->
+<div id="noticeHost" class="fixed z-[60] left-1/2 -translate-x-1/2 bottom-5 w-[min(92vw,560px)] space-y-2"></div>
+
+<!-- ===== Additional Billing Approval Modal ===== -->
+<div id="billingApprovalModal"
+     class="fixed inset-0 z-50 hidden bg-black/60 items-center justify-center p-0 sm:p-4 overflow-y-auto">
+  <div class="relative bg-white rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:w-[95vw] sm:max-w-4xl overflow-y-auto">
+    <!-- Modal Header -->
+    <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 px-4 sm:px-6 py-4 flex items-center justify-between z-10">
+      <div class="flex-1">
+        <h2 class="text-xl sm:text-2xl font-bold text-white">{% trans "Additional Equipment Required" %}</h2>
+        <p class="text-blue-100 text-sm mt-1" id="modalOrderReference">{% trans "Order:" %} <span class="font-medium"></span></p>
+      </div>
+      <button type="button"
+              class="ml-4 inline-flex items-center justify-center w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white transition"
+              aria-label="{% trans 'Close' %}"
+              onclick="closeBillingApprovalModal()">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-white" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal Content -->
+    <div class="p-4 sm:p-6">
+      <!-- Loading State -->
+      <div id="modalLoadingState" class="text-center py-12">
+        <i class="fas fa-spinner fa-spin text-5xl text-indigo-500 mb-4"></i>
+        <p class="text-gray-600 font-medium">{% trans "Loading billing details..." %}</p>
+      </div>
+
+      <!-- Billing Content -->
+      <div id="modalBillingContent" class="hidden space-y-6">
+        <!-- Status Banner -->
+        <div id="modalStatusBanner" class="hidden rounded-lg p-4">
+          <div class="flex items-center">
+            <i id="modalStatusIcon" class="mr-3 text-xl"></i>
+            <span id="modalStatusText" class="font-medium"></span>
+          </div>
+        </div>
+
+        <!-- Summary Alert -->
+        <div class="bg-amber-50 border-l-4 border-amber-400 rounded-lg p-4">
+          <div class="flex items-start">
+            <i class="fas fa-exclamation-triangle text-amber-500 mt-1 mr-3 text-xl"></i>
+            <div>
+              <h3 class="font-semibold text-amber-800">{% trans "Additional Equipment Required" %}</h3>
+              <p class="text-amber-700 text-sm mt-1">
+                {% trans "Our technician has determined that additional equipment is necessary for a successful installation at your location." %}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cost Breakdown -->
+        <div>
+          <h3 class="text-lg font-bold text-gray-900 mb-3 flex items-center">
+            <i class="fas fa-list-ul text-indigo-600 mr-2"></i>
+            {% trans "Cost Breakdown" %}
+          </h3>
+          <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase">{% trans "Item" %}</th>
+                  <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase hidden sm:table-cell">{% trans "Description" %}</th>
+                  <th class="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase">{% trans "Qty" %}</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">{% trans "Unit Price" %}</th>
+                  <th class="px-4 py-3 text-right text-xs font-semibold text-gray-600 uppercase">{% trans "Total" %}</th>
+                </tr>
+              </thead>
+              <tbody id="modalCostBreakdown" class="bg-white divide-y divide-gray-100">
+                <!-- Dynamic content -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pricing Summary -->
+        <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-4 sm:p-6 shadow-inner">
+          <div class="space-y-3">
+            <div class="flex justify-between text-gray-700">
+              <span class="font-medium">{% trans "Subtotal:" %}</span>
+              <span id="modalSubtotal" class="font-semibold">$0.00</span>
+            </div>
+            <div id="modalTaxBreakdown" class="space-y-2"></div>
+            <div class="flex justify-between text-gray-700">
+              <span class="font-medium">{% trans "Total Tax:" %}</span>
+              <span id="modalTaxAmount" class="font-semibold">$0.00</span>
+            </div>
+            <hr class="border-gray-300">
+            <div class="flex justify-between text-lg sm:text-xl font-bold text-gray-900">
+              <span>{% trans "Total Amount:" %}</span>
+              <span id="modalTotalAmount" class="text-indigo-600">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Notes -->
+        <div id="modalNotesSection">
+          <label class="block text-sm font-semibold text-gray-700 mb-2">
+            <i class="fas fa-comment-dots text-indigo-600 mr-2"></i>
+            {% trans "Your Notes (Optional)" %}
+          </label>
+          <textarea id="modalCustomerNotes"
+                    rows="3"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none"
+                    placeholder="{% trans 'Add any questions or comments about these additional costs...' %}"></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="modalActionButtons" class="flex flex-col sm:flex-row gap-3">
+          <button type="button"
+                  onclick="rejectBillingFromModal()"
+                  class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 border-2 border-red-500 text-red-600 font-semibold rounded-lg hover:bg-red-50 transition">
+            <i class="fas fa-times-circle"></i>
+            {% trans "Reject" %}
+          </button>
+          <button type="button"
+                  onclick="approveBillingFromModal()"
+                  class="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-600 hover:to-emerald-700 shadow-lg hover:shadow-xl transition">
+            <i class="fas fa-check-circle"></i>
+            {% trans "Approve & Continue" %}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Invoice Details Modal ===== -->
+<div id="invoiceModal"
+     class="fixed inset-0 z-50 hidden bg-black/60 items-center justify-center p-0 sm:p-4">
+  <div class="relative bg-white rounded-none sm:rounded-2xl shadow-2xl w-full h-full sm:h-auto sm:w-[95vw] sm:max-w-3xl p-4 sm:p-6 overflow-y-auto">
+    <button type="button"
+            class="absolute top-3 right-3 inline-flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            aria-label="{% trans 'Close' %}"
+            onclick="closeInvoiceModal()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+      </svg>
+    </button>
+    <div id="invoiceContent" class="min-h-[160px] text-sm text-gray-800"></div>
+  </div>
+</div>
+
+<!-- ===== Overview Cards ===== -->
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+  <!-- Balance -->
+  <div id="balanceCard"
+       class="relative overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-gray-200">
+    <div class="h-2 w-full bg-gradient-to-r from-indigo-500 via-fuchsia-500 to-rose-500"></div>
+    <div id="gradientWash" class="pointer-events-none absolute inset-0 opacity-70 animate-gradient-slow"
+         style="background-image:
+           radial-gradient(120% 120% at 0% 0%,    rgba(167,139,250,0.18) 0%, transparent 45%),
+           radial-gradient(120% 120% at 100% 0%,  rgba(244,114,182,0.16) 0%, transparent 45%),
+           radial-gradient(120% 120% at 100% 100%,rgba(96,165,250,0.16) 0%, transparent 45%);">
+    </div>
+
+    <div class="relative p-4 sm:p-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="inline-grid h-9 w-9 place-items-center rounded-xl bg-indigo-50 text-indigo-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M21 7H3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Zm0 2v2h-5a2 2 0 1 0 0 4h5v2H3V9h18Zm-3 5a1 1 0 1 1 0-2h3v2h-3Z"/>
+            </svg>
+          </span>
+          <p class="text-[11px] sm:text-xs uppercase tracking-wider text-gray-600">
+            {% trans "Current Balance" %}
+          </p>
+        </div>
+        <span id="balanceBadge" class="hidden text-[11px] px-2 py-1 rounded-full border"></span>
+      </div>
+
+      <p id="currentBalance" class="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">$0.00</p>
+      <p id="dueMessage" class="mt-1 text-xs sm:text-sm text-gray-500">—</p>
+      <div class="mt-4 h-px w-full bg-gradient-to-r from-transparent via-gray-200 to-transparent"></div>
+      <div class="mt-3 flex items-center gap-2 text-xs text-gray-500">
+        <span class="inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
+        <span>{% trans "This reflects your current account status." %}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Next invoice -->
+  <div class="relative overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-gray-200">
+    <div class="h-2 w-full bg-gradient-to-r from-sky-500 via-blue-500 to-indigo-600"></div>
+    <div class="relative p-4 sm:p-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <span class="inline-grid h-9 w-9 place-items-center rounded-xl bg-blue-50 text-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M7 2a1 1 0 0 1 1 1v1h8V3a1 1 0 1 1 2 0v1h1a3 3 0 0 1 3 3v11a3 3 0 0 1-3 3H5a3 3 0 0 1-3-3V7a3 3 0 0 1 3-3h1V3a1 1 0 0 1 1-1Zm13 8H4v9a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-9ZM6 7h12V6H6v1Z"/>
+            </svg>
+          </span>
+          <p class="text-[11px] sm:text-xs uppercase tracking-wider text-gray-600">
+            {% trans "Next Invoice" %}
+          </p>
+        </div>
+      </div>
+
+      <p id="nextInvoiceDate" class="mt-3 text-xl sm:text-2xl font-bold text-gray-900">—</p>
+      <p id="billingPeriod" class="mt-1 text-xs sm:text-sm text-gray-500">—</p>
+
+      <div class="mt-4 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 p-3">
+        <p class="text-[11px] sm:text-xs text-blue-700">
+          {% trans "You’ll be notified before the due date." %}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Additional Billings Section ===== -->
+{% if additional_billings %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6">
+  <section class="bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
+    <div class="flex items-center justify-between mb-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-grid h-9 w-9 place-items-center rounded-xl bg-purple-50 text-purple-600">
+          <i class="fas fa-tools text-lg"></i>
+        </span>
+        <div>
+          <h3 class="font-semibold text-gray-900 text-base sm:text-lg">{% trans "Additional Equipment Billings" %}</h3>
+          <p class="text-sm text-gray-500">{% trans "Equipment required after site survey" %}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="overflow-x-auto rounded-lg border border-gray-200 hidden md:block">
+      <table class="min-w-full text-sm text-left text-gray-700">
+        <thead class="bg-gradient-to-r from-purple-50 to-indigo-50 text-purple-700 uppercase text-xs font-semibold tracking-wider">
+          <tr>
+            <th class="px-6 py-3">{% trans "Reference" %}</th>
+            <th class="px-6 py-3">{% trans "Order" %}</th>
+            <th class="px-6 py-3">{% trans "Amount" %}</th>
+            <th class="px-6 py-3">{% trans "Status" %}</th>
+            <th class="px-6 py-3">{% trans "Created" %}</th>
+            <th class="px-6 py-3">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-gray-100">
+          {% for billing in additional_billings %}
+          <tr class="hover:bg-gray-50">
+            <td class="px-6 py-4 font-medium text-gray-900">{{ billing.billing_reference }}</td>
+            <td class="px-6 py-4 text-gray-600">{{ billing.survey.order.order_reference }}</td>
+            <td class="px-6 py-4 font-semibold text-gray-900">${{ billing.total_amount|floatformat:2 }}</td>
+            <td class="px-6 py-4">
+              {% if billing.status == 'pending_approval' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  <i class="fas fa-clock mr-1"></i>{% trans "Pending Approval" %}
+                </span>
+              {% elif billing.status == 'approved' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <i class="fas fa-thumbs-up mr-1"></i>{% trans "Approved" %}
+                </span>
+              {% elif billing.status == 'paid' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <i class="fas fa-check mr-1"></i>{% trans "Paid" %}
+                </span>
+              {% elif billing.status == 'rejected' %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  <i class="fas fa-times mr-1"></i>{% trans "Rejected" %}
+                </span>
+              {% else %}
+                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  {{ billing.get_status_display }}
+                </span>
+              {% endif %}
+            </td>
+            <td class="px-6 py-4 text-gray-500">{{ billing.created_at|date:"M d, Y" }}</td>
+            <td class="px-6 py-4">
+              <div class="flex flex-wrap items-center gap-2">
+                {% if billing.status == 'pending_approval' %}
+                  <a href="{% url 'billing_approval_details' billing.id %}"
+                     class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                    <i class="fas fa-eye mr-1"></i>{% trans "Review" %}
+                  </a>
+                {% elif billing.status == 'approved' %}
+                  <a href="{% url 'site_survey:billing_payment' billing.id %}"
+                     class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                    <i class="fas fa-credit-card mr-1"></i>{% trans "Pay Now" %}
+                  </a>
+                  {% if billing.has_invoice %}
+                    <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                       class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                       title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                      <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                    </a>
+                  {% endif %}
+                {% elif billing.status == 'paid' %}
+                  <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <i class="fas fa-check mr-1"></i>{% trans "Completed" %}
+                  </span>
+                  {% if billing.has_invoice %}
+                    <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                       class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                       title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                      <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                    </a>
+                  {% endif %}
+                {% else %}
+                  {% if billing.has_invoice %}
+                    <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                       class="inline-flex items-center px-3 py-1 border border-transparent text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                       title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                      <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                    </a>
+                  {% endif %}
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile list -->
+    <div class="space-y-3 md:hidden">
+      {% for billing in additional_billings %}
+      <div class="border border-gray-200 rounded-lg p-4">
+        <div class="flex justify-between items-start mb-2">
+          <div>
+            <p class="font-medium text-gray-900">{{ billing.billing_reference }}</p>
+            <p class="text-sm text-gray-500">{{ billing.survey.order.order_reference }}</p>
+          </div>
+          <div class="text-right">
+            <p class="font-semibold text-gray-900">${{ billing.total_amount|floatformat:2 }}</p>
+            <p class="text-xs text-gray-500">{{ billing.created_at|date:"M d, Y" }}</p>
+          </div>
+        </div>
+
+        <div class="flex justify-between items-center">
+          <div>
+            {% if billing.status == 'pending_approval' %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                <i class="fas fa-clock mr-1"></i>{% trans "Pending" %}
+              </span>
+            {% elif billing.status == 'approved' %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                <i class="fas fa-thumbs-up mr-1"></i>{% trans "Approved" %}
+              </span>
+            {% elif billing.status == 'paid' %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <i class="fas fa-check mr-1"></i>{% trans "Paid" %}
+              </span>
+            {% elif billing.status == 'rejected' %}
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                <i class="fas fa-times mr-1"></i>{% trans "Rejected" %}
+              </span>
+            {% endif %}
+          </div>
+
+          <div>
+            {% if billing.status == 'pending_approval' %}
+              <a href="{% url 'billing_approval_details' billing.id %}"
+                 class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700">
+                <i class="fas fa-eye mr-1"></i>{% trans "Review" %}
+              </a>
+            {% elif billing.status == 'approved' %}
+              <a href="{% url 'site_survey:billing_payment' billing.id %}"
+                 class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                <i class="fas fa-credit-card mr-1"></i>{% trans "Pay" %}
+              </a>
+              {% if billing.has_invoice %}
+                <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                   class="mt-2 inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                   title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                  <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                </a>
+              {% endif %}
+            {% elif billing.status == 'paid' %}
+              <span class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md bg-green-100 text-green-700">
+                <i class="fas fa-check mr-1"></i>{% trans "Completed" %}
+              </span>
+              {% if billing.has_invoice %}
+                <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                   class="mt-2 inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                   title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                  <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                </a>
+              {% endif %}
+            {% else %}
+              {% if billing.has_invoice %}
+                <a href="{% url 'client_additional_invoice_pdf' billing.id %}"
+                   class="inline-flex items-center px-3 py-1 text-xs font-medium rounded-md text-white bg-indigo-500 hover:bg-indigo-600"
+                   title="{% blocktrans with order=billing.order.order_reference invoice=billing.billing_reference %}Order {{ order }} · Invoice {{ invoice }}{% endblocktrans %}">
+                  <i class="fas fa-download mr-1"></i>{% trans "Download Invoice" %}
+                </a>
+              {% endif %}
+            {% endif %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+</div>
+{% endif %}
+
+
+<!-- ===== History + Filters ===== -->
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 sm:mt-6">
+  <section class="bg-white rounded-xl sm:rounded-2xl shadow-xl border border-gray-200 p-4 sm:p-6">
+    <!-- Filters -->
+    <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-3 sm:gap-4">
+      <h3 class="font-semibold text-gray-900 text-base sm:text-lg">{% trans "Billing History" %}</h3>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 w-full md:w-auto">
+        <select id="histStatus" class="border rounded px-3 py-2 text-sm w-full">
+          <option value="">{% trans "Any status" %}</option>
+          <option value="unpaid">{% trans "Unpaid" %}</option>
+          <option value="paid">{% trans "Paid" %}</option>
+          <option value="awaiting_confirmation">{% trans "Awaiting confirmation" %}</option>
+          <option value="cancelled">{% trans "Cancelled" %}</option>
+        </select>
+        <select id="histType" class="border rounded px-3 py-2 text-sm w-full">
+          <option value="">{% trans "Any type" %}</option>
+          <option value="charge">{% trans "Charges" %}</option>
+          <option value="payment">{% trans "Payments" %}</option>
+        </select>
+        <input id="histFrom" type="date" class="border rounded px-2 py-2 text-sm w-full">
+        <input id="histTo"   type="date" class="border rounded px-2 py-2 text-sm w-full">
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="mt-4 overflow-x-auto rounded-lg border border-gray-200 hidden md:block">
+      <table class="min-w-full text-sm text-left text-gray-700">
+        <thead class="bg-gradient-to-r from-blue-50 to-indigo-50 text-indigo-700 uppercase text-xs font-semibold tracking-wider">
+          <tr>
+            <th class="px-6 py-3">{% trans "Invoice" %}</th>
+            <th class="px-6 py-3">{% trans "Date" %}</th>
+            <th class="px-6 py-3">{% trans "Charge" %}</th>
+            <th class="px-6 py-3">{% trans "Payment" %}</th>
+            <th class="px-6 py-3">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+          <tr>
+            <td colspan="5" class="px-6 py-8 text-center text-gray-400 animate-pulse">{% trans "Loading…" %}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Mobile list -->
+    <div id="historyListMobile" class="mt-4 space-y-3 md:hidden">
+      <div class="rounded-lg border border-gray-200 p-4 text-gray-500 text-sm text-center animate-pulse">
+        {% trans "Loading…" %}
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between text-xs sm:text-sm text-gray-500 mt-4">
+      <span id="historyHint">{% trans "Showing recent activity" %}</span>
+      <nav id="historyPager" class="inline-flex flex-wrap gap-1"></nav>
+    </div>
+  </section>
+</div>
+
+<!-- ===== Toast (kept for legacy) ===== -->
+<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 hidden px-4">
+  <div id="toastBox" class="px-4 py-2 rounded-lg shadow bg-gray-900 text-white text-sm"></div>
+</div>
+
+<script>
+/* --- Translations --- */
+const translations = {
+  due: "{{ _('Due')|escapejs }}",
+  allClear: "{{ _('All clear')|escapejs }}",
+  overdue: "{{ _('Overdue by')|escapejs }}",
+  overdueGeneral: "{{ _('Overdue. Please pay to avoid service disruption.')|escapejs }}",
+  daysSingle: "{{ _('day(s). Please pay to avoid service disruption.')|escapejs }}",
+  paymentDueToday: "{{ _('Payment due today. Please pay to avoid service disruption.')|escapejs }}",
+  paymentDueIn: "{{ _('Payment due in')|escapejs }}",
+  nextDueOn: "{{ _('Next due on')|escapejs }}",
+  nextInvoiceOn: "{{ _('Next invoice on')|escapejs }}",
+  noOutstandingBalance: "{{ _('No outstanding balance.')|escapejs }}",
+  approvedCosts: "{{ _('You have approved these additional costs. Please proceed to payment.')|escapejs }}",
+  rejectedCosts: "{{ _('You have rejected these additional costs.')|escapejs }}",
+  paymentReceived: "{{ _('Payment received. Installation will proceed as scheduled.')|escapejs }}",
+  noItemsFound: "{{ _('No items found.')|escapejs }}",
+  failedToLoadHistory: "{{ _('Failed to load history.')|escapejs }}",
+  next: "{{ _('Next')|escapejs }}",
+  failedToLoadBilling: "{{ _('Failed to load billing details')|escapejs }}",
+  serverInvalidResponse: "{{ _('Server returned invalid response. Check console for details.')|escapejs }}",
+  additionalCostsApprovedRedirect: "{{ _('Additional costs approved! Redirecting to payment...')|escapejs }}",
+  additionalCostsApproved: "{{ _('Additional costs approved!')|escapejs }}",
+  failedToApproveBilling: "{{ _('Failed to approve billing')|escapejs }}",
+  failedToApproveBillingConsole: "{{ _('Failed to approve billing. Check console for details.')|escapejs }}",
+  rejectReason: "{{ _('Please provide a reason for rejecting these additional costs:')|escapejs }}",
+  additionalCostsRejected: "{{ _('Additional costs rejected.')|escapejs }}",
+  failedToRejectBilling: "{{ _('Failed to reject billing')|escapejs }}",
+  confirmApprovalCosts: "{{ _('Are you sure you want to approve these additional costs?')|escapejs }}"
+};
+
+/* --- helpers --- */
+function getCookie(name){
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return decodeURIComponent(parts.pop().split(';').shift());
+}
+function csrfHeader(){ const t=getCookie('csrftoken'); return t?{'X-CSRFToken':t}:{};
+}
+function toast(msg, ok=true){
+  const t=document.getElementById("toast"), b=document.getElementById("toastBox");
+  if(!t||!b) return alert(msg);
+  b.textContent=msg; b.className="px-4 py-2 rounded-lg shadow text-sm "+(ok?"bg-gray-900 text-white":"bg-red-600 text-white");
+  t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"),2500);
+}
+function showNotice(message, type='info', opts={}){
+  const {timeout=4000} = opts || {};
+  const host = document.getElementById('noticeHost'); if(!host) return toast(message, type!=='error');
+  const wrap = document.createElement('div');
+  wrap.className = `notice-card notice-${type}`;
+  wrap.innerHTML = `
+    <div class="icon">${type==='success'
+        ? '<i class="fas fa-check"></i>'
+        : type==='error'
+          ? '<i class="fas fa-times"></i>'
+          : '<i class="fas fa-info"></i>'}</div>
+    <div class="notice-text">${message}</div>
+    <button class="notice-close" aria-label="Close">&times;</button>`;
+  wrap.querySelector('.notice-close').onclick = () => host.removeChild(wrap);
+  host.appendChild(wrap);
+  if (timeout) setTimeout(()=>{ wrap.isConnected && host.removeChild(wrap); }, timeout);
+}
+function money(n,c="USD"){return (Number(n)||0).toLocaleString(undefined,{style:"currency",currency:c});}
+function fmtDate(s){if(!s) return "—"; const d=new Date(s); return isNaN(d)?"—":d.toLocaleDateString();}
+
+
+/* --- balance card (active unpaid only: non-expired, non-cancelled, unpaid) --- */
+function updateBalanceCard(summary, overrideBalance = null, orders = null){
+  const card   = document.getElementById('balanceCard');
+  const wash   = document.getElementById('gradientWash');
+  const badge  = document.getElementById('balanceBadge');
+  const amount = document.getElementById('currentBalance');
+  const msg    = document.getElementById('dueMessage');
+  if(!card||!badge||!amount||!msg) return;
+
+  // ---------- helpers (same logic as unpaid snippet) ----------
+  const parseDateSafe = v => {
+    if (v == null || v === "") return null;
+    if (typeof v === "number" && Number.isFinite(v)){
+      const ms = v < 1e12 ? v * 1000 : v; // epoch seconds vs ms
+      const d = new Date(ms);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    if (typeof v === "string"){
+      const s = v.trim();
+      const isoish = (s.length >= 19 && s[10] === " ") ? s.replace(" ", "T") : s;
+      const d = new Date(isoish);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    const d = new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  };
+  const isExpired = (o) => {
+    if (o?.is_expired === true) return true;
+    if (typeof o?.expired === "boolean") return o.expired;
+    const st = String(o?.status || o?.state || o?.order_status || o?.invoice_status || "").toLowerCase();
+    const EXPIRED_STATUSES = new Set(["expired","voided","timed_out","timeout","timeout_expired","payment_timed_out"]);
+    if (EXPIRED_STATUSES.has(st)) return true;
+    const expCandidates = [
+      o?.expires_at, o?.expiresAt, o?.expiration_at, o?.expiration_date, o?.expiration_time,
+      o?.expiry_at, o?.deadline, o?.valid_until, o?.valid_till, o?.valid_to
+    ];
+    for (const val of expCandidates){
+      const exp = parseDateSafe(val);
+      if (exp){
+        if (Date.now() >= exp.getTime()) return true; // inclusive boundary
+        break;
+      }
+    }
+    return false;
+  };
+  const isCancelled = (o) => {
+    const st = String(o?.status || o?.state || "").toLowerCase();
+    return ["cancelled","canceled","void","refunded","failed"].includes(st);
+  };
+  const orderTotalAmount = (o) => {
+    const candidates = [
+      o?.remaining_due_usd,
+      o?.balance_usd,
+      o?.total_price_usd,
+      o?.total_usd,
+      o?.total_price,
+      o?.total
+    ];
+    for (const v of candidates){
+      const n = Number(v);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return 0;
+  };
+
+  // FIXED: no call to isPaid() here (prevents recursion)
+  const orderPaidAmount = (o) => {
+    const vals = [
+      o?.amount_paid_usd, o?.amount_paid, o?.paid_amount_usd, o?.paid_amount
+    ].map(v => Number(v)).filter(n => Number.isFinite(n));
+    if (vals.length) return Math.max(...vals);
+
+    // If backend explicitly marks as paid, assume full payment equals total
+    const ps = String(o?.payment_status || "").toLowerCase();
+    if (o?.is_paid === true || o?.paid === true || ["paid","succeeded","settled"].includes(ps)) {
+      const total = Number(o?.total_price_usd ?? o?.total_usd ?? o?.total ?? 0);
+      return Number.isFinite(total) ? total : 0;
+    }
+    return 0;
+  };
+
+  const isPaid = (o) => {
+    if (o?.is_paid === true || o?.paid === true) return true;
+    const ps = String(o?.payment_status || "").toLowerCase();
+    if (["paid","succeeded","settled"].includes(ps)) return true;
+
+    const rem = Number(o?.remaining_due_usd ?? o?.balance_usd ?? o?.total_due_usd);
+    if (Number.isFinite(rem)) return rem <= 0;
+
+    const total = orderTotalAmount(o);
+    const paid  = orderPaidAmount(o); // safe: no back-call into isPaid
+    return total > 0 && paid >= total - 1e-6;
+  };
+
+  const orderRemainingDue = (o) => {
+    const explicit = Number(o?.remaining_due_usd ?? o?.balance_usd ?? o?.total_due_usd);
+    if (Number.isFinite(explicit)) return Math.max(0, explicit);
+    const total = orderTotalAmount(o);
+    const paid  = orderPaidAmount(o);
+    const rem = total - paid;
+    return Math.max(0, Number.isFinite(rem) ? rem : 0);
+  };
+  const computeActiveUnpaidTotal = (arr) => {
+    if (!Array.isArray(arr)) return 0;
+    let sum = 0;
+    for (const o of arr){
+      if (isCancelled(o)) continue;
+      if (isExpired(o)) continue;
+      if (isPaid(o)) continue;
+      const rem = orderRemainingDue(o);
+      if (Number.isFinite(rem) && rem > 0) sum += rem;
+    }
+    return sum;
+  };
+
+  // New: Current Balance rule — sum TOTAL of all orders whose payment_status != 'paid', excluding cancelled/expired
+  const computeActiveNonPaidTotal = (arr) => {
+    if (!Array.isArray(arr)) return 0;
+    let sum = 0;
+    for (const o of arr){
+      if (isCancelled(o)) continue;
+      if (isExpired(o)) continue;
+      const ps = String(o?.payment_status || '').toLowerCase();
+      if (ps === 'paid') continue;
+      const tot = orderTotalAmount(o);
+      if (Number.isFinite(tot) && tot > 0) sum += tot;
+    }
+    return sum;
+  };
+
+  // ---------- effective balance calculation ----------
+  // Priority: override → computed from orders → server's "active unpaid" → legacy total
+  let eff = null;
+
+  if (overrideBalance !== null && Number.isFinite(Number(overrideBalance))) {
+    eff = Number(overrideBalance);
+  } else {
+    // if orders provided, compute from them
+    const list = Array.isArray(orders) ? orders
+               : Array.isArray(summary?.orders) ? summary.orders
+               : null;
+    const computed = computeActiveNonPaidTotal(list);
+    if (Number.isFinite(computed) && computed >= 0) {
+      eff = computed;
+    } else if (typeof summary?.active_unpaid_balance_usd !== 'undefined') {
+      // Fallback: server-provided unpaid-only, if non-paid total unavailable
+      eff = Number(summary.active_unpaid_balance_usd);
+    } else {
+      eff = Number(summary?.current_balance_usd ?? summary?.unpaid_total_usd ?? 0);
+    }
+  }
+
+  const balance = Number.isFinite(eff) ? eff : 0;
+
+  // ---------- visuals ----------
+  const np    = summary?.next_payment || {};
+  const days  = (typeof np?.days_until === "number") ? np.days_until : Number(np?.days_until);
+
+  card.classList.remove('glow-red','glow-green','glow-orange');
+  badge.className='text-[11px] px-2 py-1 rounded-full border';
+  amount.className='mt-2 text-2xl sm:text-3xl font-extrabold tracking-tight';
+  msg.className='mt-2 text-xs sm:text-sm';
+  amount.textContent = money(balance,'USD'); // assumes global money() & fmtDate()
+
+  if (balance > 0){
+    amount.classList.add('text-rose-700');
+    badge.classList.add('bg-rose-50','border-rose-200','text-rose-700');
+    badge.textContent = translations.due;
+    badge.classList.remove('hidden');
+    card.classList.add('glow-red');
+
+    if (np?.status === 'overdue'){
+      msg.textContent = (typeof days === "number" && days < 0)
+        ? translations.overdue + " " + Math.abs(days) + " " + translations.daysSingle
+        : translations.overdueGeneral;
+      msg.classList.add('text-rose-700');
+      card.classList.add('glow-red');
+    } else if (np?.status === 'due_today'){
+      msg.textContent = translations.paymentDueToday;
+      msg.classList.add('text-amber-600');
+      card.classList.add('glow-orange');
+    } else if (typeof days === "number" && days > 0){
+      msg.textContent = translations.paymentDueIn + " " + days + " " + translations.daysSingle;
+      msg.classList.add('text-amber-600');
+      card.classList.add('glow-orange');
+    } else {
+      msg.textContent = np?.date ? translations.nextDueOn + " " + fmtDate(np.date) : "—";
+      msg.classList.add('text-gray-500');
+    }
+    if (wash) wash.style.opacity='0.9';
+  } else {
+    amount.classList.add('text-emerald-700');
+    badge.textContent = translations.allClear;
+    badge.classList.add('bg-emerald-50','border-emerald-200','text-emerald-700');
+    badge.classList.remove('hidden');
+    card.classList.add('glow-green');
+    msg.textContent = np?.date ? translations.nextInvoiceOn + " " + fmtDate(np.date) : translations.noOutstandingBalance;
+    msg.classList.add('text-gray-500');
+    if (wash) wash.style.opacity='0.7';
+  }
+}
+
+
+
+/* ======================= Payment Methods Modal (NEW) ======================= */
+
+/* URLs (history + payments + invoice PDF by ORDER ID) */
+  const URLS = {
+  history: "{% url 'billing_history' %}",
+  invoice_pdf_by_id: "{% url 'client_report_invoice_pdf' order_id=0 %}",
+  get_methods: "{% url 'get_payment_methods' %}",
+  mobile_pay: "{% url 'mobile_payment' %}",
+  card_pay: "{% url 'initiate_card_payment' %}",
+  current_balance_total: "{% url 'current_balance_total' %}",
+  probe_payment: "{% url 'probe_payment_status' %}",
+  mobile_probe: "{% url 'mobile_probe' %}",
+  cancel_order_now: "{% url 'cancel_order_now' %}"
+};
+
+/* Build invoice PDF href from a row that carries order_id (or id) */
+function buildInvoiceHrefFromRow(row){
+  const orderId = row?.order_id ?? row?.id;
+  if (!orderId) return "";
+  return URLS.invoice_pdf_by_id.replace(/\/0\//, `/${orderId}/`);
+}
+
+/* Kind + labels */
+function inferKind(name=''){
+  const s = String(name || '').toLowerCase();
+  if (/(momo|mobile|mpesa|m-pesa|orange money|airtel|vodacom|moov)/.test(s)) return 'mobile';
+  if (/(credit_?card|card|visa|mastercard|amex|cb|stripe)/.test(s)) return 'card';
+  return 'other';
+}
+function methodIcon(kind){
+  if (kind==='mobile') return '<i class="fas fa-mobile-alt"></i>';
+  if (kind==='card')   return '<i class="far fa-credit-card"></i>';
+  return '<i class="fas fa-money-check-alt"></i>';
+}
+function methodLabel(m){
+  const t = String(m.type || m.name || '').toUpperCase();
+  if (t.includes('CREDIT_CARD') || t.includes('CARD')) return 'Card';
+  if (t.includes('MOBILE_MONEY') || t.includes('MOBILE') || /(MOMO|MPESA|AIRTEL|ORANGE)/.test(t)) return `{% trans "Mobile Money" %}`;
+  return m.label || m.name || `{% trans "Other" %}`;
+}
+
+/* Modal state */
+let __payRef = "";
+let __payAmount = 0;
+let __methods = [];
+
+/* Open/close modal */
+function openPayMethodModal(orderRef, amount){
+  __payRef = orderRef || "";
+  __payAmount = Number(amount||0);
+
+  const m = document.getElementById('payMethodModal');
+  const refBadge = document.getElementById('payRefBadge');
+  const list = document.getElementById('methodList');
+  const btn = document.getElementById('payConfirm');
+
+  if (!m || !refBadge || !list || !btn){
+    const url = `/client/billing/?pay=now&order=${encodeURIComponent(orderRef)}`;
+    window.location.href = url;
+    return;
+  }
+
+  refBadge.textContent = __payRef ? `#${__payRef} · ${money(__payAmount)}` : "";
+
+  // make the list side-by-side (grid) and clear
+  list.classList.add('grid','grid-cols-1','sm:grid-cols-2','gap-3');
+  list.innerHTML = `
+    <div class="col-span-1 sm:col-span-2 rounded-lg border border-dashed p-4 text-sm text-gray-500">
+      {% trans "Loading saved methods…" %}
+    </div>`;
+  btn.disabled = true;
+
+  // default mobile number UX hint
+  const mobileInput = document.getElementById('mobileNumber');
+  if (mobileInput){
+    mobileInput.placeholder = '0XXXXXXXXX';
+    mobileInput.setAttribute('inputmode','numeric');
+    mobileInput.setAttribute('maxlength','10');
+  }
+
+  m.classList.remove('hidden'); m.classList.add('flex');
+
+  loadSavedMethods();
+}
+function closePayMethodModal(){
+  const m = document.getElementById('payMethodModal');
+  m?.classList.add('hidden'); m?.classList.remove('flex');
+  document.getElementById('extraMobile')?.classList.add('hidden');
+  document.getElementById('extraCard')?.classList.add('hidden');
+  __payRef=""; __payAmount=0; __methods=[];
+}
+
+/* Fetch and render saved methods */
+async function loadSavedMethods(){
+  try{
+    const res = await fetch(URLS.get_methods, { headers: { "X-Requested-With":"XMLHttpRequest" }});
+    const j = await res.json();
+    const methods = Array.isArray(j.methods) ? j.methods : [];
+    __methods = methods;
+
+    const list = document.getElementById('methodList');
+    if (!list) return;
+
+    if (!methods.length){
+      list.innerHTML = `
+        <div class="col-span-1 sm:col-span-2 rounded-lg border p-4 text-sm">
+          <p class="text-gray-700 font-medium mb-1">{% trans "No saved methods" %}</p>
+          <p class="text-gray-500">{% trans "Please add a payment method in your account settings." %}</p>
+        </div>`;
+      return;
+    }
+
+    list.innerHTML = methods.map((m,i)=>{
+  const kind = inferKind(m.name || m.type || "");
+  const mask = m.masked || m.last4 ? `•••• ${m.last4 || ''}` : '';
+  return `
+    <div class="method-card rounded-xl p-0">
+      <input id="method-${i}" type="radio" name="pay-method" value="${i}" class="peer hidden" />
+      <label for="method-${i}"
+             class="method-option flex gap-3 items-center rounded-xl p-3 cursor-pointer transition border bg-white hover:shadow
+                    peer-checked:bg-indigo-50 peer-checked:border-indigo-500 peer-checked:shadow-md">
+        <span class="shrink-0 grid place-items-center w-11 h-11 rounded-lg bg-gray-50 text-gray-700 text-lg">
+          ${methodIcon(kind)}
+        </span>
+        <div class="min-w-0">
+          <div class="font-bold text-gray-900 truncate">${methodLabel(m)}</div>
+          <div class="text-[12px] text-gray-500 truncate">${mask}</div>
+        </div>
+      </label>
+    </div>`;
+}).join("");
+
+  }catch(e){
+    const list = document.getElementById('methodList');
+    if (list){
+      list.innerHTML = `
+        <div class="col-span-1 sm:col-span-2 rounded-lg border p-4 text-sm text-red-600">
+          {% trans "Failed to load methods." %}
+        </div>`;
+    }
+  }
+}
+
+/* Toggle conditional fields on method change */
+document.addEventListener('change', (e)=>{
+  const r = e.target.closest('input[name="pay-method"]');
+  if(!r) return;
+  const idx = parseInt(r.value,10);
+  const m = __methods[idx] || {};
+  const kind = inferKind(m.name || m.type || '');
+
+  document.getElementById('extraMobile')?.classList.toggle('hidden', kind!=='mobile');
+  document.getElementById('extraCard')?.classList.toggle('hidden', kind!=='card');
+  const btn = document.getElementById('payConfirm');
+  if (btn) btn.disabled = false;
+
+  /* NEW: ensure background highlight even without Tailwind peer (JS fallback) */
+  document.querySelectorAll('.method-option').forEach(l => l.classList.remove('selected'));
+  const lbl = document.querySelector(`label[for="${r.id}"]`);
+  lbl?.classList.add('selected');
+
+  /* Optional UX hint for mobile */
+  if (kind==='mobile'){
+    const mobileInput = document.getElementById('mobileNumber');
+    if (mobileInput){
+      mobileInput.placeholder = '0XXXXXXXXX';
+      mobileInput.setAttribute('inputmode','numeric');
+      mobileInput.setAttribute('maxlength','10');
+    }
+  }
+});
+
+/* === Two-step payment processing & probe modals === */
+const Processing = (()=>{
+  let timer = null, deadline = 0, kind = 'mobile';
+  const modal = ()=> document.getElementById('paymentProcessingModal');
+  const msgEl = ()=> document.getElementById('processingMessage');
+  const cdEl  = ()=> document.getElementById('processingCountdown');
+  const confirmBtn = ()=> document.getElementById('processingConfirmBtn');
+  const cancelBtn  = ()=> document.getElementById('processingCancelBtn');
+
+  function fmtSeconds(s){ return Math.max(0, Math.floor(s)); }
+  function tick(){
+    const remain = Math.max(0, Math.ceil((deadline - Date.now())/1000));
+    if (cdEl()) cdEl().textContent = String(remain);
+    if (remain <= 0) stop();
+  }
+  function stop(){ if (timer){ clearInterval(timer); timer=null; } }
+
+  return {
+    open(opts){
+      kind = opts.kind || 'mobile';
+      const secs = Number(opts.seconds || (kind==='card'?480:300));
+      const text = opts.message || (kind==='mobile'
+        ? "{% trans 'We sent the request to your mobile. Please validate on your phone, then click “Payment done” below.' %}"
+        : "{% trans 'We opened a secure payment page in a new window. Complete the steps there, then click “I’ve completed payment.”' %}");
+      if (msgEl()) msgEl().textContent = text;
+      if (cdEl()) cdEl().textContent = String(secs);
+      deadline = Date.now() + secs*1000;
+      stop(); timer = setInterval(tick, 1000);
+      modal()?.classList.remove('hidden'); modal()?.classList.add('flex');
+      // Wire buttons
+      if (confirmBtn()){
+        confirmBtn().disabled = false;
+        confirmBtn().onclick = ()=>{ this.close(); Probe.open({ kind, seconds: 300 }); };
+      }
+      if (cancelBtn()){
+        cancelBtn().onclick = ()=>{ this.close(); };
+      }
+    },
+    close(){ stop(); modal()?.classList.add('hidden'); modal()?.classList.remove('flex'); },
+  };
+})();
+
+const Probe = (()=>{
+  let timer = null, poller = null, deadline = 0, kind = 'mobile';
+  const modal = ()=> document.getElementById('paymentProbeModal');
+  const cdEl  = ()=> document.getElementById('probeCountdown');
+  const badge = ()=> document.getElementById('probeStatusBadge');
+  const closeBtn = ()=> document.getElementById('probeCloseBtn');
+
+  function setBadge(state){
+    const el = badge(); if (!el) return;
+    el.classList.remove('hidden');
+    el.classList.remove('bg-emerald-100','text-emerald-700','border-emerald-200');
+    el.classList.remove('bg-rose-100','text-rose-700','border-rose-200');
+    if (state==='paid'){
+      el.textContent = '{% trans "PAID" %}';
+      el.classList.add('bg-emerald-100','text-emerald-700','border','border-emerald-200');
+    } else if (state==='failed'){
+      el.textContent = '{% trans "PAYMENT FAILED" %}';
+      el.classList.add('bg-rose-100','text-rose-700','border','border-rose-200');
+    } else {
+      el.textContent = '';
+      el.classList.add('hidden');
+    }
+  }
+  function fmtRemain(){ return Math.max(0, Math.ceil((deadline - Date.now())/1000)); }
+  function tick(){ const r = fmtRemain(); if (cdEl()) cdEl().textContent = String(r); if (r<=0) { stop(); onTimeout(); } }
+  function stop(){ if (timer){ clearInterval(timer); timer=null; } if (poller){ clearInterval(poller); poller=null; } }
+
+  async function onTimeout(){
+    // Timeout → treat as failed, trigger cancellation, then close and reload
+    setBadge('failed');
+    await cancelOrderSafely();
+    closeBtn()?.removeAttribute('disabled');
+    setTimeout(()=>{ Probe.close(); try{ window.location.reload(); }catch(_){ window.location.href = window.location.href; } }, 800);
+  }
+
+  function paidDetected(){
+    setBadge('paid');
+    closeBtn()?.removeAttribute('disabled');
+    setTimeout(()=>{ Probe.close(); try{ window.location.reload(); }catch(_){ window.location.href = window.location.href; } }, 700);
+  }
+
+  async function cancelOrderSafely(){
+    try{
+      const payload = { order_reference: (__payRef || null) };
+      await fetch(URLS.cancel_order_now, { method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest', ...csrfHeader()}, body: JSON.stringify(payload) });
+    }catch(_e){}
+  }
+
+  async function doProbeOnce(){
+    // Prefer specific mobile probe for mobile; otherwise generic probe
+    const url = (kind==='mobile') ? URLS.mobile_probe : URLS.probe_payment;
+    const payload = { order_reference: (__payRef || null) };
+    if (window.__lastOrderNumber) payload.order_number = window.__lastOrderNumber;
+    try{
+      const r = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest', ...csrfHeader()}, body: JSON.stringify(payload) });
+      const j = await r.json().catch(()=>({}));
+      const st = String(j?.status || '').toLowerCase();
+      const paid   = !!(j?.paid || j?.success === true || st === 'paid' || st === 'success' || st === 'confirmed');
+      const failed = !!(j?.failed || st === 'failed' || st === 'declined' || st === 'cancelled' || st === 'canceled');
+      if (paid){ stop(); paidDetected(); return; }
+      if (failed){ stop(); setBadge('failed'); await cancelOrderSafely(); setTimeout(()=>{ Probe.close(); try{ window.location.reload(); }catch(_){ window.location.href = window.location.href; } }, 800); return; }
+    }catch(_e){ /* ignore transient errors; keep polling until timeout */ }
+  }
+
+  return {
+    open(opts){
+      kind = opts.kind || 'mobile';
+      const secs = Number(opts.seconds || 300);
+      if (cdEl()) cdEl().textContent = String(secs);
+      setBadge(null);
+      deadline = Date.now() + secs*1000;
+      stop();
+      timer = setInterval(tick, 1000);
+      // Poll every ~6s
+      poller = setInterval(doProbeOnce, 6000);
+      // Kick the first one immediately after slight delay
+      setTimeout(doProbeOnce, 800);
+      modal()?.classList.remove('hidden'); modal()?.classList.add('flex');
+      if (closeBtn()) { closeBtn().setAttribute('disabled','disabled'); closeBtn().onclick = ()=>{ this.close(); } }
+    },
+    close(){ stop(); modal()?.classList.add('hidden'); modal()?.classList.remove('flex'); },
+  };
+})();
+
+/* Confirm payment */
+document.getElementById('payConfirm')?.addEventListener('click', async () => {
+  const sel = document.querySelector('input[name="pay-method"]:checked');
+  if (!sel) return;
+
+  const idx  = parseInt(sel.value, 10);
+  const m    = __methods[idx] || {};
+  const kind = inferKind(m.name || m.type || '');
+
+  try {
+    if (kind === 'mobile') {
+      let phoneRaw = (document.getElementById('mobileNumber')?.value || '').trim();
+      // normalize: user must enter local format 0XXXXXXXXX (10 digits, leading 0)
+      let digits = phoneRaw.replace(/\D/g,'');
+      if (/^243\d{9}$/.test(digits)) digits = '0' + digits.slice(3); // strip country code to local format
+      if (/^\d{9}$/.test(digits)) digits = '0' + digits;             // if they typed 9 digits, prefix 0
+      if (!/^0\d{9}$/.test(digits)){
+        closePayMethodModal();
+        showNotice("{% trans 'Please enter a valid Mobile Money number starting with 0 and 10 digits (e.g., 0999999999).' %}", 'error');
+        return;
+      }
+      // backend accepts 0XXXXXXXXX or 243XXXXXXXXX; send local and it will reformat
+      const payload = { order_id: __payRef, phone_number: digits };
+
+      const res = await fetch(URLS.mobile_pay, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest', ...csrfHeader() },
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.message || 'Mobile payment failed');
+
+      closePayMethodModal();
+      // Start 5-minute processing window for mobile flow
+      Processing.open({ kind: 'mobile', seconds: 300 });
+
+    } else if (kind === 'card') {
+      const email = (document.getElementById('cardEmail')?.value || m.email || '').trim();
+      if (!email) {
+        closePayMethodModal();
+        showNotice("{% trans 'Please enter your email.' %}", 'error');
+        return;
+      }
+
+      const payload = { order_id: __payRef, email };
+      const res = await fetch(URLS.card_pay, {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'X-Requested-With':'XMLHttpRequest', ...csrfHeader() },
+        body: JSON.stringify(payload)
+      });
+      const j = await res.json();
+      if (!res.ok || !j.success) throw new Error(j.message || 'Card payment failed');
+
+      // Close first, then notify & redirect in new tab
+      closePayMethodModal();
+      if (j.url) {
+        showNotice("{% trans 'Redirecting to the secure card page…' %}", 'info', { timeout: 3000 });
+        const w = window.open(j.url, '_blank', 'noopener,noreferrer');
+        if (!w) window.location.href = j.url; // pop-up blocked fallback
+        // While user completes 3‑D Secure, show our processing countdown (8 minutes)
+        Processing.open({ kind: 'card', seconds: 480 });
+      } else {
+        showNotice("{% trans 'Payment started.' %}", 'success');
+        // No redirect URL returned; still show processing for card (8 minutes)
+        Processing.open({ kind: 'card', seconds: 480 });
+      }
+
+    } else {
+      closePayMethodModal();
+      showNotice("{% trans 'Unsupported method.' %}", 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    closePayMethodModal();
+    showNotice(err.message || "{% trans 'Payment failed. Please try again.' %}", 'error');
+  }
+});
+
+/* Prefer modal; fallback to redirect if modal missing */
+function payNow(orderRef, amount){
+  const modalEl = document.getElementById('payMethodModal');
+  if (modalEl){
+    openPayMethodModal(orderRef, amount);
+  } else {
+    const url = `/client/billing/?pay=now&order=${encodeURIComponent(orderRef)}`;
+    window.location.href = url;
+  }
+}
+
+/* ======================= History + Pager ======================= */
+(function(){
+  const nextInvoiceDate   = document.getElementById("nextInvoiceDate");
+  const billingPeriod     = document.getElementById("billingPeriod");
+  const historyBody       = document.getElementById("historyBody");
+  const historyListMobile = document.getElementById("historyListMobile");
+  const historyPager      = document.getElementById("historyPager");
+  const histStatus        = document.getElementById("histStatus");
+  const histType          = document.getElementById("histType");
+  const histFrom          = document.getElementById("histFrom");
+  const histTo            = document.getElementById("histTo");
+
+  async function applySummary(s){
+    try {
+      if (URLS.current_balance_total) {
+        const r = await fetch(URLS.current_balance_total, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+        const j = await r.json().catch(()=>null);
+        if (r.ok && j && j.ok === true && typeof j.current_balance_usd !== 'undefined') {
+          updateBalanceCard(s, Number(j.current_balance_usd));
+        } else {
+          updateBalanceCard(s);
+        }
+      } else {
+        updateBalanceCard(s);
+      }
+    } catch (e) {
+      console.warn('current_balance_total fetch failed, falling back to summary', e);
+      updateBalanceCard(s);
+    }
+    const np = s?.next_payment || {};
+    nextInvoiceDate.textContent = np.date ? fmtDate(np.date) : (s?.next_billing_date ? fmtDate(s.next_billing_date) : "—");
+    let note = "—";
+    if (np.status === "overdue") {
+      const days = Math.abs(Number(np.days_until || 0));
+      note = days ? "{{ _('Overdue by') }} " + days + " {{ _('day(s)') }}" : "{{ _('Overdue') }}";
+    } else if (np.status === "due_today") note = "{{ _('Due today') }}";
+    else if ((np.status||"").startsWith("due_in_")) note = "{{ _('Due in') }} " + Number(np.days_until || 0) + " {{ _('day(s)') }}";
+    else if (np.date) note = "{{ _('Scheduled') }}";
+    billingPeriod.textContent = note;
+  }
+
+  /* GROUPED rows from your API */
+  function rowIsCancelled(row){
+    // Normalize any possible status fields coming from the API
+    const norm = (v) => String(v || '').toLowerCase();
+
+    // Concatenate common status-ish fields for regex match
+    const bag = [
+      norm(row.status),
+      norm(row.order_status),
+      norm(row?.charge?.status),
+      norm(row?.order?.status),
+      norm(row?.lifecycle_status),
+      norm(row?.state),
+      norm(row?.payment_status)
+    ].join(' ');
+
+    // Strong boolean-ish flags/timestamps some backends send
+    const hardFlag = Boolean(
+      row.is_expired || row.expired || row?.order?.is_expired ||
+      row.cancelled || row.canceled || row?.order?.cancelled || row?.order?.canceled ||
+      row.expired_at || row.cancelled_at || row.canceled_at
+    );
+
+    // Treat ANY expired/cancelled as cancelled for UI purposes
+    return hardFlag || /expired|cancelled|canceled/.test(bag);
+  }
+
+  function renderDesktopRow(row){
+    const ref     = row.order_reference || row.ref || "—";
+    theOrderId = row.order_id || row.id || null;
+    const orderId = theOrderId;
+    const date    = row.date || null;
+
+    const cancelled = rowIsCancelled(row);
+    const chargeStatus = (row.charge?.status || "").toLowerCase();
+    const chargeAmt    = Number(row.charge?.amount || 0);
+    const chargeCur    = row.charge?.currency || "USD";
+
+    const chargeCell = cancelled
+      ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">{% trans "Cancelled" %}</span>`
+      : (chargeStatus === "paid"
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">{% trans "Paid" %}</span>`
+          : (row.charge ? `<span class="font-medium">${money(chargeAmt, chargeCur)}</span>` : `<span class="text-gray-400">—</span>`));
+
+    const paymentTotal = Number(row.payments?.total || 0);
+    const paymentCell  = paymentTotal > 0
+      ? `<span class="font-medium">${money(paymentTotal, row.payments?.currency || "USD")}</span>`
+      : `<span class="text-gray-400">—</span>`;
+
+    let actionsHtml = "";
+    if (!cancelled && chargeStatus !== "paid" && row.charge) {
+      actionsHtml = `
+        <button
+          class="js-pay-now inline-flex items-center gap-2 px-4 py-2 rounded-xl
+                 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500
+                 text-white font-semibold shadow-md hover:shadow-lg
+                 hover:from-rose-600 hover:via-orange-600 hover:to-amber-600
+                 active:scale-95 transition"
+          data-order-ref="${ref}" data-amount="${chargeAmt}">
+          <i class="fas fa-credit-card"></i> {% trans "Pay Now" %}
+        </button>`;
+    } else if (!cancelled && row.can_download) {
+      if (orderId) {
+        const invoiceUrl = "{% url 'client_report_invoice_pdf' order_id=0 %}".replace(/\/0(\/|$)/, `/${orderId}$1`);
+        actionsHtml = `
+          <a href="${invoiceUrl}"
+             target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl
+                    bg-gradient-to-r from-indigo-500 to-blue-600
+                    text-white font-semibold shadow-md hover:shadow-lg
+                    hover:from-indigo-600 hover:to-blue-700 active:scale-95 transition">
+            <i class="fas fa-download"></i> {% trans "Download Invoice" %}
+          </a>`;
+      } else {
+        actionsHtml = `
+          <button type="button" disabled
+             class="inline-flex items-center gap-2 px-4 py-2 rounded-xl
+                    bg-gray-300 text-gray-600 font-semibold cursor-not-allowed shadow-none">
+            <i class="fas fa-download"></i> {% trans "Download Invoice" %}
+          </button>`;
+      }
+    }
+
+    return `
+      <tr class="hover:bg-gray-50">
+        <td class="px-6 py-4 font-medium text-blue-600">${ref}</td>
+        <td class="px-6 py-4">${fmtDate(date)}</td>
+        <td class="px-6 py-4">${chargeCell}</td>
+        <td class="px-6 py-4">${paymentCell}</td>
+        <td class="px-6 py-4"><div class="flex flex-wrap gap-2">${actionsHtml}</div></td>
+      </tr>`;
+  }
+
+  function renderMobileRow(row){
+    const ref     = row.order_reference || row.ref || "—";
+    const orderId = row.order_id || row.id || null;
+    const date    = row.date || null;
+
+    const cancelled = rowIsCancelled(row);
+    const chargeStatus = (row.charge?.status || "").toLowerCase();
+    const chargeAmt    = Number(row.charge?.amount || 0);
+    const chargeCur    = row.charge?.currency || "USD";
+
+    const chargeCell = cancelled
+      ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-red-100 text-red-700 text-xs font-semibold">{% trans "Cancelled" %}</span>`
+      : (chargeStatus === "paid"
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold">{% trans "Paid" %}</span>`
+          : (row.charge ? `<span class="font-medium">${money(chargeAmt, chargeCur)}</span>` : `<span class="text-gray-400">—</span>`));
+
+    const paymentTotal = Number(row.payments?.total || 0);
+
+    let actionsHtml = "";
+    if (!cancelled && chargeStatus !== "paid" && row.charge) {
+      actionsHtml = `
+        <button
+          class="js-pay-now w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl
+                 bg-gradient-to-r from-rose-500 via-orange-500 to-amber-500
+                 text-white font-semibold shadow-md hover:shadow-lg
+                 hover:from-rose-600 hover:via-orange-600 hover:to-amber-600
+                 active:scale-95 transition"
+          data-order-ref="${ref}" data-amount="${chargeAmt}">
+          <i class="fas fa-credit-card"></i> {% trans "Pay Now" %}
+        </button>`;
+    } else if (!cancelled && row.can_download) {
+      if (orderId) {
+        const invoiceUrl = "{% url 'client_report_invoice_pdf' order_id=0 %}".replace(/\/0(\/|$)/, `/${orderId}$1`);
+        actionsHtml = `
+          <a href="${invoiceUrl}"
+             target="_blank" rel="noopener"
+             class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl
+                    bg-gradient-to-r from-indigo-500 to-blue-600
+                    text-white font-semibold shadow-md hover:shadow-lg
+                    hover:from-indigo-600 hover:to-blue-700 active:scale-95 transition">
+            <i class="fas fa-download"></i> {% trans "Download Invoice" %}
+          </a>`;
+      } else {
+        actionsHtml = `
+          <button type="button" disabled
+             class="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl
+                    bg-gray-300 text-gray-600 font-semibold cursor-not-allowed shadow-none">
+            <i class="fas fa-download"></i> {% trans "Download Invoice" %}
+          </button>`;
+      }
+    }
+
+    return `
+      <article class="rounded-lg border border-gray-200 p-4">
+        <div class="flex items-center justify-between">
+          <div class="text-sm font-semibold text-blue-600">${ref}</div>
+          <div class="text-xs text-gray-500">${fmtDate(date)}</div>
+        </div>
+        <div class="mt-3 grid grid-cols-2 gap-2 text-sm">
+          <div class="text-gray-500">{% trans "Charge" %}</div>
+          <div>${chargeCell}</div>
+          <div class="text-gray-500">{% trans "Payment" %}</div>
+          <div>${paymentTotal>0? `<span class="font-medium">${money(paymentTotal, row.payments?.currency || "USD")}</span>` : `<span class="text-gray-400">—</span>`}</div>
+        </div>
+        ${actionsHtml ? `<div class="mt-3">${actionsHtml}</div>` : ``}
+      </article>`;
+  }
+
+  async function loadHistory(page=1){
+    const q = new URLSearchParams({page});
+    if (histStatus.value) q.set("payment_status", histStatus.value);
+    if (histType.value)   q.set("type", histType.value);
+    if (histFrom.value)   q.set("date_from", histFrom.value);
+    if (histTo.value)     q.set("date_to",   histTo.value);
+
+    try{
+      const res = await fetch(`${URLS.history}?${q.toString()}`, {headers:{'X-Requested-With':'XMLHttpRequest'}});
+      const j = await res.json();
+
+      applySummary(j.summary || {});
+
+      const rows = Array.isArray(j.history) ? j.history : [];
+      const pageNo = j.page || 1, totalPages = j.total_pages || 1;
+
+      const historyBody       = document.getElementById("historyBody");
+      const historyListMobile = document.getElementById("historyListMobile");
+      const historyPager      = document.getElementById("historyPager");
+
+      historyBody.innerHTML = "";
+      historyListMobile.innerHTML = "";
+
+      if (!rows.length){
+        historyBody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">${translations.noItemsFound}</td></tr>`;
+        historyListMobile.innerHTML = `<div class="rounded-lg border border-gray-200 p-4 text-gray-500 text-sm text-center">${translations.noItemsFound}</div>`;
+      } else {
+        rows.forEach(row=> historyBody.insertAdjacentHTML("beforeend", renderDesktopRow(row)));
+        rows.forEach(row=> historyListMobile.insertAdjacentHTML("beforeend", renderMobileRow(row)));
+      }
+
+      // pagination
+      historyPager.innerHTML = "";
+      if (j.has_previous){
+        historyPager.insertAdjacentHTML("beforeend",
+          `<button class="px-3 py-1 border rounded hover:bg-gray-100" data-page="${pageNo-1}">&laquo; {% trans "Prev" %}</button>`);
+      }
+      const WIN = 5;
+      let start = Math.max(1, pageNo - Math.floor(WIN/2));
+      let end = Math.min(totalPages, start + WIN - 1);
+      if (end - start < WIN - 1) start = Math.max(1, end - WIN + 1);
+      for (let i=start;i<=end;i++){
+        historyPager.insertAdjacentHTML("beforeend",
+          `<button class="px-3 py-1 border rounded ${i===pageNo?'bg-blue-600 text-white':'hover:bg-gray-100'}" data-page="${i}" ${i===pageNo?'aria-current="page"':''}>${i}</button>`);
+      }
+      if (j.has_next){
+        historyPager.insertAdjacentHTML("beforeend",
+          `<button class="px-3 py-1 border rounded hover:bg-gray-100" data-page="${pageNo+1}">${translations.next} &raquo;</button>`);
+      }
+    }catch(e){
+      console.error(e);
+      historyBody.innerHTML = `<tr><td colspan="5" class="px-6 py-8 text-center text-red-500">${translations.failedToLoadHistory}</td></tr>`;
+      historyListMobile.innerHTML = `<div class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-600 text-sm text-center">${translations.failedToLoadHistory}</div>`;
+    }
+  }
+  window.loadHistory = loadHistory;
+
+  // pager delegation
+  document.getElementById("historyPager")?.addEventListener("click", (e)=>{
+    const btn = e.target.closest("button[data-page]");
+    if(!btn) return;
+    const p = parseInt(btn.getAttribute("data-page"),10);
+    if(Number.isFinite(p)) loadHistory(p);
+  });
+
+  // Pay Now delegation -> open modal
+  document.addEventListener("click", (e)=>{
+    const btn = e.target.closest(".js-pay-now");
+    if(!btn) return;
+    const ref = btn.getAttribute("data-order-ref") || "";
+    const amt = parseFloat(btn.getAttribute("data-amount") || "0") || 0;
+    openPayMethodModal(ref, amt);
+  });
+
+  // init
+  loadHistory(1);
+})();
+
+/* ===== Additional Billing Approval Modal Functions ===== */
+let currentBillingId = null;
+let currentBillingData = null;
+
+function openBillingApprovalModal(billingId, billingRef, orderRef) {
+  currentBillingId = billingId;
+  const modal = document.getElementById('billingApprovalModal');
+  const loadingState = document.getElementById('modalLoadingState');
+  const billingContent = document.getElementById('modalBillingContent');
+  const orderRefElement = document.querySelector('#modalOrderReference span');
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  loadingState.classList.remove('hidden');
+  billingContent.classList.add('hidden');
+
+  if (orderRefElement) {
+    orderRefElement.textContent = orderRef;
+  }
+
+  loadBillingDetailsInModal(billingId);
+}
+
+function closeBillingApprovalModal() {
+  const modal = document.getElementById('billingApprovalModal');
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+  currentBillingId = null;
+  currentBillingData = null;
+}
+
+async function loadBillingDetailsInModal(billingId) {
+  try {
+    const langPrefix = window.location.pathname.split('/')[1];
+    const response = await fetch(`/${langPrefix}/site-survey/billing/approval/${billingId}/?api=true`);
+    const data = await response.json();
+
+    if (data.success) {
+      currentBillingData = data.billing;
+      renderBillingDetailsInModal(currentBillingData);
+    } else {
+      alert(data.message || translations.failedToLoadBilling);
+      closeBillingApprovalModal();
+    }
+  } catch (error) {
+    console.error('Error loading billing details:', error);
+    alert(translations.failedToLoadBilling);
+    closeBillingApprovalModal();
+  }
+}
+
+function renderBillingDetailsInModal(billing) {
+  const loadingState = document.getElementById('modalLoadingState');
+  const billingContent = document.getElementById('modalBillingContent');
+  const costBreakdown = document.getElementById('modalCostBreakdown');
+  const subtotal = document.getElementById('modalSubtotal');
+  const taxBreakdown = document.getElementById('modalTaxBreakdown');
+  const taxAmount = document.getElementById('modalTaxAmount');
+  const totalAmount = document.getElementById('modalTotalAmount');
+  const notesSection = document.getElementById('modalNotesSection');
+  const actionButtons = document.getElementById('modalActionButtons');
+
+  loadingState.classList.add('hidden');
+  billingContent.classList.remove('hidden');
+
+  costBreakdown.innerHTML = '';
+  billing.cost_breakdown.forEach(cost => {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50 transition';
+    row.innerHTML = `
+      <td class="px-4 py-3">
+        <div class="font-medium text-gray-900">${cost.item_name}</div>
+        <div class="text-xs text-gray-500 sm:hidden mt-1">${cost.description || ''}</div>
+        ${cost.justification ? `<div class="text-xs text-amber-600 mt-1"><i class="fas fa-info-circle mr-1"></i>${cost.justification}</div>` : ''}
+      </td>
+      <td class="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">
+        ${cost.description || '<span class="text-gray-400">—</span>'}
+      </td>
+      <td class="px-4 py-3 text-center font-medium text-gray-900">${cost.quantity}</td>
+      <td class="px-4 py-3 text-right text-gray-700">$${cost.unit_price.toFixed(2)}</td>
+      <td class="px-4 py-3 text-right font-semibold text-gray-900">$${cost.total_price.toFixed(2)}</td>
+    `;
+    costBreakdown.appendChild(row);
+  });
+
+  subtotal.textContent = `$${billing.subtotal.toFixed(2)}`;
+
+  taxBreakdown.innerHTML = '';
+  if (billing.tax_breakdown && billing.tax_breakdown.length > 0) {
+    billing.tax_breakdown.forEach(tax => {
+      const taxRow = document.createElement('div');
+      taxRow.className = 'flex justify-between text-gray-600 text-sm';
+      taxRow.innerHTML = `
+        <span class="font-medium">${tax.description} (${tax.percentage.toFixed(1)}%):</span>
+        <span class="font-semibold">$${tax.amount.toFixed(2)}</span>
+      `;
+      taxBreakdown.appendChild(taxRow);
+    });
+  } else {
+    const taxRow = document.createElement('div');
+    taxRow.className = 'flex justify-between text-gray-600 text-sm';
+    taxRow.innerHTML = `
+      <span class="font-medium">Tax (0%):</span>
+      <span class="font-semibold">$0.00</span>
+    `;
+    taxBreakdown.appendChild(taxRow);
+  }
+
+  taxAmount.textContent = `$${billing.tax_amount.toFixed(2)}`;
+  totalAmount.textContent = `$${billing.total_amount.toFixed(2)}`;
+
+  updateModalStatusBanner(billing.status, billing.can_be_approved);
+
+  if (billing.can_be_approved) {
+    notesSection.classList.remove('hidden');
+    actionButtons.classList.remove('hidden');
+  } else {
+    notesSection.classList.add('hidden');
+    actionButtons.classList.add('hidden');
+  }
+}
+
+function updateModalStatusBanner(status, canBeApproved) {
+  const statusBanner = document.getElementById('modalStatusBanner');
+  const statusIcon = document.getElementById('modalStatusIcon');
+  const statusText = document.getElementById('modalStatusText');
+
+  if (!canBeApproved) {
+    statusBanner.classList.remove('hidden');
+
+    switch (status) {
+      case 'approved':
+        statusBanner.className = 'bg-blue-100 border border-blue-200 rounded-lg p-4';
+        statusIcon.className = 'fas fa-thumbs-up text-blue-600 mr-3 text-xl';
+        statusText.textContent = translations.approvedCosts;
+        break;
+      case 'rejected':
+        statusBanner.className = 'bg-red-100 border border-red-200 rounded-lg p-4';
+        statusIcon.className = 'fas fa-times-circle text-red-600 mr-3 text-xl';
+        statusText.textContent = translations.rejectedCosts;
+        break;
+      case 'paid':
+        statusBanner.className = 'bg-green-100 border border-green-200 rounded-lg p-4';
+        statusIcon.className = 'fas fa-check-circle text-green-600 mr-3 text-xl';
+        statusText.textContent = translations.paymentReceived;
+        break;
+    }
+  } else {
+    statusBanner.classList.add('hidden');
+  }
+}
+
+async function approveBillingFromModal() {
+  if (!confirm(translations.confirmApprovalCosts)) return;
+
+  const customerNotes = document.getElementById('modalCustomerNotes').value;
+
+  try {
+    const langPrefix = window.location.pathname.split('/')[1];
+    const response = await fetch(`/${langPrefix}/site-survey/billing/approval/${currentBillingId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        action: 'approve',
+        customer_notes: customerNotes
+      })
+    });
+
+    const responseText = await response.text();
+    let data;
+    try { data = JSON.parse(responseText); }
+    catch { alert(translations.serverInvalidResponse); return; }
+
+    if (data.success) {
+      closeBillingApprovalModal();
+
+      if (data.redirect_to_payment && data.payment_url) {
+        alert(translations.additionalCostsApprovedRedirect);
+        window.location.href = data.payment_url;
+      } else {
+        alert(translations.additionalCostsApproved);
+        window.location.reload();
+      }
+    } else {
+      alert(data.message || translations.failedToApproveBilling);
+    }
+  } catch (error) {
+    console.error('Error approving billing:', error);
+    alert(translations.failedToApproveBillingConsole);
+  }
+}
+
+async function rejectBillingFromModal() {
+  const reason = prompt(translations.rejectReason);
+  if (!reason) return;
+
+  try {
+    const langPrefix = window.location.pathname.split('/')[1];
+    const response = await fetch(`/${langPrefix}/site-survey/billing/approval/${currentBillingId}/`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        action: 'reject',
+        customer_notes: reason
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      closeBillingApprovalModal();
+      alert(translations.additionalCostsRejected);
+      window.location.reload();
+    } else {
+      alert(data.message || translations.failedToRejectBilling);
+    }
+  } catch (error) {
+    console.error('Error rejecting billing:', error);
+    alert(translations.failedToRejectBilling);
+  }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    closeBillingApprovalModal();
+  }
+});
+</script>
+
+{% endblock %}
+
+
+<!-- ===== Processing Modal (Step 1) ===== -->
+<div id="paymentProcessingModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+  <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="processingTitle">
+    <div class="px-5 py-4 border-b border-slate-200">
+      <h3 id="processingTitle" class="text-lg font-semibold text-slate-900">{% trans "Processing payment" %}</h3>
+    </div>
+    <div class="p-5 space-y-3">
+      <p id="processingMessage" class="text-sm text-slate-700">—</p>
+      <div class="flex items-center gap-3">
+        <div id="processingSpinner" class="animate-spin h-5 w-5 rounded-full border-2 border-indigo-500 border-t-transparent"></div>
+        <div class="text-sm text-slate-600">
+          <span>{% trans "Time remaining:" %}</span>
+          <span id="processingCountdown" class="font-semibold">300</span>
+          <span class="text-xs text-slate-500">{% trans "seconds" %}</span>
+        </div>
+      </div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+      <button type="button" id="processingCancelBtn" class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700">{% trans "Cancel" %}</button>
+      <button type="button" id="processingConfirmBtn" class="px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">{% trans "Payment done" %}</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Probe Modal (Step 2) ===== -->
+<div id="paymentProbeModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/60 p-4">
+  <div class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="probeTitle">
+    <div class="px-5 py-4 border-b border-slate-200">
+      <h3 id="probeTitle" class="text-lg font-semibold text-slate-900">{% trans "Checking payment status" %}</h3>
+    </div>
+    <div class="p-5 space-y-3">
+      <p id="probeMessage" class="text-sm text-slate-700">{% trans "We are checking the status of your payment…" %}</p>
+      <div class="flex items-center gap-3">
+        <div id="probeSpinner" class="animate-spin h-5 w-5 rounded-full border-2 border-amber-500 border-t-transparent"></div>
+        <div class="text-sm text-slate-600">
+          <span>{% trans "Time remaining:" %}</span>
+          <span id="probeCountdown" class="font-semibold">300</span>
+          <span class="text-xs text-slate-500">{% trans "seconds" %}</span>
+        </div>
+      </div>
+      <div id="probeStatusBadge" class="hidden inline-flex items-center gap-2 text-sm font-semibold px-3 py-1 rounded-full"></div>
+    </div>
+    <div class="px-5 py-4 border-t border-slate-200 flex items-center justify-end gap-2">
+      <button type="button" id="probeCloseBtn" class="px-4 py-2 rounded-md border border-slate-300 hover:bg-slate-50 text-slate-700">{% trans "Close" %}</button>
+    </div>
+  </div>
+</div>

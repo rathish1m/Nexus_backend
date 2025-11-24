@@ -1,0 +1,31 @@
+{
+  "name": "nexus_backend",
+  "version": "1.0.0",
+  "description": "[![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/) [![Django Version](https://img.shields.io/badge/django-5.2.1-green.svg)](https://www.djangoproject.com/) [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE) [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]() [![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen.svg)]()",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.0",
+    "@playwright/test": "^1.37.0"
+  },
+  "scripts": {
+    "build-css": "tailwindcss -i ./static/css/main.css -o ./static/css/output.css --watch",
+    "build-css-prod": "tailwindcss -i ./static/css/main.css -o ./static/css/output.css --minify",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "test:e2e": "playwright test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/VirgoCoachman/nexus_backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/VirgoCoachman/nexus_backend/issues"
+  },
+  "homepage": "https://github.com/VirgoCoachman/nexus_backend#readme"
+}

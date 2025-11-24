@@ -1,0 +1,806 @@
+{% extends 'backoffice/dispatch_console_base.html' %}
+{% load i18n %}
+
+{% block content %}
+<section class="w-full px-6 py-6">
+    <header class="mb-6 flex flex-col gap-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 text-white shadow-lg lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <h1 class="text-2xl font-bold">{% trans "Revenue reporting" %}</h1>
+            <p class="text-sm text-white/80">
+                {% trans "Analyse invoicing and collections by region and sales agent." %}
+            </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+            <span id="revenuePeriod" class="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-sm font-medium">
+                —
+            </span>
+            <button id="openCorrectionBtn" type="button" class="inline-flex items-center rounded-md bg-white/15 px-4 py-2 text-sm font-semibold tracking-wide hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/80">
+                <i class="fas fa-tools mr-2"></i>{% trans "Correct entry" %}
+            </button>
+            <button id="exportCsvBtn" type="button" class="inline-flex items-center rounded-md bg-white/15 px-4 py-2 text-sm font-semibold tracking-wide hover:bg-white/25 focus:outline-none focus:ring-2 focus:ring-white/80">
+                <i class="fas fa-file-export mr-2"></i>{% trans "Export CSV" %}
+            </button>
+        </div>
+    </header>
+
+    <form id="revenueFilters" class="mb-6 grid gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-2 lg:grid-cols-4">
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "From (month)" %}</label>
+            <input type="month" name="from" value="{{ default_from }}" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-emerald-500 focus:ring-emerald-500" required>
+        </div>
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "To (month)" %}</label>
+            <input type="month" name="to" value="{{ default_to }}" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-emerald-500 focus:ring-emerald-500" required>
+        </div>
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Group by" %}</label>
+            <select name="group_by" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="region" {% if default_group == "region" %}selected{% endif %}>{% trans "Region" %}</option>
+                <option value="agent">{% trans "Sales agent" %}</option>
+                <option value="region,agent">{% trans "Region + sales agent" %}</option>
+                <option value="none">{% trans "No grouping" %}</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Region" %}</label>
+            <select id="filterRegion" name="region_id" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="">{% trans "All regions" %}</option>
+            </select>
+        </div>
+        <div>
+            <label class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Sales agent" %}</label>
+            <select id="filterAgent" name="sales_agent_id" class="mt-2 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-base focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="">{% trans "All sales agents" %}</option>
+            </select>
+        </div>
+        <div class="flex items-end justify-end">
+            <button type="submit" class="inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-5 py-3 text-base font-medium text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                <i class="fas fa-chart-line mr-2"></i>{% trans "Apply filters" %}
+            </button>
+        </div>
+    </form>
+
+    <div id="revenueSuccess" class="mb-4 hidden rounded-lg border border-emerald-400 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"></div>
+    <div id="revenueError" class="mb-4 hidden rounded-lg border border-rose-400 bg-rose-50 px-4 py-3 text-sm text-rose-700"></div>
+
+    <div class="mb-6 grid gap-4 sm:grid-cols-3">
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="text-xs uppercase tracking-wide text-slate-500">{% trans "Total invoiced" %}</p>
+            <p id="totalsInvoices" class="mt-2 text-2xl font-semibold text-slate-900">0.00</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="text-xs uppercase tracking-wide text-slate-500">{% trans "Total payments" %}</p>
+            <p id="totalsPayments" class="mt-2 text-2xl font-semibold text-slate-900">0.00</p>
+        </div>
+        <div class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+            <p class="text-xs uppercase tracking-wide text-slate-500">{% trans "Net amount" %}</p>
+            <p id="totalsNet" class="mt-2 text-2xl font-semibold text-slate-900">0.00</p>
+        </div>
+    </div>
+
+    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow">
+        <div id="revenueLoading" class="flex items-center justify-center px-6 py-12 text-slate-500">
+            <i class="fas fa-circle-notch mr-3 animate-spin"></i>
+            {% trans "Loading revenue data…" %}
+        </div>
+        <table class="hidden min-w-full divide-y divide-slate-200 text-sm" id="revenueTable">
+            <thead class="bg-slate-50 text-xs uppercase tracking-wide text-slate-600">
+                <tr>
+                    <th class="px-4 py-3 text-left cursor-pointer" data-sort-key="region">
+                        {% trans "Region" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                    <th class="px-4 py-3 text-left cursor-pointer" data-sort-key="document">
+                        {% trans "Document" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                    <th class="px-4 py-3 text-left cursor-pointer" data-sort-key="agent">
+                        {% trans "Sales agent" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                    <th class="px-4 py-3 text-right cursor-pointer" data-sort-key="invoices">
+                        {% trans "Invoiced" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                    <th class="px-4 py-3 text-right cursor-pointer" data-sort-key="payments">
+                        {% trans "Payments" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                    <th class="px-4 py-3 text-right cursor-pointer" data-sort-key="net">
+                        {% trans "Net" %} <i class="fas fa-sort ml-2 text-xs opacity-60"></i>
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100" id="revenueRows"></tbody>
+        </table>
+        <div id="revenueEmpty" class="hidden px-6 py-10 text-center text-sm text-slate-500">
+            {% trans "No ledger activity for the selected period." %}
+        </div>
+    </div>
+    <div id="revenuePagination" class="mt-4 hidden flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+        <div>
+            <span id="revenuePageSummary"></span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button type="button" id="revenuePrev" class="rounded-md border border-slate-300 px-3 py-1.5 text-slate-600 hover:border-emerald-400 hover:text-emerald-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300">
+                {% trans "Previous" %}
+            </button>
+            <span id="revenuePageInfo" class="font-medium text-slate-700"></span>
+            <button type="button" id="revenueNext" class="rounded-md border border-slate-300 px-3 py-1.5 text-slate-600 hover:border-emerald-400 hover:text-emerald-600 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300">
+                {% trans "Next" %}
+            </button>
+        </div>
+        <div class="flex items-center gap-2">
+            <label for="revenuePerPage" class="text-slate-600">{% trans "Rows per page" %}</label>
+            <select id="revenuePerPage" class="rounded-md border border-slate-300 px-2 py-1.5 focus:border-emerald-500 focus:ring-emerald-500">
+                <option value="10">10</option>
+                <option value="20">20</option>
+                <option value="50">50</option>
+            </select>
+        </div>
+    </div>
+</section>
+
+<div id="correctionOverlay" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 px-4 py-6">
+    <div id="correctionModal" role="dialog" aria-modal="true" class="w-full max-w-2xl rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-slate-900">{% trans "Correct ledger entry" %}</h2>
+            <button id="closeCorrectionBtn" type="button" class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:text-slate-900" aria-label="{% trans 'Close correction modal' %}">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <form id="correctionForm" class="mt-4 space-y-4">
+            <div class="grid gap-3 sm:grid-cols-3">
+                <div class="sm:col-span-2">
+                    <label for="correctionEntryId" class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Entry ID" %}</label>
+                    <input id="correctionEntryId" name="entry_id" type="number" min="1" required class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-emerald-500 focus:ring-emerald-500" placeholder="{% trans 'Example: 1024' %}">
+                </div>
+                <div class="sm:col-span-1 flex items-end">
+                    <button type="button" id="loadEntryBtn" class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm font-medium text-slate-700 hover:border-emerald-500 hover:text-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                        <i class="fas fa-search mr-2"></i>{% trans "Load details" %}
+                    </button>
+                </div>
+            </div>
+            <div id="correctionEntryPreview" class="hidden rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600"></div>
+            <div>
+                <label for="correctionRegion" class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Region" %}</label>
+                <select id="correctionRegion" name="region_id" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-emerald-500 focus:ring-emerald-500">
+                    <option value="">{% trans "Keep current region" %}</option>
+                </select>
+            </div>
+            <div>
+                <label for="correctionAgent" class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Sales agent" %}</label>
+                <select id="correctionAgent" name="sales_agent_id" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-emerald-500 focus:ring-emerald-500">
+                    <option value="">{% trans "Keep current agent" %}</option>
+                </select>
+            </div>
+            <div>
+                <label for="correctionNote" class="text-xs font-semibold uppercase tracking-wide text-slate-600">{% trans "Note" %}</label>
+                <textarea id="correctionNote" name="note" rows="3" class="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-emerald-500 focus:ring-emerald-500" placeholder="{% trans 'Add context for the accounting team…' %}"></textarea>
+            </div>
+            <div id="correctionFeedback" class="hidden rounded-lg px-4 py-3 text-sm"></div>
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button type="button" id="cancelCorrectionBtn" class="inline-flex items-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-500">
+                    {% trans "Cancel" %}
+                </button>
+                <button type="submit" class="inline-flex items-center rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2">
+                    <i class="fas fa-check mr-2"></i>{% trans "Submit correction" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% trans "Region" as t_region %}
+{% trans "Sales agent" as t_agent %}
+{% trans "Document" as t_document %}
+{% trans "Invoiced" as t_invoiced %}
+{% trans "Payments" as t_payments %}
+{% trans "Net" as t_net %}
+{% trans "Failed to fetch revenue summary." as t_fetch_error %}
+{% trans "Select region" as t_select_region %}
+{% trans "Select sales agent" as t_select_agent %}
+{% trans "All regions" as t_all_regions %}
+{% trans "All sales agents" as t_all_agents %}
+{% trans "Entry not found." as t_entry_not_found %}
+{% trans "Entry corrected successfully." as t_correction_success %}
+{% trans "Entry type" as t_entry_type %}
+{% trans "Original amount" as t_original_amount %}
+{% trans "Current region" as t_current_region %}
+{% trans "Current sales agent" as t_current_agent %}
+{% trans "Not assigned" as t_not_assigned %}
+{% trans "Please select a region or a sales agent to update." as t_requires_change %}
+{% trans "Unable to create the correction." as t_correction_error %}
+{% trans "Page {current} of {total}" as t_page_info %}
+{% trans "Showing {from}–{to} of {total}" as t_page_summary %}
+
+<script>
+    (function() {
+        const apiUrl = "{{ api_endpoint }}";
+        const apiBase = apiUrl.replace(/summary\/?$/, "");
+        const form = document.getElementById("revenueFilters");
+        const loading = document.getElementById("revenueLoading");
+        const table = document.getElementById("revenueTable");
+        const tbody = document.getElementById("revenueRows");
+        const emptyState = document.getElementById("revenueEmpty");
+        const errorBox = document.getElementById("revenueError");
+        const successBox = document.getElementById("revenueSuccess");
+        const periodBadge = document.getElementById("revenuePeriod");
+        const totalsInvoices = document.getElementById("totalsInvoices");
+        const totalsPayments = document.getElementById("totalsPayments");
+        const totalsNet = document.getElementById("totalsNet");
+        const exportBtn = document.getElementById("exportCsvBtn");
+        const sortableHeaders = document.querySelectorAll("#revenueTable thead th[data-sort-key]");
+        const openCorrectionBtn = document.getElementById("openCorrectionBtn");
+        const paginationContainer = document.getElementById("revenuePagination");
+        const pageSummaryEl = document.getElementById("revenuePageSummary");
+        const pageInfoEl = document.getElementById("revenuePageInfo");
+        const prevButton = document.getElementById("revenuePrev");
+        const nextButton = document.getElementById("revenueNext");
+        const perPageSelect = document.getElementById("revenuePerPage");
+        const correctionOverlay = document.getElementById("correctionOverlay");
+        const correctionModal = document.getElementById("correctionModal");
+        const closeCorrectionBtn = document.getElementById("closeCorrectionBtn");
+        const cancelCorrectionBtn = document.getElementById("cancelCorrectionBtn");
+        const correctionForm = document.getElementById("correctionForm");
+        const correctionFeedback = document.getElementById("correctionFeedback");
+        const entryIdInput = document.getElementById("correctionEntryId");
+        const regionSelect = document.getElementById("correctionRegion");
+        const agentSelect = document.getElementById("correctionAgent");
+        const noteInput = document.getElementById("correctionNote");
+        const entryPreview = document.getElementById("correctionEntryPreview");
+        const loadEntryBtn = document.getElementById("loadEntryBtn");
+        // Filter selects in the main form
+        const filterRegion = document.getElementById("filterRegion");
+        const filterAgent = document.getElementById("filterAgent");
+
+        const state = {
+            data: [],
+            totals: { invoices: "0.00", payments: "0.00", net: "0.00" },
+            period: { from: "", to: "" },
+            groupBy: [],
+            sortKey: "net",
+            sortDir: "desc",
+            page: 1,
+            perPage: 10,
+        };
+
+        const optionsState = {
+            loaded: false,
+            regions: [],
+            agents: [],
+        };
+
+        const numberFormatter = new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const labels = {
+            region: "{{ t_region|escapejs }}",
+            document: "{{ t_document|escapejs }}",
+            agent: "{{ t_agent|escapejs }}",
+            invoiced: "{{ t_invoiced|escapejs }}",
+            payments: "{{ t_payments|escapejs }}",
+            net: "{{ t_net|escapejs }}",
+            fetchError: "{{ t_fetch_error|escapejs }}",
+            selectRegion: "{{ t_select_region|escapejs }}",
+            selectAgent: "{{ t_select_agent|escapejs }}",
+            allRegions: "{{ t_all_regions|escapejs }}",
+            allAgents: "{{ t_all_agents|escapejs }}",
+            entryNotFound: "{{ t_entry_not_found|escapejs }}",
+            correctionSuccess: "{{ t_correction_success|escapejs }}",
+            entryType: "{{ t_entry_type|escapejs }}",
+            originalAmount: "{{ t_original_amount|escapejs }}",
+            currentRegion: "{{ t_current_region|escapejs }}",
+            currentAgent: "{{ t_current_agent|escapejs }}",
+            notAssigned: "{{ t_not_assigned|escapejs }}",
+            requiresSelection: "{{ t_requires_change|escapejs }}",
+            correctionError: "{{ t_correction_error|escapejs }}",
+            pageInfo: "{{ t_page_info|escapejs }}",
+            pageSummary: "{{ t_page_summary|escapejs }}",
+        };
+
+        function fetchData() {
+            errorBox.classList.add("hidden");
+            errorBox.textContent = "";
+            loading.classList.remove("hidden");
+            table.classList.add("hidden");
+            emptyState.classList.add("hidden");
+            if (paginationContainer) {
+                paginationContainer.classList.add("hidden");
+            }
+            state.page = 1;
+
+            const formData = new FormData(form);
+            const params = new URLSearchParams();
+            params.set("from", formData.get("from"));
+            params.set("to", formData.get("to"));
+            params.set("group_by", formData.get("group_by") || "region");
+            const regionId = formData.get("region_id");
+            const agentId = formData.get("sales_agent_id");
+            if (regionId) params.set("region_id", regionId);
+            if (agentId) params.set("sales_agent_id", agentId);
+
+            hideSuccess();
+            fetch(`${apiUrl}?${params.toString()}`, {
+                method: "GET",
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.detail || labels.fetchError);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    state.data = Array.isArray(data.groups) ? data.groups : [];
+                    state.totals = data.totals || { invoices: "0.00", payments: "0.00", net: "0.00" };
+                    state.period = data.period || { from: params.get("from"), to: params.get("to") };
+                    state.groupBy = Array.isArray(data.group_by) ? data.group_by : ["region"];
+                    render();
+                })
+                .catch(err => {
+                    console.error(err);
+                    showError(err.message);
+                })
+                .finally(() => {
+                    loading.classList.add("hidden");
+                });
+        }
+
+        function render() {
+            updatePeriod();
+            updateTotals();
+            renderTable();
+        }
+
+        function updatePeriod() {
+            if (state.period.from && state.period.to) {
+                periodBadge.textContent = `${state.period.from} → ${state.period.to}`;
+            } else {
+                periodBadge.textContent = "—";
+            }
+        }
+
+        function updateTotals() {
+            totalsInvoices.textContent = formatNumber(state.totals.invoices);
+            totalsPayments.textContent = formatNumber(state.totals.payments);
+            totalsNet.textContent = formatNumber(state.totals.net);
+        }
+
+        function renderTable() {
+            if (!state.data.length) {
+                table.classList.add("hidden");
+                emptyState.classList.remove("hidden");
+                tbody.innerHTML = "";
+                if (paginationContainer) {
+                    paginationContainer.classList.add("hidden");
+                }
+                return;
+            }
+
+            emptyState.classList.add("hidden");
+
+            const rows = [...state.data].sort((a, b) => compareRows(a, b, state.sortKey, state.sortDir));
+            const totalRows = rows.length;
+            const totalPages = Math.max(1, Math.ceil(totalRows / state.perPage));
+            if (state.page > totalPages) {
+                state.page = totalPages;
+            }
+            const startIndex = (state.page - 1) * state.perPage;
+            const paginatedRows = rows.slice(startIndex, startIndex + state.perPage);
+
+            tbody.innerHTML = paginatedRows
+                .map(row => {
+                    return `
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-4 py-3">${escapeHtml(row.region ?? "—")}</td>
+                            <td class="px-4 py-3">${escapeHtml(row.document ?? "—")}</td>
+                            <td class="px-4 py-3">${escapeHtml(row.agent ?? "—")}</td>
+                            <td class="px-4 py-3 text-right font-medium text-slate-900">${formatNumber(row.invoices)}</td>
+                            <td class="px-4 py-3 text-right font-medium text-slate-900">${formatNumber(row.payments)}</td>
+                            <td class="px-4 py-3 text-right font-semibold text-emerald-600">${formatNumber(row.net)}</td>
+                        </tr>
+                    `;
+                })
+                .join("");
+
+            table.classList.remove("hidden");
+            renderPagination(totalRows, totalPages, startIndex, paginatedRows.length);
+        }
+
+        function compareRows(a, b, key, dir) {
+            const direction = dir === "asc" ? 1 : -1;
+            if (key === "region" || key === "agent" || key === "document") {
+                const aVal = (a[key] || "").toString().toLowerCase();
+                const bVal = (b[key] || "").toString().toLowerCase();
+                if (aVal < bVal) return -1 * direction;
+                if (aVal > bVal) return 1 * direction;
+                return 0;
+            }
+            const aNum = parseFloat((a[key] || "0").replace(/[^0-9.-]/g, "")) || 0;
+            const bNum = parseFloat((b[key] || "0").replace(/[^0-9.-]/g, "")) || 0;
+            return (aNum - bNum) * direction;
+        }
+
+        function formatNumber(value) {
+            const numeric = parseFloat((value || "0").toString());
+            return numberFormatter.format(isFinite(numeric) ? numeric : 0);
+        }
+
+        function escapeHtml(value) {
+            return value === null || value === undefined
+                ? "—"
+                : value
+                      .toString()
+                      .replace(/&/g, "&amp;")
+                      .replace(/</g, "&lt;")
+                      .replace(/>/g, "&gt;")
+                      .replace(/"/g, "&quot;")
+                      .replace(/'/g, "&#39;");
+        }
+
+        function renderPagination(totalRows, totalPages, startIndex, displayedCount) {
+            if (!paginationContainer) {
+                return;
+            }
+            if (totalRows === 0) {
+                paginationContainer.classList.add("hidden");
+                return;
+            }
+
+            const showingFrom = startIndex + 1;
+            const showingTo = startIndex + displayedCount;
+
+            paginationContainer.classList.remove("hidden");
+            pageSummaryEl.textContent = formatTemplate(labels.pageSummary, {
+                from: showingFrom,
+                to: showingTo,
+                total: totalRows,
+            });
+            pageInfoEl.textContent = formatTemplate(labels.pageInfo, {
+                current: state.page,
+                total: totalPages,
+            });
+            prevButton.disabled = state.page <= 1;
+            nextButton.disabled = state.page >= totalPages;
+            if (perPageSelect) {
+                perPageSelect.value = String(state.perPage);
+            }
+        }
+
+        function formatTemplate(template, values) {
+            return (template || "").replace(/\{(\w+)\}/g, (_, key) => {
+                return Object.prototype.hasOwnProperty.call(values, key) ? values[key] : "";
+            });
+        }
+
+        function handleSortClick(event) {
+            const target = event.currentTarget;
+            const key = target.dataset.sortKey;
+            if (!key) {
+                return;
+            }
+            if (state.sortKey === key) {
+                state.sortDir = state.sortDir === "asc" ? "desc" : "asc";
+            } else {
+                state.sortKey = key;
+                state.sortDir = key === "region" || key === "agent" ? "asc" : "desc";
+            }
+            state.page = 1;
+            renderTable();
+        }
+
+        function exportCsv() {
+            if (!state.data.length) {
+                return;
+            }
+            const header = [
+                labels.region,
+                labels.document,
+                labels.agent,
+                labels.invoiced,
+                labels.payments,
+                labels.net,
+            ];
+            const rows = state.data.map(row => [
+                row.region ?? "",
+                row.document ?? "",
+                row.agent ?? "",
+                formatNumber(row.invoices),
+                formatNumber(row.payments),
+                formatNumber(row.net),
+            ]);
+            const csvContent = [header, ...rows]
+                .map(cols =>
+                    cols
+                        .map(col => `"${String(col).replace(/"/g, '""')}"`)
+                        .join(",")
+                )
+                .join("\n");
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            const formData = new FormData(form);
+            const r = formData.get("region_id");
+            const a = formData.get("sales_agent_id");
+            const filtersSuffix = `${r ? `-region${r}` : ""}${a ? `-agent${a}` : ""}`;
+            const filename = `revenue-summary-${state.period.from || "period"}-${state.period.to || "period"}${filtersSuffix}.csv`;
+            link.href = url;
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function getCsrfToken() {
+            const match = document.cookie.match(/csrftoken=([^;]+)/);
+            return match ? match[1] : "";
+        }
+
+        function fetchOptions() {
+            if (optionsState.loaded) {
+                return Promise.resolve();
+            }
+            return fetch(`${apiBase}options/`, {
+                method: "GET",
+                credentials: "same-origin",
+                headers: { "Accept": "application/json" },
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(labels.fetchError);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    optionsState.regions = Array.isArray(data.regions) ? data.regions : [];
+                    optionsState.agents = Array.isArray(data.agents) ? data.agents : [];
+                    optionsState.loaded = true;
+                    populateSelects();
+                })
+                .catch(err => {
+                    showCorrectionMessage(err.message, "error");
+                    throw err;
+                });
+        }
+
+        function populateSelects() {
+            // Modal selects
+            if (regionSelect) {
+                const regionOptions = ['<option value="">' + escapeHtml(labels.selectRegion) + "</option>"]
+                    .concat(optionsState.regions.map(region => `<option value="${region.id}">${escapeHtml(region.name)}</option>`));
+                regionSelect.innerHTML = regionOptions.join("");
+            }
+            if (agentSelect) {
+                const agentOptions = ['<option value="">' + escapeHtml(labels.selectAgent) + "</option>"]
+                    .concat(optionsState.agents.map(agent => {
+                        const label = agent.full_name ? `${agent.full_name} (${agent.email || ""})` : agent.email || agent.id;
+                        return `<option value="${agent.id}">${escapeHtml(label)}</option>`;
+                    }));
+                agentSelect.innerHTML = agentOptions.join("");
+            }
+            // Filter selects in the main form
+            if (filterRegion) {
+                const filterRegionOptions = ['<option value="">' + escapeHtml(labels.allRegions || "All regions") + "</option>"]
+                    .concat(optionsState.regions.map(region => `<option value="${region.id}">${escapeHtml(region.name)}</option>`));
+                filterRegion.innerHTML = filterRegionOptions.join("");
+            }
+            if (filterAgent) {
+                const filterAgentOptions = ['<option value="">' + escapeHtml(labels.allAgents || "All sales agents") + "</option>"]
+                    .concat(optionsState.agents.map(agent => {
+                        const label = agent.full_name ? `${agent.full_name} (${agent.email || ""})` : agent.email || agent.id;
+                        return `<option value="${agent.id}">${escapeHtml(label)}</option>`;
+                    }));
+                filterAgent.innerHTML = filterAgentOptions.join("");
+            }
+        }
+
+        function openCorrectionModal() {
+            fetchOptions()
+                .then(() => {
+                    resetCorrectionForm();
+                    correctionOverlay.classList.remove("hidden");
+                    document.body.classList.add("overflow-hidden");
+                    entryIdInput.focus();
+                })
+                .catch(() => {
+                    // options fetch already surfaced an error within modal
+                });
+        }
+
+        function closeCorrectionModal() {
+            correctionOverlay.classList.add("hidden");
+            document.body.classList.remove("overflow-hidden");
+        }
+
+        function resetCorrectionForm() {
+            correctionForm.reset();
+            entryPreview.classList.add("hidden");
+            entryPreview.innerHTML = "";
+            hideCorrectionMessage();
+            if (optionsState.loaded) {
+                populateSelects();
+            }
+        }
+
+        function loadEntryDetails() {
+            const entryId = entryIdInput.value.trim();
+            if (!entryId) {
+                return;
+            }
+            fetchOptions()
+                .then(() =>
+                    fetch(`${apiBase}entries/${entryId}/`, {
+                        method: "GET",
+                        credentials: "same-origin",
+                        headers: { "Accept": "application/json" },
+                    })
+                )
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(labels.entryNotFound);
+                    }
+                    return response.json();
+                })
+                .then(entry => {
+                    entryPreview.innerHTML = `
+                        <div><strong>${escapeHtml(labels.entryType)}:</strong> ${escapeHtml(entry.entry_type)}</div>
+                        <div><strong>${escapeHtml(labels.originalAmount)}:</strong> ${formatNumber(entry.amount_usd)}</div>
+                        <div><strong>${escapeHtml(labels.currentRegion)}:</strong> ${escapeHtml(entry.region?.name || labels.notAssigned)}</div>
+                        <div><strong>${escapeHtml(labels.currentAgent)}:</strong> ${escapeHtml(entry.sales_agent?.label || labels.notAssigned)}</div>
+                    `;
+                    entryPreview.classList.remove("hidden");
+                    if (entry.region && optionsState.loaded) {
+                        regionSelect.value = String(entry.region.id);
+                    }
+                    if (entry.sales_agent && optionsState.loaded) {
+                        agentSelect.value = String(entry.sales_agent.id);
+                    }
+                })
+                .catch(err => {
+                    entryPreview.classList.add("hidden");
+                    entryPreview.innerHTML = "";
+                    showCorrectionMessage(err.message, "error");
+                });
+        }
+
+        function submitCorrection(event) {
+            event.preventDefault();
+            hideCorrectionMessage();
+
+            const payload = {
+                entry_id: entryIdInput.value.trim(),
+                region_id: regionSelect.value || null,
+                sales_agent_id: agentSelect.value || null,
+                note: noteInput.value.trim(),
+            };
+
+            if (!payload.entry_id) {
+                showCorrectionMessage(labels.entryNotFound, "error");
+                return;
+            }
+            if (!payload.region_id && !payload.sales_agent_id) {
+                showCorrectionMessage(labels.requiresSelection, "error");
+                return;
+            }
+
+            fetch(`${apiBase}corrections/`, {
+                method: "POST",
+                credentials: "same-origin",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": getCsrfToken(),
+                    "Accept": "application/json",
+                },
+                body: JSON.stringify(payload),
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.detail || labels.correctionError);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(() => {
+                    showCorrectionMessage(labels.correctionSuccess, "success");
+                    fetchData();
+                    successBox.textContent = labels.correctionSuccess;
+                    successBox.classList.remove("hidden");
+                    setTimeout(() => hideSuccess(), 4000);
+                    setTimeout(() => {
+                        closeCorrectionModal();
+                    }, 1000);
+                })
+                .catch(err => {
+                    showCorrectionMessage(err.message, "error");
+                });
+        }
+
+        function hideCorrectionMessage() {
+            correctionFeedback.classList.add("hidden");
+            correctionFeedback.textContent = "";
+            correctionFeedback.classList.remove("border-emerald-400", "bg-emerald-50", "text-emerald-700", "border-rose-400", "bg-rose-50", "text-rose-700");
+        }
+
+        function showCorrectionMessage(message, variant) {
+            correctionFeedback.textContent = message;
+            correctionFeedback.classList.remove("hidden");
+            correctionFeedback.classList.remove("border-emerald-400", "bg-emerald-50", "text-emerald-700", "border-rose-400", "bg-rose-50", "text-rose-700");
+            if (variant === "success") {
+                correctionFeedback.classList.add("border-emerald-400", "bg-emerald-50", "text-emerald-700");
+            } else {
+                correctionFeedback.classList.add("border-rose-400", "bg-rose-50", "text-rose-700");
+            }
+        }
+
+        function showError(message) {
+            errorBox.textContent = message;
+            errorBox.classList.remove("hidden");
+        }
+
+        function hideSuccess() {
+            successBox.classList.add("hidden");
+            successBox.textContent = "";
+        }
+
+        form.addEventListener("submit", event => {
+            event.preventDefault();
+            fetchData();
+        });
+
+        sortableHeaders.forEach(header => {
+            header.addEventListener("click", handleSortClick);
+        });
+
+        exportBtn.addEventListener("click", exportCsv);
+        openCorrectionBtn.addEventListener("click", openCorrectionModal);
+        closeCorrectionBtn.addEventListener("click", closeCorrectionModal);
+        cancelCorrectionBtn.addEventListener("click", closeCorrectionModal);
+        correctionOverlay.addEventListener("click", event => {
+            if (event.target === correctionOverlay) {
+                closeCorrectionModal();
+            }
+        });
+        loadEntryBtn.addEventListener("click", loadEntryDetails);
+        entryIdInput.addEventListener("change", loadEntryDetails);
+        correctionForm.addEventListener("submit", submitCorrection);
+        document.addEventListener("keydown", event => {
+            if (event.key === "Escape" && !correctionOverlay.classList.contains("hidden")) {
+                closeCorrectionModal();
+            }
+        });
+
+        if (perPageSelect) {
+            perPageSelect.value = String(state.perPage);
+            perPageSelect.addEventListener("change", event => {
+                const newValue = parseInt(event.target.value, 10);
+                state.perPage = Number.isFinite(newValue) && newValue > 0 ? newValue : 10;
+                state.page = 1;
+                renderTable();
+            });
+        }
+
+        if (prevButton) {
+            prevButton.addEventListener("click", () => {
+                if (state.page > 1) {
+                    state.page -= 1;
+                    renderTable();
+                }
+            });
+        }
+
+        if (nextButton) {
+            nextButton.addEventListener("click", () => {
+                const totalPages = Math.max(1, Math.ceil(state.data.length / state.perPage));
+                if (state.page < totalPages) {
+                    state.page += 1;
+                    renderTable();
+                }
+            });
+        }
+
+        // Initial load
+        // Preload regions/agents so the filter selects show options immediately
+        fetchOptions().catch(() => {});
+        fetchData();
+    })();
+</script>
+{% endblock %}

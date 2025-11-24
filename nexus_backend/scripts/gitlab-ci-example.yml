@@ -1,0 +1,180 @@
+# Example GitLab CI configuration for i18n quality assurance
+# Add this to your .gitlab-ci.yml file or include it as a separate file
+
+stages:
+  - quality
+  - deploy
+
+variables:
+  I18N_COVERAGE_THRESHOLD: "80"
+
+# Job 1: Translation coverage audit
+i18n:audit:
+  stage: quality
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext
+    - pip install Django
+    - chmod +x scripts/i18n-*.sh
+  script:
+    - echo "🌍 Running translation coverage audit..."
+    - make i18n-check
+    - make i18n-audit-json > translation-report.json
+    - make i18n-audit > translation-report.txt
+  artifacts:
+    when: always
+    expire_in: 7 days
+    paths:
+      - translation-report.json
+      - translation-report.txt
+    reports:
+      # Custom report for GitLab to parse
+      junit: translation-report.json
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+      changes:
+        - "locale/**/*"
+        - "**/*.py"
+        - "**/*.html"
+        - "scripts/i18n-*.sh"
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "locale/**/*"
+        - "**/*.py"
+        - "**/*.html"
+
+# Job 2: String extraction (main branch only)
+i18n:extract:
+  stage: quality
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext git
+    - pip install Django
+    - chmod +x scripts/i18n-*.sh
+  script:
+    - echo "📝 Extracting translation strings..."
+    - git config --global user.email "ci@nexustelecom.com"
+    - git config --global user.name "GitLab CI"
+    - make i18n-extract
+    - |
+      if ! git diff --exit-code locale/; then
+        echo "⚠️  New translatable strings detected!"
+        echo "Creating merge request for translation updates..."
+
+        # Create a new branch for the changes
+        BRANCH_NAME="i18n/update-strings-$(date +%Y%m%d-%H%M%S)"
+        git checkout -b "$BRANCH_NAME"
+        git add locale/
+        git commit -m "i18n: Update translation strings [skip ci]"
+        git push -o merge_request.create \
+               -o merge_request.title="🌍 Update translation strings" \
+               -o merge_request.description="Auto-extracted translation strings need translation" \
+               origin "$BRANCH_NAME"
+      else
+        echo "✅ No new strings to extract"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+      changes:
+        - "**/*.py"
+        - "**/*.html"
+
+# Job 3: Translation validation for MRs
+i18n:validate-mr:
+  stage: quality
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext
+    - pip install Django
+    - chmod +x scripts/i18n-*.sh
+  script:
+    - echo "🔍 Validating translation changes in MR..."
+    - make i18n-audit
+    - |
+      # Check if coverage meets threshold
+      COVERAGE=$(./scripts/i18n-audit.sh --json | jq -r '.summary.minimum_coverage')
+      if [ "$COVERAGE" -lt "$I18N_COVERAGE_THRESHOLD" ]; then
+        echo "❌ Translation coverage ($COVERAGE%) is below threshold ($I18N_COVERAGE_THRESHOLD%)"
+        exit 1
+      else
+        echo "✅ Translation coverage is acceptable ($COVERAGE%)"
+      fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      changes:
+        - "locale/**/*"
+
+# Job 4: Compile translations for deployment
+i18n:compile:
+  stage: deploy
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext
+    - pip install Django
+  script:
+    - echo "🔨 Compiling translation files for deployment..."
+    - make i18n-compile
+    - echo "✅ Translation files compiled successfully"
+  artifacts:
+    paths:
+      - locale/*/LC_MESSAGES/*.mo
+    expire_in: 1 hour
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+# Job 5: Daily translation health check
+i18n:health-check:
+  stage: quality
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext curl
+    - pip install Django
+    - chmod +x scripts/i18n-*.sh
+  script:
+    - echo "🏥 Running daily translation health check..."
+    - make i18n-audit-json > daily-health-report.json
+    - |
+      # Send notification if coverage is low
+      MIN_COVERAGE=$(cat daily-health-report.json | jq -r '.summary.minimum_coverage')
+      if [ "$MIN_COVERAGE" -lt "90" ]; then
+        echo "⚠️  Translation coverage is below 90%: $MIN_COVERAGE%"
+        # Send notification to Slack/Teams/etc.
+        # curl -X POST -H 'Content-type: application/json' \
+        #   --data '{"text":"🌍 Translation coverage is low: '$MIN_COVERAGE'%"}' \
+        #   $SLACK_WEBHOOK_URL
+      fi
+  artifacts:
+    when: always
+    paths:
+      - daily-health-report.json
+    expire_in: 30 days
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
+# Job 6: Translation metrics for monitoring
+i18n:metrics:
+  stage: quality
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y gettext
+    - pip install Django
+    - chmod +x scripts/i18n-*.sh
+  script:
+    - echo "📊 Generating translation metrics..."
+    - ./scripts/i18n-audit.sh --json > metrics.json
+    - |
+      # Extract key metrics for monitoring
+      echo "TRANSLATION_COVERAGE=$(jq -r '.summary.average_coverage' metrics.json)" >> metrics.env
+      echo "TOTAL_LANGUAGES=$(jq -r '.summary.total_languages' metrics.json)" >> metrics.env
+      echo "BELOW_THRESHOLD=$(jq -r '.summary.languages_below_threshold' metrics.json)" >> metrics.env
+  artifacts:
+    reports:
+      dotenv: metrics.env
+    paths:
+      - metrics.json
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+# Include this configuration in your main .gitlab-ci.yml:
+# include:
+#   - local: 'scripts/gitlab-ci-i18n.yml'

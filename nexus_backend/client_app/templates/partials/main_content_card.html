@@ -1,0 +1,127 @@
+{% load i18n %}
+
+
+
+
+<!-- Start Your Order CTA - Always visible, mobile-first, above subscription -->
+<!-- Start Your Order CTA -->
+<div class="w-full max-w-4xl mx-auto mb-10 px-4">
+  <button
+    type="button"
+    onclick="openOrderModal()"
+    aria-label="Start your order"
+    class="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 text-white shadow-xl transition-all hover:shadow-2xl focus:outline-none focus-visible:ring-4 focus-visible:ring-emerald-300 transform hover:-translate-y-1 hover:scale-[1.01]"
+  >
+    <!-- Gradient overlay for glass effect -->
+    <div class="absolute inset-0 bg-gradient-to-t from-black/10 via-white/5 to-transparent opacity-30"></div>
+
+    <div class="relative flex items-center justify-between px-6 py-6 sm:px-8 sm:py-7">
+      <!-- Left: Icon + Text -->
+      <div class="flex items-center gap-4 min-w-0">
+        <span class="grid h-14 w-14 place-items-center rounded-xl bg-gradient-to-tr from-white/30 to-white/10 shadow-inner backdrop-blur-md">
+          <i class="fas fa-rocket text-xl sm:text-2xl text-white drop-shadow"></i>
+        </span>
+        <div class="min-w-0 text-left">
+          <span class="block text-lg sm:text-xl font-semibold leading-tight">
+            {% trans "Start your order" %}
+          </span>
+          <span class="mt-1 block text-sm sm:text-base text-white/80">
+            {% trans "Starlink kit + plan in 3 quick steps" %}
+          </span>
+        </div>
+      </div>
+
+      <!-- Right: Pill CTA -->
+      <span class="shrink-0 inline-flex items-center gap-2 rounded-full bg-white/20 px-5 py-2.5 text-sm sm:text-base font-medium transition group-hover:bg-white/30">
+        <span class="relative">
+          {% trans "Get started" %}
+          <span class="absolute -bottom-0.5 left-0 w-0 h-[2px] bg-white transition-all group-hover:w-full"></span>
+        </span>
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transform transition-transform group-hover:translate-x-1" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+          <path fill-rule="evenodd" d="M7.293 4.293a1 1 0 011.414 0l5 5a1 1 0 010 1.414l-5 5A1 1 0 017 14.586L10.586 11 7.293 7.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+      </span>
+    </div>
+  </button>
+</div>
+
+
+<!-- Dashboard Cards - Simplified responsive grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+
+  <!-- Your SUBSCRIPTION -->
+  <div class="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/40 overflow-hidden transition-transform hover:scale-105 hover:shadow-2xl">
+    <div class="h-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500"></div>
+    <div class="p-6 flex flex-col items-center text-center">
+      <div class="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-full shadow-lg mb-4">
+        <i class="fas fa-satellite-dish text-2xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">{% trans "Your Subscription" %}</h3>
+      <p class="text-gray-600 text-sm mb-6 leading-relaxed">
+        {% trans "Manage your Starlink subscription, view plan details, and check your current status." %}
+      </p>
+      <a href="/client/subscriptions/"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl hover:from-blue-600 hover:to-indigo-700 transition-all">
+        <i class="fas fa-info-circle"></i>
+        {% trans "View Subscription" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Billing -->
+  <div class="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/40 overflow-hidden transition-transform hover:scale-105 hover:shadow-2xl">
+    <div class="h-1 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500"></div>
+    <div class="p-6 flex flex-col items-center text-center">
+      <div class="p-4 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full shadow-lg mb-4">
+        <i class="fas fa-file-invoice-dollar text-2xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">{% trans "Billing" %}</h3>
+      <p class="text-gray-600 text-sm mb-6 leading-relaxed">
+        {% trans "View your payment history, check outstanding balances, and securely manage your Starlink billing details." %}
+      </p>
+      <a href="/client/billing/"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl hover:from-green-600 hover:to-emerald-700 transition-all">
+        <i class="fas fa-credit-card"></i>
+        {% trans "View Billing History" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Support -->
+  <div class="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/40 overflow-hidden transition-transform hover:scale-105 hover:shadow-2xl">
+    <div class="h-1 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500"></div>
+    <div class="p-6 flex flex-col items-center text-center">
+      <div class="p-4 bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-full shadow-lg mb-4">
+        <i class="fas fa-headset text-2xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">{% trans "Support" %}</h3>
+      <p class="text-gray-600 text-sm mb-6 leading-relaxed">
+        {% trans "Get help with your Starlink services, submit support tickets, and chat with our technical team 24/7." %}
+      </p>
+      <a href="/client/support/"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-pink-500 via-rose-500 to-red-500 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl hover:from-pink-600 hover:to-red-700 transition-all">
+        <i class="fas fa-life-ring"></i>
+        {% trans "Contact Support" %}
+      </a>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div class="bg-white/70 backdrop-blur-xl rounded-2xl shadow-lg border border-white/40 overflow-hidden transition-transform hover:scale-105 hover:shadow-2xl">
+    <div class="h-1 bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500"></div>
+    <div class="p-6 flex flex-col items-center text-center">
+      <div class="p-4 bg-gradient-to-br from-yellow-500 to-amber-600 text-white rounded-full shadow-lg mb-4">
+        <i class="fas fa-cog text-2xl"></i>
+      </div>
+      <h3 class="text-2xl font-bold text-gray-800 mb-2 tracking-tight">{% trans "Settings" %}</h3>
+      <p class="text-gray-600 text-sm mb-6 leading-relaxed">
+        {% trans "Update your account information, manage preferences, and configure security settings for your Starlink account." %}
+      </p>
+      <a href="/client/settings/"
+         class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-yellow-500 via-amber-500 to-orange-500 text-white text-sm font-semibold rounded-full shadow-lg hover:shadow-xl hover:from-yellow-600 hover:to-orange-700 transition-all">
+        <i class="fas fa-sliders-h"></i>
+        {% trans "Manage Settings" %}
+      </a>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,2934 @@
+{% extends 'tech/fe_dashboard_main.html' %}
+{% load static %}
+
+{% block content %}
+<div class="w-full px-6 py-6">
+
+  <!-- ========== HEADER ========== -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-white/15 ring-1 ring-white/20">
+          <i class="fas fa-toolbox text-2xl"></i>
+        </span>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">Field Technician Dashboard</h1>
+          <p class="text-indigo-100 text-sm mt-1">Your upcoming installs, progress, notes, reports & surveys in one place.</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="loadJobs()" class="inline-flex items-center gap-2 bg-white/95 text-indigo-700 hover:bg-white px-4 py-2 rounded-lg font-medium shadow-sm">
+          <i class="fas fa-rotate"></i> Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ========== KPI CARDS ========== -->
+  <section class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+    <div class="bg-gradient-to-r from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-indigo-700">Planned Today</span>
+        <i class="fas fa-calendar-day text-indigo-500"></i>
+      </div>
+      <div class="text-3xl font-bold text-indigo-800 mt-3" id="plannedTodayCount">{{ planned_today|default:"0" }}</div>
+      <p class="text-xs text-indigo-600 mt-2">Installations scheduled for today</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-blue-700">Pending</span>
+        <i class="fas fa-hourglass-half text-blue-500"></i>
+      </div>
+      <div class="text-3xl font-bold text-blue-800 mt-3" id="pendingCount">0</div>
+      <p class="text-xs text-blue-600 mt-2">Jobs waiting to start</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-yellow-700">In Progress</span>
+        <i class="fas fa-screwdriver-wrench text-yellow-500"></i>
+      </div>
+      <div class="text-3xl font-bold text-yellow-800 mt-3" id="inProgressCount">0</div>
+      <p class="text-xs text-yellow-600 mt-2">Ongoing installations</p>
+    </div>
+
+    <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl shadow p-5">
+      <div class="flex items-center justify-between">
+        <span class="text-sm font-medium text-green-700">Completed</span>
+        <i class="fas fa-check-circle text-green-500"></i>
+      </div>
+      <div class="text-3xl font-bold text-green-800 mt-3" id="completedCount">0</div>
+      <p class="text-xs text-green-600 mt-2">Finished & confirmed</p>
+    </div>
+  </section>
+
+  <!-- ========== NEXT JOB + SURVEY PANEL ========== -->
+  <section class="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-6">
+    <!-- Next Job -->
+    <div class="xl:col-span-2 bg-white border border-gray-200 rounded-2xl shadow p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-xl font-semibold text-gray-800">My Next Job</h2>
+        <button onclick="loadJobs()" class="text-sm text-indigo-600 hover:underline">Reload</button>
+      </div>
+
+      <div id="nextJobWrap" class="grid sm:grid-cols-2 gap-4">
+        <!-- Left: Summary -->
+        <div class="rounded-xl border p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500">Order Ref</p>
+          <p id="nextOrderRef" class="font-semibold text-gray-900 mt-1">—</p>
+
+          <div class="grid grid-cols-2 gap-4 mt-4">
+            <div>
+              <p class="text-xs uppercase tracking-wide text-gray-500">Client</p>
+              <p id="nextClient" class="font-medium text-gray-800">—</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-gray-500">Phone</p>
+              <p id="nextPhone" class="font-medium text-gray-800">—</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-gray-500">Scheduled</p>
+              <p id="nextScheduled" class="font-medium text-gray-800">—</p>
+            </div>
+            <div>
+              <p class="text-xs uppercase tracking-wide text-gray-500">Status</p>
+              <span id="nextStatus" class="inline-flex items-center gap-2 text-xs px-2 py-1 rounded bg-gray-100 text-gray-700">—</span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap gap-2 mt-4">
+            <button id="nextStartBtn" class="hidden inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 text-white text-sm shadow hover:bg-blue-700" onclick="markInProgress(this.dataset.jobId)">
+              <i class="fas fa-play"></i> Start
+            </button>
+            <button id="nextReportBtn" class="hidden inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm shadow hover:bg-purple-700" onclick="openInstallationReport(this.dataset.jobId)">
+              <i class="fas fa-clipboard-check"></i> Installation Report
+            </button>
+            <button id="nextMapBtn" class="hidden inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm shadow hover:bg-indigo-700" onclick="openLocationModal(parseFloat(this.dataset.lat), parseFloat(this.dataset.lng), this.dataset.orderRef)">
+              <i class="fas fa-location-dot"></i> View Location
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Tips -->
+        <div class="rounded-xl border p-4">
+          <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Quick Tips</p>
+          <ul class="space-y-2 text-sm text-gray-700">
+            <li class="flex items-start gap-2"><i class="fas fa-circle-check pt-1 text-emerald-500"></i> Verify clear sky view before mounting.</li>
+            <li class="flex items-start gap-2"><i class="fas fa-circle-check pt-1 text-emerald-500"></i> Photograph serial number & mounting.</li>
+            <li class="flex items-start gap-2"><i class="fas fa-circle-check pt-1 text-emerald-500"></i> Run speed test & record results.</li>
+            <li class="flex items-start gap-2"><i class="fas fa-circle-check pt-1 text-emerald-500"></i> Walk client through basic troubleshooting.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Survey Panel -->
+    <div class="bg-white border border-gray-200 rounded-2xl shadow p-6">
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-xl font-semibold text-gray-800">Survey Panel</h2>
+        <span class="text-xs text-gray-500">Post-install feedback</span>
+      </div>
+      <div class="space-y-4">
+        <div>
+          <p class="text-xs uppercase tracking-wide text-gray-500">Completion Rate</p>
+          <div class="mt-2 w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+            <div id="surveyRateBar" class="h-2 w-0 bg-indigo-600 transition-all"></div>
+          </div>
+          <p class="text-xs text-gray-600 mt-1"><span id="surveyRateText">—</span> completed</p>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-gray-500">Avg. Rating</p>
+            <p id="surveyAvg" class="text-2xl font-bold text-gray-900">—</p>
+          </div>
+          <div class="rounded-lg border p-3">
+            <p class="text-xs text-gray-500">NPS</p>
+            <p id="surveyNps" class="text-2xl font-bold text-gray-900">—</p>
+          </div>
+        </div>
+        <div>
+          <canvas id="surveyRatingsChart" height="140"></canvas>
+        </div>
+        <div id="surveyFallback" class="hidden text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded p-2">
+          Survey data isn’t available yet. Once customers submit feedback, you’ll see it here.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== JOBS TABLE ========== -->
+  <section class="bg-white border border-gray-200 rounded-2xl shadow p-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-800">My Assigned Jobs</h2>
+      <div class="flex items-center gap-3">
+        <label for="statusFilter" class="text-sm text-gray-600">Filter:</label>
+        <select id="statusFilter" onchange="applyFilter()" class="border border-gray-300 text-sm rounded px-3 py-2">
+          <option value="All">All</option>
+          <option value="pending">Pending</option>
+          <option value="in_progress">In Progress</option>
+          <option value="completed">Completed</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm text-left">
+        <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+          <tr>
+            <th class="px-4 py-3">#</th>
+            <th class="px-4 py-3">Order Ref</th>
+            <th class="px-4 py-3">Client</th>
+            <th class="px-4 py-3">Phone</th>
+            <th class="px-4 py-3">Scheduled</th>
+            <th class="px-4 py-3">Status</th>
+            <th class="px-4 py-3">Location</th>
+            <th class="px-4 py-3 text-center">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="jobsTableBody" class="divide-y divide-gray-100"><!-- JS fills --></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<!-- ========== MODALS ========== -->
+
+<!-- Notes Modal -->
+<div id="notesModal" class="fixed inset-0 bg-black/60 hidden z-50">
+  <div class="absolute inset-0" onclick="closeNotesModal()"></div>
+  <div class="absolute left-1/2 top-10 -translate-x-1/2 w-[90%] max-w-md">
+    <div class="bg-white rounded-2xl shadow-2xl p-6">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold">Add Note</h3>
+        <button onclick="closeNotesModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+      </div>
+      <textarea id="notesTextarea" class="w-full border rounded p-3 h-32" placeholder="Type your note…"></textarea>
+      <div class="mt-4 flex justify-end gap-2">
+        <button onclick="closeNotesModal()" class="px-4 py-2 rounded border">Cancel</button>
+        <button onclick="saveNote()" class="px-4 py-2 rounded bg-indigo-600 text-white">Save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Photos Modal -->
+<div id="uploadPhotoModal" class="fixed inset-0 bg-black/60 hidden z-50">
+  <div class="absolute inset-0" onclick="closeUploadPhotoModal()"></div>
+  <div class="absolute left-1/2 top-10 -translate-x-1/2 w-[92%] max-w-lg">
+    <div class="bg-white rounded-2xl shadow-2xl p-6 relative">
+      <button onclick="closeUploadPhotoModal()" class="absolute top-3 right-3 text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times"></i>
+      </button>
+      <h3 class="text-lg font-semibold mb-4">Upload Installation Photos</h3>
+      <input type="hidden" id="uploadPhotoJobId">
+      <label class="block mb-2 text-sm font-medium">Select Photos (multiple allowed)</label>
+      <input type="file" id="installationPhotos" multiple accept="image/*" class="w-full border p-2 rounded mb-4">
+      <div class="flex justify-end">
+        <button onclick="submitPhotos()" class="px-4 py-2 rounded bg-indigo-600 text-white">Upload</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Location Modal (Leaflet / OSM) -->
+<div id="locationModal" class="fixed inset-0 bg-black/60 hidden z-50">
+  <div class="absolute inset-0" onclick="closeLocationModal()"></div>
+  <div class="absolute left-1/2 top-6 -translate-x-1/2 w-[94%] max-w-3xl">
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b bg-gray-50">
+        <div class="flex items-center gap-2">
+          <span class="inline-grid place-items-center w-8 h-8 rounded-lg bg-indigo-600 text-white"><i class="fas fa-location-dot"></i></span>
+          <div>
+            <h3 class="font-semibold">Installation Location</h3>
+            <p id="locOrderRef" class="text-xs text-gray-500">—</p>
+          </div>
+        </div>
+        <button onclick="closeLocationModal()" class="text-gray-500 hover:text-gray-700"><i class="fas fa-times"></i></button>
+      </div>
+      <div class="p-4">
+        <div id="leafletMap" class="w-full h-80 rounded-lg border"></div>
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <a id="osmLink" href="#" target="_blank" class="inline-flex items-center gap-2 px-3 py-2 rounded bg-indigo-600 text-white">
+            <i class="fas fa-map-location-dot"></i> Open in OSM
+          </a>
+          <a id="gmapLink" href="#" target="_blank" class="inline-flex items-center gap-2 px-3 py-2 rounded border">
+            <i class="fab fa-google"></i> Open in Google Maps
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== INSTALLATION REPORT WIZARD (STEP-BY-STEP) ========== -->
+<div id="installationReportModal"
+     class="fixed inset-0 z-[70] hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="installationReportTitle">
+
+  <!-- Backdrop -->
+  <div id="installationReportBackdrop" class="absolute inset-0 bg-black/60"></div>
+
+  <!-- Dialog Sheet -->
+  <div class="absolute left-1/2 top-1 sm:top-2 md:top-6 -translate-x-1/2 w-[99%] sm:w-[98%] md:w-auto max-w-sm sm:max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-6xl">
+    <div class="bg-white rounded-xl sm:rounded-2xl shadow-2xl ring-1 ring-gray-200 flex flex-col max-h-[99vh] sm:max-h-[96vh] md:max-h-[90vh]">
+
+      <!-- ===== Header ===== -->
+      <div class="shrink-0 sticky top-0 z-10 bg-white/95 backdrop-blur border-b">
+        <div class="px-3 sm:px-4 md:px-5 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-3">
+          <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+            <span class="inline-grid place-items-center w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-purple-600 text-white shrink-0 text-sm sm:text-base">
+              <i class="fas fa-clipboard-check"></i>
+            </span>
+            <div class="min-w-0">
+              <h3 id="installationReportTitle" class="font-semibold text-gray-900 truncate text-sm sm:text-base">Installation Report</h3>
+              <p id="reportOrderRef" class="text-xs text-gray-500">Order: —</p>
+            </div>
+          </div>
+          <button type="button" onclick="closeInstallationReport()" class="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg border text-gray-700 hover:bg-gray-50 text-sm flex-shrink-0">
+            <span class="hidden sm:inline">Close</span>
+            <i class="fas fa-times sm:hidden"></i>
+          </button>
+        </div>
+
+        <!-- Stepper -->
+        <div class="px-3 sm:px-4 md:px-6 pb-3 sm:pb-4">
+          <div class="wizard">
+            <div id="wizardSteps" class="wizard-steps overflow-x-auto md:overflow-visible scrollbar-hide" role="tablist" aria-label="Installation steps"><!-- JS fills numbered steps --></div>
+            <div class="wizard-track" aria-hidden="true">
+              <div id="wizardProgress" class="wizard-progress"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== Body / Form ===== -->
+      <form id="installationReportForm" class="grow overflow-y-auto p-3 sm:p-4 md:p-5 space-y-3 sm:space-y-4">
+        <input type="hidden" id="reportJobId">
+
+        <!-- STEP 1: Job & Site -->
+        <section id="tab-job" class="wizard-pane grid gap-3 sm:gap-4 md:grid-cols-2" data-step="0" aria-labelledby="tab-job-label">
+          <h4 id="tab-job-label" class="sr-only">Job & Site</h4>
+          <div class="rounded-xl border p-3 sm:p-4">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Client & Schedule</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label for="repName" class="block text-xs text-gray-600">Client Name</label>
+                <input id="repName" class="mt-1 w-full border rounded p-2 text-sm bg-gray-50" readonly autocomplete="name">
+              </div>
+              <div>
+                <label for="repPhone" class="block text-xs text-gray-600">Client Phone</label>
+                <input id="repPhone" class="mt-1 w-full border rounded p-2 text-sm bg-gray-50" readonly inputmode="tel" autocomplete="tel">
+              </div>
+              <div>
+                <label for="repScheduled" class="block text-xs text-gray-600">Scheduled Date</label>
+                <input id="repScheduled" class="mt-1 w-full border rounded p-2 text-sm bg-gray-50" readonly>
+              </div>
+              <div>
+                <label for="repArrival" class="block text-xs text-gray-600">On-Site Arrival (Local)</label>
+                <input id="repArrival" type="datetime-local" class="mt-1 w-full border rounded p-2 text-sm">
+              </div>
+              <div class="sm:col-span-2">
+                <label for="repAddress" class="block text-xs text-gray-600">Address / Location</label>
+                <input id="repAddress" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Street, Area, City" autocomplete="street-address">
+              </div>
+              <div>
+                <label for="repLat" class="block text-xs text-gray-600">Latitude</label>
+                <input id="repLat" class="mt-1 w-full border rounded p-2 text-sm" placeholder="-6.1234" inputmode="decimal" autocomplete="off">
+              </div>
+              <div>
+                <label for="repLng" class="block text-xs text-gray-600">Longitude</label>
+                <input id="repLng" class="mt-1 w-full border rounded p-2 text-sm" placeholder="23.1234" inputmode="decimal" autocomplete="off">
+              </div>
+            </div>
+          </div>
+          <div class="rounded-xl border p-3 sm:p-4">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">Site Conditions</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label for="repAccess" class="block text-xs text-gray-600">Access Level</label>
+                <select id="repAccess" class="mt-1 w-full border rounded p-2 text-sm">
+                  <option value="">Select</option><option>Easy</option><option>Moderate</option><option>Difficult</option>
+                </select>
+              </div>
+              <div>
+                <label for="repPowerAvail" class="block text-xs text-gray-600">Power Availability</label>
+                <select id="repPowerAvail" class="mt-1 w-full border rounded p-2 text-sm">
+                  <option value="">Select</option><option>Stable</option><option>Intermittent</option><option>Unavailable</option>
+                </select>
+              </div>
+              <div class="sm:col-span-2">
+                <label for="repSiteNotes" class="block text-xs text-gray-600">Site Notes</label>
+                <textarea id="repSiteNotes" rows="3" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Gate/security, roof type, hazards, etc."></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 2: Equipment -->
+        <section id="tab-equipment" class="wizard-pane hidden grid gap-3 sm:gap-4 md:grid-cols-2" data-step="1" aria-labelledby="tab-equipment-label">
+          <h4 id="tab-equipment-label" class="sr-only">Equipment</h4>
+          <div class="rounded-xl border p-3 sm:p-4">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">CPE Details</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label for="repDishSerial" class="block text-xs text-gray-600">Dish Serial #</label>
+                <input id="repDishSerial" class="mt-1 w-full border rounded p-2 text-sm" autocapitalize="characters">
+              </div>
+              <div>
+                <label for="repRouterSerial" class="block text-xs text-gray-600">Router Serial #</label>
+                <input id="repRouterSerial" class="mt-1 w-full border rounded p-2 text-sm" autocapitalize="characters">
+              </div>
+              <div>
+                <label for="repFirmware" class="block text-xs text-gray-600">Firmware Version</label>
+                <input id="repFirmware" class="mt-1 w-full border rounded p-2 text-sm" placeholder="e.g. v1.2.3">
+              </div>
+              <div>
+                <label for="repPower" class="block text-xs text-gray-600">Power Source</label>
+                <select id="repPower" class="mt-1 w-full border rounded p-2 text-sm">
+                  <option value="">Select</option><option>Main AC</option><option>Generator</option><option>Solar</option><option>UPS</option>
+                </select>
+              </div>
+              <div>
+                <label for="repCableLen" class="block text-xs text-gray-600">Cable Length (m)</label>
+                <input id="repCableLen" type="number" min="0" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+              </div>
+              <div>
+                <label for="repSplices" class="block text-xs text-gray-600">Splices / Connectors</label>
+                <input id="repSplices" type="number" min="0" step="1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+          <div class="rounded-xl border p-3 sm:p-4">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-2">LAN / Wi-Fi</p>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label for="repSSID" class="block text-xs text-gray-600">SSID</label>
+                <input id="repSSID" class="mt-1 w-full border rounded p-2 text-sm" autocapitalize="none">
+              </div>
+              <div>
+                <label for="repWifiPwd" class="block text-xs text-gray-600">Wi-Fi Password</label>
+                <input id="repWifiPwd" class="mt-1 w-full border rounded p-2 text-sm" autocapitalize="none">
+              </div>
+              <div>
+                <label for="repLanIP" class="block text-xs text-gray-600">LAN IP</label>
+                <input id="repLanIP" class="mt-1 w-full border rounded p-2 text-sm" placeholder="192.168.x.x" inputmode="numeric">
+              </div>
+              <div>
+                <label for="repDHCP" class="block text-xs text-gray-600">DHCP Range</label>
+                <input id="repDHCP" class="mt-1 w-full border rounded p-2 text-sm" placeholder=".100 – .200" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 3: Mount & Alignment -->
+        <section id="tab-mount" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="2" aria-labelledby="tab-mount-label">
+          <h4 id="tab-mount-label" class="sr-only">Mount & Alignment</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Mounting & Alignment</p>
+          <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+            <div>
+              <label for="repMountType" class="block text-xs text-gray-600">Mount Type</label>
+              <select id="repMountType" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Roof</option><option>Wall</option><option>Ground Pole</option><option>Tripod</option>
+              </select>
+            </div>
+            <div>
+              <label for="repMountHeight" class="block text-xs text-gray-600">Mount Height (m)</label>
+              <input id="repMountHeight" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div>
+              <label for="repGrounding" class="block text-xs text-gray-600">Grounding</label>
+              <select id="repGrounding" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Yes</option><option>No</option><option>N/A</option>
+              </select>
+            </div>
+            <div>
+              <label for="repWeatherproof" class="block text-xs text-gray-600">Weatherproofing</label>
+              <select id="repWeatherproof" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Taped</option><option>Sealed</option><option>Conduit</option><option>N/A</option>
+              </select>
+            </div>
+            <div>
+              <label for="repObstruction" class="block text-xs text-gray-600">Obstruction (%)</label>
+              <input id="repObstruction" type="number" min="0" max="100" step="1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="numeric">
+            </div>
+          </div>
+          <div class="mt-3 grid gap-3 md:grid-cols-5">
+            <div>
+              <label for="repElevation" class="block text-xs text-gray-600">Elevation Angle (°)</label>
+              <input id="repElevation" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div>
+              <label for="repAzimuth" class="block text-xs text-gray-600">Azimuth Angle (°)</label>
+              <input id="repAzimuth" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div class="md:col-span-3">
+              <label for="repObstructionNotes" class="block text-xs text-gray-600">Obstruction Notes</label>
+              <input id="repObstructionNotes" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Trees/buildings, etc.">
+            </div>
+          </div>
+          <div class="mt-3">
+            <label for="repMountNotes" class="block text-xs text-gray-600">Mounting Notes</label>
+            <textarea id="repMountNotes" rows="2" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Anchoring, sealant used, special constraints."></textarea>
+          </div>
+        </section>
+
+        <!-- STEP 4: Environment & Safety -->
+        <section id="tab-safety" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="3" aria-labelledby="tab-safety-label">
+          <h4 id="tab-safety-label" class="sr-only">Environment & Safety</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Environment & Safety</p>
+          <div class="grid gap-3 md:grid-cols-4">
+            <div class="md:col-span-2">
+              <label for="repWeatherCond" class="block text-xs text-gray-600">Weather Conditions</label>
+              <select id="repWeatherCond" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Sunny</option><option>Cloudy</option><option>Rainy</option><option>Windy</option><option>Stormy</option><option>Other</option>
+              </select>
+            </div>
+            <div class="md:col-span-2">
+              <span class="block text-xs text-gray-600">Safety Equipment Used</span>
+              <div class="mt-1 grid grid-cols-2 gap-2 text-sm">
+                <label class="inline-flex items-center gap-2"><input id="repSafeHelmet" type="checkbox"> Helmet</label>
+                <label class="inline-flex items-center gap-2"><input id="repSafeHarness" type="checkbox"> Harness</label>
+                <label class="inline-flex items-center gap-2"><input id="repSafeGloves" type="checkbox"> Gloves</label>
+                <label class="inline-flex items-center gap-2"><input id="repSafeLadder" type="checkbox"> Ladder Safety</label>
+              </div>
+            </div>
+            <div class="md:col-span-4">
+              <label for="repHazards" class="block text-xs text-gray-600">Hazards Noted</label>
+              <textarea id="repHazards" rows="2" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Electrical, roof instability, animals, etc."></textarea>
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 5: Cabling & Routing -->
+        <section id="tab-cabling" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="4" aria-labelledby="tab-cabling-label">
+          <h4 id="tab-cabling-label" class="sr-only">Cabling & Routing</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Cabling & Routing</p>
+          <div class="grid gap-3 md:grid-cols-4">
+            <div>
+              <label for="repCableEntry" class="block text-xs text-gray-600">Cable Entry Point</label>
+              <select id="repCableEntry" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Wall Drilled</option><option>Window Feed</option><option>Conduit</option><option>Existing Duct</option>
+              </select>
+            </div>
+            <div>
+              <label for="repCableProtection" class="block text-xs text-gray-600">Cable Protection</label>
+              <select id="repCableProtection" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Conduit</option><option>Trunking</option><option>UV Protected</option><option>None</option>
+              </select>
+            </div>
+            <div>
+              <label for="repTermType" class="block text-xs text-gray-600">Termination Type</label>
+              <select id="repTermType" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>RJ45</option><option>POE Injector</option><option>Direct</option><option>Other</option>
+              </select>
+            </div>
+            <div>
+              <label for="repRoutingNotes" class="block text-xs text-gray-600">Routing Notes</label>
+              <input id="repRoutingNotes" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Path, penetrations, sealant, etc.">
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 6: Power & Backup -->
+        <section id="tab-power" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="5" aria-labelledby="tab-power-label">
+          <h4 id="tab-power-label" class="sr-only">Power & Backup</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Power & Backup</p>
+          <div class="grid gap-3 md:grid-cols-4">
+            <div>
+              <label for="repPowerStability" class="block text-xs text-gray-600">Power Stability Test</label>
+              <select id="repPowerStability" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Pass</option><option>Fail</option>
+              </select>
+            </div>
+            <div>
+              <label for="repUPSInstalled" class="block text-xs text-gray-600">UPS / Backup Installed</label>
+              <select id="repUPSInstalled" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>No</option><option>Yes</option>
+              </select>
+            </div>
+            <div>
+              <label for="repUPSModel" class="block text-xs text-gray-600">UPS Model</label>
+              <input id="repUPSModel" class="mt-1 w-full border rounded p-2 text-sm" placeholder="If installed">
+            </div>
+            <div>
+              <label for="repUPSRt" class="block text-xs text-gray-600">UPS Runtime (min)</label>
+              <input id="repUPSRt" type="number" min="0" step="1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="numeric" placeholder="e.g. 30">
+            </div>
+          </div>
+        </section>
+
+        <!-- STEP 7: Connectivity & Tests -->
+        <section id="tab-tests" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="6" aria-labelledby="tab-tests-label">
+          <h4 id="tab-tests-label" class="sr-only">Connectivity & Tests</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Connectivity & Tests</p>
+          <div class="grid gap-3 md:grid-cols-5">
+            <div>
+              <label for="repSNR" class="block text-xs text-gray-600">SNR (dB)</label>
+              <input id="repSNR" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div>
+              <label for="repDown" class="block text-xs text-gray-600">Speed Down (Mbps)</label>
+              <input id="repDown" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div>
+              <label for="repUp" class="block text-xs text-gray-600">Speed Up (Mbps)</label>
+              <input id="repUp" type="number" step="0.1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="decimal">
+            </div>
+            <div>
+              <label for="repLatency" class="block text-xs text-gray-600">Latency (ms)</label>
+              <input id="repLatency" type="number" step="1" class="mt-1 w-full border rounded p-2 text-sm" inputmode="numeric">
+            </div>
+            <div>
+              <label for="repTestTool" class="block text-xs text-gray-600">Test Tool</label>
+              <input id="repTestTool" class="mt-1 w-full border rounded p-2 text-sm" placeholder="e.g. Fast.com, Ookla">
+            </div>
+          </div>
+          <div class="mt-3 grid gap-3 md:grid-cols-3">
+            <div>
+              <label for="repPublicIP" class="block text-xs text-gray-600">Public IP (if static)</label>
+              <input id="repPublicIP" class="mt-1 w-full border rounded p-2 text-sm" placeholder="x.x.x.x" inputmode="numeric">
+            </div>
+            <div>
+              <label for="repQos" class="block text-xs text-gray-600">QoS / VLAN (if any)</label>
+              <input id="repQos" class="mt-1 w-full border rounded p-2 text-sm" placeholder="e.g. VLAN 20, QoS 10Mbps">
+            </div>
+            <div>
+              <label for="repLinkStatus" class="block text-xs text-gray-600">Final Link Status</label>
+              <select id="repLinkStatus" class="mt-1 w-full border rounded p-2 text-sm">
+                <option value="">Select</option><option>Connected</option><option>Not Connected</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label for="repTestNotes" class="block text-xs text-gray-600">Test Notes</label>
+            <textarea id="repTestNotes" rows="2" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Environment, time of day, anything notable."></textarea>
+          </div>
+        </section>
+
+        <!-- STEP 8: Photos -->
+        <section id="tab-photos" class="wizard-pane hidden rounded-xl border p-3 sm:p-4" data-step="7" aria-labelledby="tab-photos-label">
+          <h4 id="tab-photos-label" class="sr-only">Photos</h4>
+          <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Installation Photos</p>
+          <div class="grid gap-3 sm:gap-4 lg:grid-cols-2">
+            <div>
+              <label for="repPhotosBefore" class="block text-xs text-gray-600 mb-1">Before</label>
+              <input id="repPhotosBefore" type="file" accept="image/*" multiple class="w-full border rounded p-2 text-sm">
+              <div id="previewBefore" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            </div>
+            <div>
+              <label for="repPhotosAfter" class="block text-xs text-gray-600 mb-1">After</label>
+              <input id="repPhotosAfter" type="file" accept="image/*" multiple class="w-full border rounded p-2 text-sm">
+              <div id="previewAfter" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+            </div>
+          </div>
+          <div class="mt-3">
+            <label for="repPhotosEvidence" class="block text-xs text-gray-600 mb-1">Additional Evidence (labels, serials, speed test)</label>
+            <input id="repPhotosEvidence" type="file" accept="image/*" multiple class="w-full border rounded p-2 text-sm">
+            <div id="previewEvidence" class="mt-2 grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+          </div>
+        </section>
+
+        <!-- STEP 9: Customer Sign-off (signature on screen) -->
+        <section id="tab-ack" class="wizard-pane hidden grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3" data-step="8" aria-labelledby="tab-ack-label">
+          <h4 id="tab-ack-label" class="sr-only">Customer Sign-off</h4>
+
+          <!-- Left: Acknowledgment + Signature -->
+          <div class="rounded-xl border p-3 sm:p-4 lg:col-span-2">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Customer Acknowledgment</p>
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div>
+                <label for="custName" class="block text-xs text-gray-600">Customer Full Name <span class="text-red-500">*</span></label>
+                <input id="custName" class="mt-1 w-full border rounded p-2 text-sm" autocomplete="name" required>
+              </div>
+              <div>
+                <label for="custId" class="block text-xs text-gray-600">ID / Document # (optional)</label>
+                <input id="custId" class="mt-1 w-full border rounded p-2 text-sm" autocomplete="off">
+              </div>
+              <div class="flex items-end">
+                <label class="inline-flex items-center gap-2 text-sm">
+                  <input id="custAccept" type="checkbox" class="rounded">
+                  I confirm the installation is complete & working
+                </label>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <p class="text-[11px] text-gray-500 mb-2">Signature (sign on the screen)</p>
+              <div class="rounded-lg border relative bg-white">
+                <img id="sigSavedImage" class="absolute inset-0 w-full h-full object-contain pointer-events-none hidden z-10" alt="Saved signature preview">
+                <canvas id="sigCanvas" class="w-full h-48 block" style="touch-action: none;"></canvas>
+                <div class="absolute top-2 right-2 flex gap-2">
+                  <button type="button" onclick="clearSignature()" class="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300">Clear</button>
+                </div>
+              </div>
+              <p class="mt-2 text-[11px] text-gray-500">Tip: rotate your phone to landscape if you need more space.</p>
+            </div>
+
+            <div class="mt-4 grid gap-3 md:grid-cols-3">
+              <div>
+                <label for="custSignoffAt" class="block text-xs text-gray-600">Sign-off Time</label>
+                <input id="custSignoffAt" type="datetime-local" class="mt-1 w-full border rounded p-2 text-sm bg-gray-50" readonly>
+              </div>
+            </div>
+
+            <!-- Rating + comments -->
+            <div class="mt-6 rounded-xl border p-4 bg-gray-50/60">
+              <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Rate the Installation</p>
+              <div>
+                <label id="ratingLabel" class="block text-xs text-gray-600">Select 1–5 stars</label>
+                <div id="ratingStars" class="mt-1 inline-flex items-center gap-1" role="radiogroup" aria-labelledby="ratingLabel">
+                  <button type="button" class="star-btn" data-star="1" role="radio" aria-checked="false" aria-label="1 star"><i class="far fa-star"></i></button>
+                  <button type="button" class="star-btn" data-star="2" role="radio" aria-checked="false" aria-label="2 stars"><i class="far fa-star"></i></button>
+                  <button type="button" class="star-btn" data-star="3" role="radio" aria-checked="false" aria-label="3 stars"><i class="far fa-star"></i></button>
+                  <button type="button" class="star-btn" data-star="4" role="radio" aria-checked="false" aria-label="4 stars"><i class="far fa-star"></i></button>
+                  <button type="button" class="star-btn" data-star="5" role="radio" aria-checked="false" aria-label="5 stars"><i class="far fa-star"></i></button>
+                </div>
+                <input type="hidden" id="custRating" value="">
+              </div>
+
+              <div class="mt-3">
+                <label for="custComments" class="block text-xs text-gray-600">Comments (optional)</label>
+                <textarea id="custComments" rows="3" class="mt-1 w-full border rounded p-2 text-sm" placeholder="How was the install experience? Anything we should improve?"></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Reseller -->
+          <div id="tab-reseller" class="rounded-xl border p-3 sm:p-4 lg:col-span-1">
+            <p class="text-[11px] uppercase tracking-wide text-gray-500 mb-3">Reseller / Partner</p>
+            <div class="grid gap-3">
+              <div>
+                <label for="repResellerName" class="block text-xs text-gray-600">Reseller Name</label>
+                <input id="repResellerName" class="mt-1 w-full border rounded p-2 text-sm">
+              </div>
+              <div>
+                <label for="repResellerId" class="block text-xs text-gray-600">Reseller ID / Account</label>
+                <input id="repResellerId" class="mt-1 w-full border rounded p-2 text-sm">
+              </div>
+              <div>
+                <label for="repSLA" class="block text-xs text-gray-600">SLA Tier</label>
+                <select id="repSLA" class="mt-1 w-full border rounded p-2 text-sm">
+                  <option value="">Select</option><option>Standard (48h)</option><option>Priority (24h)</option><option>Premium (Same-day)</option>
+                </select>
+              </div>
+              <div>
+                <label for="repResellerNotes" class="block text-xs text-gray-600">Internal Notes</label>
+                <textarea id="repResellerNotes" rows="2" class="mt-1 w-full border rounded p-2 text-sm" placeholder="Internal comments, stock refs, approvals, etc."></textarea>
+              </div>
+            </div>
+          </div>
+        </section>
+      </form>
+
+      <!-- ===== Wizard Footer (Prev / Next / Submit / Save Draft) ===== -->
+      <div class="shrink-0 sticky bottom-0 bg-white/95 backdrop-blur border-t px-3 sm:px-4 md:px-5 py-3">
+        <div class="flex items-center justify-between gap-2 flex-wrap">
+          <div class="text-xs sm:text-sm text-gray-500 order-1">Step <span id="wizStepNow">1</span> of <span id="wizStepTotal">9</span></div>
+          <div class="flex items-center gap-2 order-2 w-full sm:w-auto justify-between sm:justify-end">
+            <button id="btnPrev" type="button" class="px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg border hover:bg-gray-50 text-sm min-h-[44px] sm:min-h-auto flex-shrink-0" onclick="prevStep()">
+              <span class="hidden sm:inline">Previous</span>
+              <i class="fas fa-chevron-left sm:hidden"></i>
+            </button>
+            <button id="btnNext" type="button" class="px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 text-sm min-h-[44px] sm:min-h-auto flex-shrink-0" onclick="nextStep()">
+              <span class="hidden sm:inline">Next</span>
+              <i class="fas fa-chevron-right sm:hidden"></i>
+            </button>
+            <button id="btnSubmit" type="button" class="hidden px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm min-h-[44px] sm:min-h-auto flex-shrink-0" onclick="submitInstallationReport()">
+              <span class="hidden sm:inline">Submit Final Report</span>
+              <i class="fas fa-check sm:hidden"></i>
+            </button>
+            <button type="button" class="px-3 sm:px-4 py-2 sm:py-1.5 rounded-lg border border-blue-500 text-blue-600 hover:bg-blue-50 flex items-center gap-1 text-sm min-h-[44px] sm:min-h-auto flex-shrink-0" onclick="saveDraftReport()">
+              <i class="fas fa-save"></i>
+              <span class="hidden sm:inline">Save Draft</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== Wizard + Rating + Style ===== -->
+<style>
+  /* Stepper visuals */
+  .wizard { position: relative; }
+  .wizard-steps {
+    display:flex; gap:.75rem; align-items:center;
+    overflow-x:auto; overflow-y:hidden; padding-bottom:4px;
+    scrollbar-width: none; -ms-overflow-style: none; flex-wrap:nowrap;
+  }
+  .wizard-steps::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { scrollbar-width: none; -ms-overflow-style: none; }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+
+  .wizard-step {
+    position:relative; display:flex; align-items:center; gap:.5rem; padding:.3rem .5rem;
+    border-radius:.75rem; background:#fff; border:1px solid #e5e7eb; box-shadow:0 1px 1px rgba(0,0,0,.03);
+    white-space:nowrap; transition:transform .2s, background .2s, border-color .2s; flex-shrink:0;
+  }
+
+  @media (min-width: 640px) {
+    .wizard-steps { justify-content:space-between; gap:.75rem; overflow:visible; }
+    .wizard-step { padding:.4rem .6rem; }
+  }
+
+  .wizard-step:hover{ background:#f9fafb; }
+  .wizard-step .num {
+    width:1.5rem; height:1.5rem; display:grid; place-items:center; border-radius:9999px; font-weight:600;
+    background:#eef2ff; color:#4f46e5; font-size:0.75rem;
+  }
+
+  @media (min-width: 640px) {
+    .wizard-step .num { width:1.7rem; height:1.7rem; font-size:0.875rem; }
+  }
+
+  .wizard-step .label { font-size:0.75rem; max-width:60vw; overflow:hidden; text-overflow:ellipsis; }
+  @media (min-width: 640px) {
+    .wizard-step .label { font-size:0.875rem; max-width:none; }
+  }
+  .wizard-step.active { border-color:transparent; background:linear-gradient(90deg,#ede9fe,#eef2ff); }
+  .wizard-step.active .num { background:#7c3aed; color:#fff; }
+  .wizard-step.done .num { background:#10b981; color:#fff; }
+  .wizard-track { position:relative; height:4px; background:#e5e7eb; border-radius:9999px; overflow:hidden; margin-top:.6rem; }
+  .wizard-progress { height:100%; width:0%; background:linear-gradient(90deg,#7c3aed,#6366f1,#3b82f6); transition:width .25s ease; }
+
+  /* Styles de validation */
+  .field-invalid {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+  }
+
+  .field-valid {
+    border-color: #10b981 !important;
+    background-color: #f0fdf4 !important;
+  }
+
+  .validation-message {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+  }
+
+  .validation-message.error {
+    color: #dc2626;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+  }
+
+  .validation-message.success {
+    color: #065f46;
+    background-color: #f0fdf4;
+    border: 1px solid #bbf7d0;
+  }
+
+  .step-validation-indicator {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    color: white;
+    z-index: 1;
+  }
+
+  .step-validation-indicator.error {
+    background-color: #ef4444;
+  }
+
+  .step-validation-indicator.success {
+    background-color: #10b981;
+  }
+
+  /* Styles responsive améliorés */
+  @media (max-width: 640px) {
+    /* Amélioration des touch targets */
+    input, select, textarea, button {
+      min-height: 44px;
+    }
+
+    /* Amélioration des galeries photos */
+    .photo-preview {
+      aspect-ratio: 1;
+      object-fit: cover;
+      border-radius: 0.5rem;
+    }
+
+    /* Amélioration du stepper pour mobile */
+    .wizard-step .label {
+      display: none;
+    }
+
+    .wizard-step .num { min-width: 1.5rem; min-height: 1.5rem; }
+    /* Let steps wrap into multiple rows on very small screens */
+    .wizard-steps { flex-wrap: wrap; row-gap: .5rem; }
+  }
+
+  @media (max-width: 480px) {
+    /* Ultra-mobile optimizations */
+    .wizard-step {
+      padding: 0.25rem 0.4rem;
+      gap: 0.25rem;
+    }
+
+    .wizard-step .num {
+      min-width: 1.25rem;
+      min-height: 1.25rem;
+      font-size: 0.6rem;
+    }
+  }
+
+  /* Wizard panes */
+  .wizard-pane.hidden { display:none; }
+
+  /* Star rating */
+  .star-btn{ width:2rem; height:2rem; display:inline-grid; place-items:center; border-radius:.5rem; border:1px solid transparent; transition:.2s; }
+  .star-btn i{ font-size:1.15rem; color:#d1d5db; }
+  .star-btn:hover{ background:#f3f4f6; transform:translateY(-1px); }
+  .star-btn.active i{ color:#f59e0b; } /* amber-500 */
+  .star-btn:focus{ outline:none; border-color:#6366f1; }
+</style>
+
+<!-- ========== EXTERNAL LIBS ========== -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+
+<!-- ========== APP SCRIPT ========== -->
+<script>
+/* ===================== Utilities ===================== */
+// Code de langue actuelle pour les URLs multilingues
+const CURRENT_LANG = '{{ LANGUAGE_CODE }}';
+
+function getCSRFToken() {
+  const name = "csrftoken";
+  for (let c of document.cookie.split(';')) {
+    c = c.trim();
+    if (c.startsWith(name + '=')) return decodeURIComponent(c.slice(name.length + 1));
+  }
+  return null;
+}
+function badgeForStatus(st) {
+  const s = (st||'').toLowerCase();
+  const base = "inline-flex items-center gap-2 text-xs px-2 py-1 rounded";
+  if (s === 'pending')     return `<span class="${base} bg-blue-100 text-blue-700"><i class="fas fa-hourglass-half"></i> Pending</span>`;
+  if (s === 'in_progress') return `<span class="${base} bg-amber-100 text-amber-700"><i class="fas fa-screwdriver-wrench"></i> In Progress</span>`;
+  if (s === 'completed')   return `<span class="${base} bg-emerald-100 text-emerald-700"><i class="fas fa-check-circle"></i> Completed</span>`;
+  if (s === 'submitted')   return `<span class="${base} bg-purple-100 text-purple-700"><i class="fas fa-clock"></i> Submitted</span>`;
+  return `<span class="${base} bg-gray-100 text-gray-700">${st||'—'}</span>`;
+}
+
+/* ===================== State ===================== */
+let allJobs = [];
+let ratingsChart = null;
+let leafletMap = null, leafletMarker = null;
+
+/* ===================== Jobs (API + Render) ===================== */
+async function loadJobs() {
+  try {
+  const res = await fetch(`{% url 'technician_job_list' %}`);
+    const data = await res.json();
+    // Inclure tous les jobs récupérés (maintenant filtrés côté serveur)
+    allJobs = data.jobs || [];
+    renderJobs(allJobs);
+    hydrateNextJob(allJobs);
+  } catch (e) { console.error("Error loading jobs:", e); }
+}
+function applyFilter() {
+  const selected = (document.getElementById("statusFilter").value || "All").toLowerCase();
+  const jobs = selected === "all" ? allJobs : allJobs.filter(j => (j.status||'').toLowerCase() === selected);
+  renderJobs(jobs);
+}
+function renderJobs(jobs) {
+  const tbody = document.getElementById("jobsTableBody");
+  const pendingEl = document.getElementById("pendingCount");
+  const progEl = document.getElementById("inProgressCount");
+  const compEl = document.getElementById("completedCount");
+
+  tbody.innerHTML = "";
+  let i=1, p=0, ip=0, c=0;
+
+  jobs.forEach(job => {
+    const st = (job.status||'').toLowerCase();
+    if (st === 'pending') p++;
+    else if (st === 'in_progress') ip++;
+    else if (st === 'completed' || st === 'submitted') c++;
+
+    const actions = [];
+    if (st === 'pending') {
+      actions.push(
+        `<button onclick="markInProgress(${job.activity_id})"
+                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-blue-600 text-white text-xs hover:bg-blue-700">
+           <i class='fas fa-play'></i> Start
+         </button>`
+      );
+    }
+    if (st === 'in_progress' || st === 'completed') {
+      actions.push(
+        `<button onclick="openInstallationReport(${job.activity_id})"
+                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-purple-600 text-white text-xs hover:bg-purple-700">
+           <i class='fas fa-clipboard-check'></i> Report
+         </button>`
+      );
+    }
+    // Rapport soumis mais encore éditable
+    if (st === 'submitted' && job.can_be_edited) {
+      actions.push(
+        `<button onclick="editInstallationReport(${job.activity_id})"
+                 class="inline-flex items-center gap-2 px-2 py-1.5 rounded bg-amber-600 text-white text-xs hover:bg-amber-700">
+           <i class='fas fa-edit'></i> Edit
+         </button>`
+      );
+      // Indicateur de temps restant
+      const hoursLeft = Math.max(0, Math.floor(job.time_left_hours || 0));
+      const minutesLeft = Math.max(0, Math.floor((job.time_left_hours || 0) % 1 * 60));
+      actions.push(
+        `<span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-red-100 text-red-700 text-xs">
+           <i class='fas fa-hourglass-half'></i> ${hoursLeft}h ${minutesLeft}m
+         </span>`
+      );
+    }
+
+    const mapBtn = `<button class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700"
+                      onclick="openLocationModal(${job.latitude||'null'}, ${job.longitude||'null'}, '${job.order_reference||''}')">
+                      <i class="fas fa-location-dot"></i> View Location
+                    </button>`;
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td class="px-4 py-3">${i++}</td>
+      <td class="px-4 py-3 font-medium">${job.order_reference || '—'}</td>
+      <td class="px-4 py-3">${job.customer_name || '—'}</td>
+      <td class="px-4 py-3">${job.customer_phone || '—'}</td>
+      <td class="px-4 py-3">${job.scheduled_date || job.scheduled_at || '—'}</td>
+      <td class="px-4 py-3">${badgeForStatus(job.status)}</td>
+      <td class="px-4 py-3">${mapBtn}</td>
+      <td class="px-4 py-3"><div class="flex flex-wrap gap-2 justify-center">${actions.join("")}</div></td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  pendingEl.textContent = p;
+  progEl.textContent = ip;
+  compEl.textContent = c;
+}
+function hydrateNextJob(jobs) {
+  if (!jobs.length) return;
+  const next = jobs.find(j => (j.status||'').toLowerCase() !== 'completed') || jobs[0];
+
+  document.getElementById('nextOrderRef').textContent = next.order_reference || '—';
+  document.getElementById('nextClient').textContent  = next.customer_name || '—';
+  document.getElementById('nextPhone').textContent   = next.customer_phone || '—';
+  document.getElementById('nextScheduled').textContent = next.scheduled_date || next.scheduled_at || '—';
+
+  const nextStatusEl = document.getElementById('nextStatus');
+  if (nextStatusEl) {
+    nextStatusEl.outerHTML = badgeForStatus(next.status);
+  }
+
+  const startBtn = document.getElementById('nextStartBtn');
+  const mapBtn   = document.getElementById('nextMapBtn');
+  const repBtn   = document.getElementById('nextReportBtn');
+
+  [startBtn, mapBtn, repBtn].forEach(b => b.classList.add('hidden'));
+  const st = (next.status||'').toLowerCase();
+  if (st === 'pending') startBtn.classList.remove('hidden');
+  if (st === 'in_progress' || st === 'completed') repBtn.classList.remove('hidden');
+  mapBtn.classList.remove('hidden');
+
+  startBtn.dataset.jobId = next.activity_id;
+  repBtn.dataset.jobId   = next.activity_id;
+  mapBtn.dataset.lat     = next.latitude || '';
+  mapBtn.dataset.lng     = next.longitude || '';
+  mapBtn.dataset.orderRef= next.order_reference || '';
+
+  repBtn.onclick = () => openInstallationReport(next.activity_id, next);
+}
+
+/* ===================== Job Actions ===================== */
+async function markInProgress(jobId) {
+  if (!confirm("Start this installation?")) return;
+  try {
+  const res = await fetch(`{% url 'job_start' %}`, {
+      method: "POST",
+      headers: {"Content-Type":"application/json","X-CSRFToken":getCSRFToken()},
+      body: JSON.stringify({ job_id: jobId })
+    });
+    const data = await res.json();
+    if (data.success) loadJobs(); else alert(data.message || "Failed to start.");
+  } catch { alert("Something went wrong."); }
+}
+
+/* ===================== Location Modal (Leaflet / OSM) ===================== */
+function openLocationModal(lat, lng, orderRef) {
+  const modal = document.getElementById('locationModal');
+  modal.classList.remove('hidden');
+  document.getElementById('locOrderRef').textContent = orderRef ? `Order: ${orderRef}` : '—';
+
+  const nLat = (typeof lat === 'string') ? parseFloat(lat) : lat;
+  const nLng = (typeof lng === 'string') ? parseFloat(lng) : lng;
+
+  const hasCoords = Number.isFinite(nLat) && Number.isFinite(nLng) &&
+                    !(Math.abs(nLat) < 1e-9 && Math.abs(nLng) < 1e-9);
+
+  const mapEl = document.getElementById('leafletMap');
+  const osmLink = document.getElementById('osmLink');
+  const gmapLink = document.getElementById('gmapLink');
+
+  if (hasCoords) {
+    if (mapEl.textContent && mapEl.textContent.includes('No GPS location')) mapEl.innerHTML = '';
+    const center = [nLat, nLng];
+
+    if (!leafletMap) {
+      leafletMap = L.map('leafletMap').setView(center, 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19, attribution: '&copy; OpenStreetMap'
+      }).addTo(leafletMap);
+      leafletMarker = L.marker(center).addTo(leafletMap);
+    } else {
+      leafletMap.setView(center, 15);
+      if (leafletMarker) leafletMarker.setLatLng(center);
+      else leafletMarker = L.marker(center).addTo(leafletMap);
+    }
+    setTimeout(() => leafletMap.invalidateSize(), 200);
+
+    osmLink.href = `https://www.openstreetmap.org/?mlat=${center[0]}&mlon=${center[1]}#map=16/${center[0]}/${center[1]}`;
+    gmapLink.href = `https://www.google.com/maps?q=${center[0]},${center[1]}&z=16`;
+    osmLink.classList.remove('pointer-events-none','opacity-60');
+    gmapLink.classList.remove('pointer-events-none','opacity-60');
+  } else {
+    mapEl.innerHTML = '<div class="w-full h-full grid place-items-center text-gray-500">No GPS location available</div>';
+    osmLink.removeAttribute('href'); gmapLink.removeAttribute('href');
+    osmLink.classList.add('pointer-events-none','opacity-60');
+    gmapLink.classList.add('pointer-events-none','opacity-60');
+  }
+}
+function closeLocationModal(){ document.getElementById('locationModal').classList.add('hidden'); }
+
+/* ===================== Survey Panel ===================== */
+async function loadSurveyPanel() {
+  try {
+    const res = await fetch('/tech/surveys/summary/');
+    if (!res.ok) throw new Error('No survey endpoint');
+    const s = await res.json();
+
+    const completed = Number(s.completed || 0);
+    const total     = Number(s.total || 0);
+    const rate = total ? Math.round((completed/total)*100) : 0;
+
+    document.getElementById('surveyRateBar').style.width = rate + '%';
+    document.getElementById('surveyRateText').textContent = `${rate}% (${completed}/${total})`;
+
+    document.getElementById('surveyAvg').textContent = (s.avg_rating != null) ? Number(s.avg_rating).toFixed(1) : '—';
+    document.getElementById('surveyNps').textContent = (s.nps != null) ? Math.round(s.nps) : '—';
+
+    const buckets = s.ratings_breakdown || { "1":0,"2":0,"3":0,"4":0,"5":0 };
+    const labels = ['1','2','3','4','5'];
+    const values = labels.map(k => buckets[k] || 0);
+
+    const ctx = document.getElementById('surveyRatingsChart').getContext('2d');
+    if (ratingsChart) ratingsChart.destroy();
+    ratingsChart = new Chart(ctx, {
+      type: 'bar',
+      data: { labels, datasets: [{ label: 'Ratings count', data: values }]},
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision:0 } } } }
+    });
+  } catch (e) {
+    document.getElementById('surveyFallback').classList.remove('hidden');
+  }
+}
+
+/* ===================== Wizard (Step-by-step) ===================== */
+const stepIds = [
+  'tab-job','tab-equipment','tab-mount','tab-safety','tab-cabling',
+  'tab-power','tab-tests','tab-photos','tab-ack'
+];
+const stepTotal = stepIds.length;
+let currentStep = 0;
+
+function renderWizardSteps(){
+  const wrap = document.getElementById('wizardSteps');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  stepIds.forEach((id, i) => {
+    const lbl = [
+      'Job & Site','Equipment','Mount','Safety','Cabling','Power','Tests','Photos','Sign-off'
+    ][i] || `Step ${i+1}`;
+    const div = document.createElement('div');
+    div.className = 'wizard-step';
+    div.dataset.step = i;
+    div.innerHTML = `<span class="num">${i+1}</span><span class="label text-sm text-gray-700">${lbl}</span>`;
+    div.addEventListener('click', () => setActiveStep(i));
+    wrap.appendChild(div);
+  });
+}
+function updateWizardUI(){
+  // panes
+  document.querySelectorAll('.wizard-pane').forEach(p => p.classList.add('hidden'));
+  const activePane = document.getElementById(stepIds[currentStep]);
+  if (activePane) activePane.classList.remove('hidden');
+
+  // steps
+  document.querySelectorAll('.wizard-step').forEach((el, i) => {
+    el.classList.toggle('active', i === currentStep);
+    el.classList.toggle('done', i < currentStep && hasAnyData(stepIds[i]));
+  });
+
+  // progress bar
+  const progress = document.getElementById('wizardProgress');
+  if (progress) {
+    const pct = Math.round((currentStep)/(stepTotal-1) * 100);
+    progress.style.width = pct + '%';
+  }
+
+  // footer buttons
+  document.getElementById('btnPrev').classList.toggle('opacity-50', currentStep === 0);
+  document.getElementById('btnPrev').disabled = (currentStep === 0);
+  const isLast = (currentStep === stepTotal-1);
+  document.getElementById('btnNext').classList.toggle('hidden', isLast);
+  document.getElementById('btnSubmit').classList.toggle('hidden', !isLast);
+
+  // step counters
+  const now = document.getElementById('wizStepNow');
+  const tot = document.getElementById('wizStepTotal');
+  if (now) now.textContent = currentStep + 1;
+  if (tot) tot.textContent = stepTotal;
+}
+function setActiveStep(idx){
+  currentStep = Math.max(0, Math.min(idx, stepTotal-1));
+  updateWizardUI();
+
+  // Si on est en mode édition et qu'on a des données stockées, les appliquer
+  if (window.editFormData) {
+    setTimeout(() => {
+      populateCurrentStep();
+
+      // Si on est à l'étape Photos (étape 7), recharger les photos existantes
+      if (currentStep === 7 && window.editPhotosData && window.editPhotosData.length > 0) {
+        loadExistingPhotos(window.editPhotosData);
+      }
+    }, 50);
+  }
+
+  if (currentStep === 8) {
+    console.log('[Signature] Entering Sign-off step, preparing canvas');
+    requestAnimationFrame(() => {
+      ensureSignatureCanvasReady();
+    });
+  }
+
+  // accessibility / focus
+  const firstInput = document.getElementById(stepIds[currentStep])?.querySelector('input,select,textarea,button');
+  if (firstInput) firstInput.focus({ preventScroll:true });
+}
+// Fonction de validation des champs requis pour une étape
+function validateStep(stepNumber) {
+  const requiredFields = REQUIRED_FIELDS[stepNumber] || [];
+  const stepFields = FIELD_MAPPING[stepNumber] || {};
+  const errors = [];
+
+  // Validation spéciale pour l'étape Photos (étape 7)
+  if (stepNumber === 7) {
+    const beforePhotos = document.querySelectorAll('#previewBefore .aspect-square').length;
+    const afterPhotos = document.querySelectorAll('#previewAfter .aspect-square').length;
+    const evidencePhotos = document.querySelectorAll('#previewEvidence .aspect-square').length;
+
+    if (beforePhotos === 0) {
+      errors.push('Au moins une photo "Before" est requise');
+    }
+    if (afterPhotos === 0) {
+      errors.push('Au moins une photo "After" est requise');
+    }
+    if (evidencePhotos === 0) {
+      errors.push('Au moins une photo "Evidence" est requise');
+    }
+
+    return { isValid: errors.length === 0, errors };
+  }
+
+  // Validation des champs requis
+  for (const fieldName of requiredFields) {
+    const fieldConfig = stepFields[fieldName];
+    if (!fieldConfig) continue;
+
+    const element = document.getElementById(fieldConfig.id);
+    if (!element) {
+      errors.push(`Champ ${fieldName} introuvable`);
+      continue;
+    }
+
+    let value = '';
+    if (fieldConfig.type === 'checkbox') {
+      value = element.checked;
+    } else {
+      value = (element.value || '').toString().trim();
+    }
+
+    // Vérifier si le champ est vide
+    if (fieldConfig.type === 'checkbox' && !value) {
+      errors.push(`${getFieldDisplayName(fieldName)} est requis`);
+    } else if (fieldConfig.type !== 'checkbox' && (!value || value === '')) {
+      errors.push(`${getFieldDisplayName(fieldName)} est requis`);
+    }
+
+    // Validations spécifiques par type
+    if (value && fieldConfig.type === 'number') {
+      const numValue = parseFloat(value);
+      if (isNaN(numValue)) {
+        errors.push(`${getFieldDisplayName(fieldName)} doit être un nombre valide`);
+      }
+    }
+
+    if (value && fieldConfig.type === 'text' && fieldName === 'site_address' && value.length < 10) {
+      errors.push('L\'adresse du site doit contenir au moins 10 caractères');
+    }
+  }
+
+  return { isValid: errors.length === 0, errors };
+}
+
+// Fonction pour obtenir un nom d'affichage convivial pour les champs
+function getFieldDisplayName(fieldName) {
+  const displayNames = {
+    'on_site_arrival': 'Heure d\'arrivée sur site',
+    'site_address': 'Adresse du site',
+    'access_level': 'Niveau d\'accès',
+    'power_availability': 'Disponibilité électrique',
+    'dish_serial_number': 'Numéro de série de l\'antenne',
+    'router_serial_number': 'Numéro de série du routeur',
+    'power_source': 'Source d\'alimentation',
+    'wifi_ssid': 'SSID Wi-Fi',
+    'mount_type': 'Type de montage',
+    'grounding': 'Mise à la terre',
+    'weatherproofing': 'Étanchéité',
+    'cable_entry_point': 'Point d\'entrée du câble',
+    'cable_protection': 'Protection du câble',
+    'termination_type': 'Type de terminaison',
+    'power_stability_test': 'Test de stabilité électrique',
+    'speed_download_mbps': 'Vitesse de téléchargement',
+    'speed_upload_mbps': 'Vitesse d\'upload',
+    'latency_ms': 'Latence',
+    'final_link_status': 'Statut final de la liaison',
+    'customer_full_name': 'Nom complet du client',
+    'customer_acceptance': 'Acceptation du client'
+  };
+  return displayNames[fieldName] || fieldName;
+}
+
+// Fonction pour afficher les erreurs de validation
+function showValidationErrors(errors) {
+  // Supprimer les anciens messages d'erreur
+  const existingErrors = document.querySelectorAll('.validation-error');
+  existingErrors.forEach(error => error.remove());
+
+  if (errors.length === 0) return;
+
+  // Créer un conteneur d'erreurs
+  const errorContainer = document.createElement('div');
+  errorContainer.className = 'validation-error fixed top-4 right-4 bg-red-500 text-white p-4 rounded-lg shadow-lg z-[90] max-w-md';
+  errorContainer.innerHTML = `
+    <div class="flex items-start gap-3">
+      <i class="fas fa-exclamation-triangle text-xl mt-0.5"></i>
+      <div class="flex-1">
+        <h4 class="font-semibold mb-2">Erreurs de validation :</h4>
+        <ul class="list-disc list-inside space-y-1 text-sm">
+          ${errors.map(error => `<li>${error}</li>`).join('')}
+        </ul>
+      </div>
+      <button onclick="this.parentElement.parentElement.remove()" class="text-white hover:text-gray-200 ml-2">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(errorContainer);
+
+  // Auto-suppression après 5 secondes
+  setTimeout(() => {
+    if (errorContainer.parentElement) {
+      errorContainer.remove();
+    }
+  }, 5000);
+}
+
+// Fonction pour mettre à jour l'apparence d'un champ selon sa validité
+function updateFieldValidation(fieldId, isValid, errorMessage = '') {
+  const element = document.getElementById(fieldId);
+  if (!element) return;
+
+  // Supprimer les classes existantes
+  element.classList.remove('field-invalid', 'field-valid');
+
+  // Supprimer les anciens messages de validation
+  const existingMessage = element.parentElement.querySelector('.validation-message');
+  if (existingMessage) {
+    existingMessage.remove();
+  }
+
+  if (isValid) {
+    element.classList.add('field-valid');
+  } else {
+    element.classList.add('field-invalid');
+
+    // Ajouter un message d'erreur si fourni
+    if (errorMessage) {
+      const messageDiv = document.createElement('div');
+      messageDiv.className = 'validation-message error';
+      messageDiv.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i>${errorMessage}`;
+      element.parentElement.appendChild(messageDiv);
+    }
+  }
+}
+
+// Fonction pour valider tous les champs d'une étape et mettre à jour l'affichage
+function validateAndUpdateStep(stepNumber) {
+  const validation = validateStep(stepNumber);
+  const requiredFields = REQUIRED_FIELDS[stepNumber] || [];
+  const stepFields = FIELD_MAPPING[stepNumber] || {};
+
+  // Mettre à jour l'apparence de chaque champ requis
+  for (const fieldName of requiredFields) {
+    const fieldConfig = stepFields[fieldName];
+    if (!fieldConfig) continue;
+
+    const element = document.getElementById(fieldConfig.id);
+    if (!element) continue;
+
+    let value = '';
+    if (fieldConfig.type === 'checkbox') {
+      value = element.checked;
+    } else {
+      value = (element.value || '').toString().trim();
+    }
+
+    const isValid = fieldConfig.type === 'checkbox' ? value : (value && value !== '');
+    updateFieldValidation(fieldConfig.id, isValid);
+  }
+
+  // Mettre à jour l'indicateur de l'étape dans le stepper
+  updateStepIndicator(stepNumber, validation.isValid);
+
+  return validation;
+}
+
+// Fonction pour mettre à jour l'indicateur de validation dans le stepper
+function updateStepIndicator(stepNumber, isValid) {
+  const stepElement = document.querySelector(`[data-step="${stepNumber}"]`);
+  if (!stepElement) return;
+
+  // Supprimer les anciens indicateurs
+  const existingIndicator = stepElement.querySelector('.step-validation-indicator');
+  if (existingIndicator) {
+    existingIndicator.remove();
+  }
+
+  // Ajouter le nouvel indicateur
+  const indicator = document.createElement('div');
+  indicator.className = `step-validation-indicator ${isValid ? 'valid' : 'invalid'}`;
+  indicator.innerHTML = isValid ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+  stepElement.style.position = 'relative';
+  stepElement.appendChild(indicator);
+}
+
+// Fonction pour valider en temps réel lors de la saisie
+function setupRealTimeValidation() {
+  // Ajouter des écouteurs d'événements sur tous les champs requis
+  for (let stepNumber = 0; stepNumber <= 8; stepNumber++) {
+    const requiredFields = REQUIRED_FIELDS[stepNumber] || [];
+    const stepFields = FIELD_MAPPING[stepNumber] || {};
+
+    for (const fieldName of requiredFields) {
+      const fieldConfig = stepFields[fieldName];
+      if (!fieldConfig) continue;
+
+      const element = document.getElementById(fieldConfig.id);
+      if (!element) continue;
+
+      // Ajouter des écouteurs selon le type d'élément
+      if (fieldConfig.type === 'checkbox') {
+        element.addEventListener('change', () => {
+          validateAndUpdateStep(stepNumber);
+        });
+      } else {
+        element.addEventListener('input', () => {
+          validateAndUpdateStep(stepNumber);
+        });
+        element.addEventListener('blur', () => {
+          validateAndUpdateStep(stepNumber);
+        });
+      }
+    }
+  }
+}
+
+function nextStep(){
+  // Valider l'étape actuelle avant de passer à la suivante
+  const validation = validateStep(currentStep);
+
+  if (!validation.isValid) {
+    showValidationErrors(validation.errors);
+    // Mettre à jour l'affichage des champs invalides
+    validateAndUpdateStep(currentStep);
+    return; // Empêcher le passage à l'étape suivante
+  }
+
+  // Si la validation réussit, passer à l'étape suivante
+  setActiveStep(currentStep + 1);
+}
+function prevStep(){ setActiveStep(currentStep - 1); }
+window.nextStep = nextStep;
+window.prevStep = prevStep;
+
+function hasAnyData(paneId){
+  const pane = document.getElementById(paneId);
+  if (!pane) return false;
+  return Array.from(pane.querySelectorAll('input, select, textarea')).some(el => {
+    if (el.type === 'checkbox' || el.type === 'radio') return el.checked;
+    return (el.value || '').toString().trim().length > 0;
+  });
+}
+
+/* ===================== Modal UX & Focus Trap ===================== */
+(function initBackdropClose(){
+  const modal = document.getElementById('installationReportModal');
+  const backdrop = document.getElementById('installationReportBackdrop');
+  if (!modal || !backdrop) return;
+  // backdrop.addEventListener('click', () => closeInstallationReport()); // Désactivé pour empêcher la fermeture accidentelle
+})();
+let _focusTrapHandlers = null;
+function enableFocusTrap(container){
+  const focusable = () => Array.from(container.querySelectorAll('a,button,select,textarea,input,[tabindex]:not([tabindex="-1"])'))
+                               .filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
+  const keydown = (e) => {
+    if (e.key !== 'Tab') return;
+    const list = focusable();
+    if (!list.length) return;
+    const first = list[0], last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) { last.focus(); e.preventDefault(); }
+    else if (!e.shiftKey && document.activeElement === last) { first.focus(); e.preventDefault(); }
+  };
+  container.addEventListener('keydown', keydown);
+  _focusTrapHandlers = { keydown };
+}
+function disableFocusTrap(container){
+  if (_focusTrapHandlers) container.removeEventListener('keydown', _focusTrapHandlers.keydown);
+  _focusTrapHandlers = null;
+}
+
+/* ===================== Star rating UI ===================== */
+function setRating(value){
+  const hidden = document.getElementById('custRating');
+  const group = document.getElementById('ratingStars');
+  if (!hidden || !group) return;
+  hidden.value = value;
+  group.querySelectorAll('.star-btn').forEach(btn => {
+    const v = Number(btn.dataset.star);
+    btn.classList.toggle('active', v <= value);
+    btn.setAttribute('aria-checked', v === value ? 'true' : 'false');
+    const icon = btn.querySelector('i');
+    if (icon) icon.className = (v <= value) ? 'fas fa-star' : 'far fa-star';
+  });
+}
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.star-btn');
+  if (!btn) return;
+  const v = Number(btn.dataset.star || 0);
+  if (v) setRating(v);
+});
+document.addEventListener('keydown', (e) => {
+  if (!e.target.closest('#ratingStars')) return;
+  const hidden = document.getElementById('custRating');
+  let v = Number(hidden.value || 0);
+  if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { v = Math.min(5, v+1); setRating(v); e.preventDefault(); }
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { v = Math.max(1, v-1); setRating(v); e.preventDefault(); }
+});
+
+/* ===================== Signature pad ===================== */
+let sigCanvas, sigCtx, drawing=false, lastPt=null;
+let signatureSized = false;
+let signatureLoaded = false;
+let existingSignatureData = null;
+function _sizeSignatureCanvas() {
+  sigCanvas = document.getElementById('sigCanvas');
+  if (!sigCanvas) return;
+  sigCtx = sigCanvas.getContext('2d');
+  const ratio = Math.max(window.devicePixelRatio || 1, 1);
+  const rect = sigCanvas.getBoundingClientRect();
+  const cw = Math.max(1, rect.width);
+  const ch = Math.max(1, rect.height || 200);
+  sigCanvas.width = cw * ratio;
+  sigCanvas.height = ch * ratio;
+  sigCtx.setTransform(1,0,0,1,0,0);
+  sigCtx.scale(ratio, ratio);
+  sigCtx.lineWidth = 2;
+  sigCtx.lineCap = 'round';
+  sigCtx.strokeStyle = '#111827';
+  sigCtx.clearRect(0,0,cw,ch);
+  console.log('[Signature] Canvas sized', { width: cw, height: ch, ratio });
+}
+function _bindSignatureEvents() {
+  const c = sigCanvas; if (!c || c.dataset.bound === 'true') return;
+  // Ensure drawing works on touch devices that might block passive listeners
+  const opts = { passive: false };
+  const pos = (e) => {
+    const r = c.getBoundingClientRect();
+    if (e.touches && e.touches.length) return { x: e.touches[0].clientX - r.left, y: e.touches[0].clientY - r.top };
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  const start = (e) => {
+    drawing = true;
+    lastPt = pos(e);
+    existingSignatureData = null;
+    signatureLoaded = false;
+    if (c) delete c.dataset.loaded;
+    const preview = document.getElementById('sigSavedImage');
+    if (preview) {
+      preview.src = '';
+      preview.classList.add('hidden');
+    }
+    e.preventDefault();
+  };
+  const move  = (e) => {
+    if(!drawing) return;
+    const p = pos(e);
+    sigCtx.beginPath();
+    sigCtx.moveTo(lastPt.x, lastPt.y);
+    sigCtx.lineTo(p.x, p.y);
+    sigCtx.stroke();
+    lastPt = p;
+    e.preventDefault();
+  };
+  const end = (e) => { drawing = false; e.preventDefault(); };
+
+  c.addEventListener('mousedown', start);
+  c.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  c.addEventListener('touchstart', start, opts);
+  c.addEventListener('touchmove', move, opts);
+  c.addEventListener('touchend', end, opts);
+  c.addEventListener('touchcancel', end, opts);
+  c.dataset.bound = 'true';
+  console.log('[Signature] Events bound');
+}
+function clearSignature(){
+  if (!sigCanvas || !sigCtx) return;
+  const rect = sigCanvas.getBoundingClientRect();
+  sigCtx.clearRect(0,0,rect.width,rect.height);
+  existingSignatureData = null;
+  signatureLoaded = false;
+  if (sigCanvas) delete sigCanvas.dataset.loaded;
+  const preview = document.getElementById('sigSavedImage');
+  if (preview) {
+    preview.src = '';
+    preview.classList.add('hidden');
+  }
+  console.log('[Signature] Canvas cleared by user');
+}
+window.clearSignature = clearSignature;
+
+// Draw existing signature image into the canvas (dataUrl = 'data:image/png;base64,...')
+function loadExistingSignature(dataUrl){
+  if (!dataUrl) return;
+  existingSignatureData = dataUrl;
+  console.log('[Signature] Loading existing signature', { length: dataUrl.length });
+  _sizeSignatureCanvas();
+  if (!sigCanvas || !sigCtx) return;
+  signatureSized = true;
+  const img = new Image();
+  img.onload = function(){
+    const rect = sigCanvas.getBoundingClientRect();
+    try {
+      sigCtx.clearRect(0,0,rect.width,rect.height);
+      sigCtx.drawImage(img, 0, 0, rect.width, rect.height);
+      signatureLoaded = true;
+      if (sigCanvas) sigCanvas.dataset.loaded = 'true';
+      const preview = document.getElementById('sigSavedImage');
+      if (preview) {
+        preview.src = dataUrl;
+        preview.classList.remove('hidden');
+      }
+      console.log('[Signature] Existing signature rendered');
+    } catch (_) {}
+  };
+  img.src = dataUrl;
+}
+
+// Recompute canvas size on viewport changes
+window.addEventListener('resize', () => {
+  signatureSized = false;
+  signatureLoaded = false;
+  ensureSignatureCanvasReady();
+});
+window.addEventListener('orientationchange', () => {
+  signatureSized = false;
+  signatureLoaded = false;
+  ensureSignatureCanvasReady();
+});
+
+function ensureSignatureCanvasReady() {
+  console.log('[Signature] ensureSignatureCanvasReady called', { currentStep, signatureSized, signatureLoaded, hasData: !!existingSignatureData });
+  const canvas = document.getElementById('sigCanvas');
+  if (!canvas) return;
+  const signoffPane = document.getElementById('tab-ack');
+  if (signoffPane && signoffPane.classList.contains('hidden')) {
+    console.log('[Signature] Sign-off pane hidden, deferring');
+    if (currentStep === 8) {
+      requestAnimationFrame(() => ensureSignatureCanvasReady());
+    }
+    return;
+  }
+
+  const init = () => {
+    console.log('[Signature] Initializing canvas in Sign-off');
+    _bindSignatureEvents();
+    if (existingSignatureData && !signatureLoaded) {
+      loadExistingSignature(existingSignatureData);
+    } else {
+      const preview = document.getElementById('sigSavedImage');
+      if (preview && !existingSignatureData) {
+        preview.src = '';
+        preview.classList.add('hidden');
+      }
+      console.log('[Signature] No existing signature to render or already loaded');
+    }
+  };
+
+  if (!signatureSized) {
+    console.log('[Signature] Canvas not sized yet, scheduling resize');
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        signatureSized = true;
+        _sizeSignatureCanvas();
+        init();
+      });
+    });
+  } else {
+    console.log('[Signature] Canvas already sized, running init directly');
+    init();
+  }
+}
+
+/* ===================== Open / Close Report ===================== */
+function setSignoffNow(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const local = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  const el = document.getElementById('custSignoffAt');
+  if (el) el.value = local;
+}
+document.addEventListener('change', (e) => {
+  if (e.target && e.target.id === 'custAccept') {
+    if (e.target.checked) setSignoffNow();
+    else {
+      const el = document.getElementById('custSignoffAt');
+      if (el) el.value = '';
+    }
+  }
+});
+
+function openInstallationReport(jobId, jobObj=null) {
+  const modal = document.getElementById('installationReportModal');
+  modal.classList.remove('hidden');
+  document.getElementById('reportJobId').value = jobId;
+
+  // Reset cached edit data before loading a new report
+  window.editFormData = null;
+  window.editPhotosData = [];
+  signatureSized = false;
+  signatureLoaded = false;
+  existingSignatureData = null;
+  const sigCanvasEl = document.getElementById('sigCanvas');
+  if (sigCanvasEl) delete sigCanvasEl.dataset.loaded;
+  const sigPreview = document.getElementById('sigSavedImage');
+  if (sigPreview) {
+    sigPreview.src = '';
+    sigPreview.classList.add('hidden');
+  }
+  console.log('[Signature] Wizard opened (create/edit), signature state reset');
+
+  // Build steps once
+  renderWizardSteps();
+
+  // Reset wizard to step 0
+  currentStep = 0;
+  updateWizardUI();
+
+  // Reset previews & inputs
+  clearWizardInputs();
+
+  // Initialiser la validation en temps réel
+  setTimeout(() => {
+    setupRealTimeValidation();
+    // Valider toutes les étapes pour afficher l'état initial
+    for (let step = 0; step <= 8; step++) {
+      validateAndUpdateStep(step);
+    }
+  }, 100);
+  ['previewBefore','previewAfter','previewEvidence'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; });
+  ['repPhotosBefore','repPhotosAfter','repPhotosEvidence'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+
+  // Reset sign-off & rating
+  const accept = document.getElementById('custAccept'); if (accept) accept.checked = false;
+  const signAt = document.getElementById('custSignoffAt'); if (signAt) signAt.value = '';
+  const comments = document.getElementById('custComments'); if (comments) comments.value = '';
+  setRating(0);
+
+  // Populate known data
+  if (jobObj) {
+    document.getElementById('reportOrderRef').textContent = `Order: ${jobObj.order_reference || '—'}`;
+    document.getElementById('repName').value    = jobObj.customer_name || '';
+    document.getElementById('repPhone').value     = jobObj.customer_phone || '';
+    document.getElementById('repScheduled').value = jobObj.scheduled_date || jobObj.scheduled_at || '';
+    document.getElementById('repLat').value       = jobObj.latitude || '';
+    document.getElementById('repLng').value       = jobObj.longitude || '';
+  }
+
+  // Defer sizing until after modal paint to avoid 0x0 rect in Chromium
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    _sizeSignatureCanvas();
+    _bindSignatureEvents();
+  }));
+
+  // Always pull the latest saved data (draft or otherwise) for this job
+  loadExistingReportData(jobId);
+
+  enableFocusTrap(modal);
+
+  // Click on step headers to jump
+  document.querySelectorAll('.wizard-step').forEach(el => {
+    el.addEventListener('click', () => setActiveStep(Number(el.dataset.step)));
+  });
+
+  // Capturer l'état initial après que tout soit chargé
+  setTimeout(() => {
+    captureInitialFormState();
+    setupModificationDetection();
+  }, 200);
+}
+
+function clearWizardInputs() {
+  stepIds.forEach(stepId => {
+    const pane = document.getElementById(stepId);
+    if (!pane) return;
+    const inputs = pane.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+      if (input.type === 'checkbox' || input.type === 'radio') {
+        input.checked = false;
+      } else if (input.type === 'file') {
+        input.value = '';
+      } else {
+        input.value = '';
+      }
+    });
+  });
+}
+
+// Charger les photos existantes dans le wizard
+function loadExistingPhotos(photos) {
+  photos.forEach(photo => {
+    // Déterminer le type de photo basé sur l'URL ou les données
+    let category = 'evidence'; // Par défaut
+
+    // Si on a une indication du type dans les données
+    if (photo.category) {
+      category = photo.category;
+    } else {
+      // Sinon, essayer de deviner basé sur l'ordre ou d'autres indices
+      // Pour l'instant, on met tout en "evidence"
+      category = 'evidence';
+    }
+
+    // Créer l'élément d'image pour l'aperçu
+    const imgElement = document.createElement('img');
+    imgElement.src = photo.url;
+    imgElement.className = 'photo-preview';
+    imgElement.style.cssText = 'max-width: 150px; max-height: 150px; margin: 5px; border: 1px solid #ddd; border-radius: 4px;';
+
+    // Ajouter l'image à l'aperçu correspondant
+    const previewId = `preview${category.charAt(0).toUpperCase() + category.slice(1)}`;
+    const previewContainer = document.getElementById(previewId);
+
+    if (previewContainer) {
+      previewContainer.appendChild(imgElement);
+    }
+  });
+}
+
+// Variables globales pour tracker les modifications
+let initialFormState = {};
+let isFormSaved = false;
+
+// Fonction pour capturer l'état initial du formulaire
+function captureInitialFormState() {
+  const modal = document.getElementById('installationReportModal');
+  if (!modal) return;
+
+  initialFormState = {};
+
+  // Capturer l'état de tous les champs
+  const inputs = modal.querySelectorAll('input:not([readonly]), select, textarea');
+  inputs.forEach(input => {
+    if (input.type === 'checkbox' || input.type === 'radio') {
+      initialFormState[input.id] = input.checked;
+    } else if (input.type === 'file') {
+      initialFormState[input.id] = 0; // Nombre de fichiers initialement
+    } else {
+      initialFormState[input.id] = input.value;
+    }
+  });
+
+  isFormSaved = true; // Marquer comme sauvegardé au départ
+  console.log('État initial capturé:', Object.keys(initialFormState).length, 'champs');
+}
+
+// Fonction pour détecter les modifications réelles depuis le dernier état sauvegardé
+function hasUnsavedChanges() {
+  if (isFormSaved) {
+    return false; // Le formulaire vient d'être sauvegardé
+  }
+
+  const modal = document.getElementById('installationReportModal');
+  if (!modal) return false;
+
+  // Vérifier les champs par rapport à l'état initial
+  const inputs = modal.querySelectorAll('input:not([readonly]), select, textarea');
+  for (const input of inputs) {
+    const initialValue = initialFormState[input.id];
+    let currentValue;
+
+    if (input.type === 'checkbox' || input.type === 'radio') {
+      currentValue = input.checked;
+    } else if (input.type === 'file') {
+      currentValue = input.files ? input.files.length : 0;
+    } else {
+      currentValue = input.value;
+    }
+
+    if (currentValue !== initialValue) {
+      console.log(`Modification détectée sur ${input.id}:`, initialValue, '->', currentValue);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+// Fonction pour marquer le formulaire comme sauvegardé
+function markFormAsSaved() {
+  isFormSaved = true;
+  // Recapturer l'état actuel comme nouvel état initial
+  captureInitialFormState();
+}
+
+// Fonction pour marquer le formulaire comme modifié
+function markFormAsModified() {
+  isFormSaved = false;
+}
+
+// Ajouter des listeners pour détecter les modifications
+function setupModificationDetection() {
+  const modal = document.getElementById('installationReportModal');
+  if (!modal) return;
+
+  // Écouter tous les changements sur les champs
+  modal.addEventListener('input', markFormAsModified);
+  modal.addEventListener('change', markFormAsModified);
+
+  console.log('Détection des modifications activée');
+}
+
+function closeInstallationReport() {
+  const modal = document.getElementById('installationReportModal');
+  if (modal.classList.contains('hidden')) return;
+
+  // Vérifier s'il y a des données non sauvegardées
+  if (hasUnsavedChanges()) {
+    if (!confirm('Vous avez des modifications non sauvegardées. Êtes-vous sûr de vouloir fermer sans sauvegarder ?')) {
+      return; // Annuler la fermeture
+    }
+  }
+
+  // Nettoyer le mode édition
+  delete modal.dataset.editMode;
+
+  // Restaurer le titre original
+  const modalTitle = modal.querySelector('h2');
+  if (modalTitle) {
+    modalTitle.innerHTML = '<i class="fas fa-clipboard-check text-purple-500 mr-2"></i>Installation Report';
+  }
+
+  // Restaurer le bouton de soumission
+  const submitButton = modal.querySelector('#submitReportBtn');
+  if (submitButton) {
+    submitButton.innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Submit Report';
+    submitButton.className = submitButton.className.replace('bg-amber-600', 'bg-emerald-600').replace('hover:bg-amber-700', 'hover:bg-emerald-700');
+  }
+
+  disableFocusTrap(modal);
+  modal.classList.add('hidden');
+}
+window.openInstallationReport = openInstallationReport;
+window.closeInstallationReport = closeInstallationReport;
+
+/* ===================== Edit Installation Report ===================== */
+function editInstallationReport(jobId) {
+  // Réutiliser l'initialisation complète du wizard
+  openInstallationReport(jobId);
+
+  const modal = document.getElementById('installationReportModal');
+  if (!modal) return;
+
+  // Marquer comme mode édition
+  modal.dataset.editMode = 'true';
+
+  // Mettre à jour le titre
+  const modalTitle = modal.querySelector('h2');
+  if (modalTitle) {
+    modalTitle.innerHTML = '<i class="fas fa-edit text-amber-500 mr-2"></i>Edit Installation Report';
+  }
+
+  // Adapter le bouton de soumission
+  const submitButton = modal.querySelector('#submitReportBtn');
+  if (submitButton) {
+    submitButton.innerHTML = '<i class="fas fa-save mr-2"></i>Save Changes';
+    submitButton.className = submitButton.className
+      .replace('bg-emerald-600', 'bg-amber-600')
+      .replace('hover:bg-emerald-700', 'hover:bg-amber-700');
+  }
+}
+
+async function loadExistingReportData(jobId) {
+  try {
+    console.log('Loading existing report data for job:', jobId);
+
+    // Afficher un indicateur de chargement
+    const modal = document.getElementById('installationReportModal');
+    const loadingIndicator = document.createElement('div');
+    loadingIndicator.id = 'loadingIndicator';
+    loadingIndicator.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+    loadingIndicator.innerHTML = `
+      <div class="bg-white rounded-lg p-6 flex items-center space-x-3">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+        <span>Loading report data...</span>
+      </div>
+    `;
+    document.body.appendChild(loadingIndicator);
+
+    // Récupérer les données via l'API
+    const response = await fetch(`/tech/api/installation-report/${jobId}/data/`, {
+      method: 'GET',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const result = await response.json();
+
+    // Supprimer l'indicateur de chargement
+    document.body.removeChild(loadingIndicator);
+
+    console.log('API Response:', result);
+
+    if (!result.success) {
+      alert(`Error loading report data: ${result.error}`);
+      return;
+    }
+
+    const data = result.data;
+    console.log('Received data:', data);
+    console.log('Data keys:', Object.keys(data));
+
+    // Stocker les données globalement pour les appliquer quand chaque étape devient active
+    window.editFormData = data;
+
+    // Stocker les photos séparément pour les recharger à l'étape Photos
+    window.editPhotosData = result.photos || [];
+    existingSignatureData = data.customer_signature || null;
+    signatureLoaded = false;
+    const immediatePreview = document.getElementById('sigSavedImage');
+    if (immediatePreview && existingSignatureData) {
+      immediatePreview.src = existingSignatureData;
+      immediatePreview.classList.remove('hidden');
+      console.log('[Signature] Preview updated immediately after data load');
+    } else if (immediatePreview) {
+      immediatePreview.src = '';
+      immediatePreview.classList.add('hidden');
+    }
+    console.log('[Signature] Data loaded from API', { hasSignature: !!existingSignatureData, currentStep });
+    if (currentStep === 8) {
+      requestAnimationFrame(() => {
+        ensureSignatureCanvasReady();
+      });
+    }
+
+    // Appliquer les données à l'ensemble des étapes puis à l'étape courante
+    populateAllSteps();
+    populateCurrentStep();
+
+    // Charger les photos existantes
+    if (result.photos && result.photos.length > 0) {
+      console.log('Loading photos from API result:', result.photos);
+      loadExistingPhotos(result.photos);
+    } else {
+      console.log('No photos found in API result');
+    }
+
+    // Après chargement, considérer ces données comme l'état sauvegardé actuel
+    markFormAsSaved();
+
+    // Afficher les informations d'édition
+    const editInfo = result.edit_info;
+    if (editInfo) {
+      console.log(`Loaded version ${editInfo.version_number}, ${editInfo.time_left_hours}h remaining`);
+
+      // Optionnel: afficher un message d'info dans la modal
+      const modalTitle = modal.querySelector('h2');
+      if (modalTitle && editInfo.version_number > 1) {
+        modalTitle.innerHTML = `<i class="fas fa-edit text-amber-500 mr-2"></i>Edit Installation Report (v${editInfo.version_number}) - ${editInfo.time_left_hours}h left`;
+      }
+    }
+
+  } catch (error) {
+    // Supprimer l'indicateur de chargement en cas d'erreur
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    if (loadingIndicator) {
+      document.body.removeChild(loadingIndicator);
+    }
+
+    console.error('Error loading report data:', error);
+    alert('Failed to load existing report data. Please try again.');
+  }
+}
+
+/* ===================== Field Mapping per Step ===================== */
+// Configuration des champs requis par étape
+const REQUIRED_FIELDS = {
+  0: ['on_site_arrival', 'site_address', 'access_level', 'power_availability'], // Job & Site
+  1: ['dish_serial_number', 'router_serial_number', 'power_source', 'wifi_ssid'], // Equipment
+  2: ['mount_type', 'grounding', 'weatherproofing'], // Mount & Alignment
+  3: [], // Environment & Safety - pas de champs obligatoires
+  4: ['cable_entry_point', 'cable_protection', 'termination_type'], // Cabling & Routing
+  5: ['power_stability_test'], // Power & Backup
+  6: ['speed_download_mbps', 'speed_upload_mbps', 'latency_ms', 'final_link_status'], // Connectivity & Tests
+  7: [], // Photos - validation spéciale
+  8: ['customer_full_name', 'customer_acceptance'] // Customer Sign-off
+};
+
+const FIELD_MAPPING = {
+  // Step 0: Job & Site
+  0: {
+    // Informations de base (readonly)
+    'customer_name': { id: 'repName', type: 'text', readonly: true },
+    'customer_phone': { id: 'repPhone', type: 'text', readonly: true },
+    'scheduled_date': { id: 'repScheduled', type: 'text', readonly: true },
+    'order_reference': { id: 'reportOrderRef', type: 'text', readonly: true, isText: true },
+    // Champs éditables
+    'on_site_arrival': { id: 'repArrival', type: 'datetime-local' },
+    'site_address': { id: 'repAddress', type: 'text' },
+    'site_latitude': { id: 'repLat', type: 'text' },
+    'site_longitude': { id: 'repLng', type: 'text' },
+    'access_level': { id: 'repAccess', type: 'select' },
+    'power_availability': { id: 'repPowerAvail', type: 'select' },
+    'site_notes': { id: 'repSiteNotes', type: 'textarea' }
+  },
+  // Step 1: Equipment
+  1: {
+    'dish_serial_number': { id: 'repDishSerial', type: 'text' },
+    'router_serial_number': { id: 'repRouterSerial', type: 'text' },
+    'firmware_version': { id: 'repFirmware', type: 'text' },
+    'power_source': { id: 'repPower', type: 'select' },
+    'cable_length': { id: 'repCableLen', type: 'number' },
+    'splices_connectors': { id: 'repSplices', type: 'number' },
+    'wifi_ssid': { id: 'repSSID', type: 'text' },
+    'wifi_password': { id: 'repWifiPwd', type: 'text' },
+    'lan_ip': { id: 'repLanIP', type: 'text' },
+    'dhcp_range': { id: 'repDHCP', type: 'text' }
+  },
+  // Step 2: Mount & Alignment
+  2: {
+    'mount_type': { id: 'repMountType', type: 'select' },
+    'mount_height': { id: 'repMountHeight', type: 'number' },
+    'grounding': { id: 'repGrounding', type: 'select' },
+    'weatherproofing': { id: 'repWeatherproof', type: 'select' },
+    'obstruction_percentage': { id: 'repObstruction', type: 'number' },
+    'elevation_angle': { id: 'repElevation', type: 'number' },
+    'azimuth_angle': { id: 'repAzimuth', type: 'number' },
+    'obstruction_notes': { id: 'repObstructionNotes', type: 'text' },
+    'mounting_notes': { id: 'repMountNotes', type: 'textarea' }
+  },
+  // Step 3: Environment & Safety
+  3: {
+    'weather_conditions': { id: 'repWeatherCond', type: 'select' },
+    'safety_helmet': { id: 'repSafeHelmet', type: 'checkbox' },
+    'safety_harness': { id: 'repSafeHarness', type: 'checkbox' },
+    'safety_gloves': { id: 'repSafeGloves', type: 'checkbox' },
+    'safety_ladder': { id: 'repSafeLadder', type: 'checkbox' },
+    'hazards_noted': { id: 'repHazards', type: 'textarea' }
+  },
+  // Step 4: Cabling & Routing
+  4: {
+    'cable_entry_point': { id: 'repCableEntry', type: 'select' },
+    'cable_protection': { id: 'repCableProtection', type: 'select' },
+    'termination_type': { id: 'repTermType', type: 'select' },
+    'routing_notes': { id: 'repRoutingNotes', type: 'text' }
+  },
+  // Step 5: Power & Backup
+  5: {
+    'power_stability_test': { id: 'repPowerStability', type: 'select' },
+    'ups_installed': { id: 'repUPSInstalled', type: 'select' },
+    'ups_model': { id: 'repUPSModel', type: 'text' },
+    'ups_runtime_minutes': { id: 'repUPSRt', type: 'number' }
+  },
+  // Step 6: Connectivity & Tests
+  6: {
+    'snr_db': { id: 'repSNR', type: 'number' },
+    'speed_download_mbps': { id: 'repDown', type: 'number' },
+    'speed_upload_mbps': { id: 'repUp', type: 'number' },
+    'latency_ms': { id: 'repLatency', type: 'number' },
+    'test_tool': { id: 'repTestTool', type: 'text' },
+    'public_ip': { id: 'repPublicIP', type: 'text' },
+    'qos_vlan': { id: 'repQos', type: 'text' },
+    'final_link_status': { id: 'repLinkStatus', type: 'select' },
+    'test_notes': { id: 'repTestNotes', type: 'textarea' }
+  },
+  // Step 7: Photos - no standard form fields
+  7: {},
+  // Step 8: Customer Sign-off
+  8: {
+    'customer_full_name': { id: 'custName', type: 'text' },
+    'customer_id_document': { id: 'custId', type: 'text' },
+    'customer_acceptance': { id: 'custAccept', type: 'checkbox' },
+    'customer_signoff_at': { id: 'custSignoffAt', type: 'datetime-local' },
+    'customer_rating': { id: 'custRating', type: 'hidden' },
+    'customer_comments': { id: 'custComments', type: 'textarea' },
+    'reseller_name': { id: 'repResellerName', type: 'text' },
+    'sla_tier': { id: 'repSLA', type: 'select' },
+    'reseller_notes': { id: 'repResellerNotes', type: 'textarea' }
+  }
+};
+
+// Global variable to store edit data
+window.editFormData = null;
+
+// Fonctions utilitaires pour peupler les champs
+function setFieldValue(fieldName, value, fieldConfig) {
+  const element = document.getElementById(fieldConfig.id);
+  console.log(`Setting field ${fieldName} to "${value}", element found:`, element !== null);
+
+  if (!element) {
+    console.warn(`Element [id="${fieldConfig.id}"] not found in DOM`);
+    return;
+  }
+
+  if (value === null || value === undefined) {
+    console.log(`Skipping field ${fieldName} because value is null/undefined: "${value}"`);
+    return;
+  }
+
+  // Permettre les valeurs vides pour certains champs éditables
+  if (value === '' && ['site_address', 'site_latitude', 'site_longitude'].includes(fieldName)) {
+    console.log(`Allowing empty value for field ${fieldName}`);
+    element.value = '';
+    return;
+  }
+
+  if (value === '') {
+    console.log(`Skipping field ${fieldName} because value is empty: "${value}"`);
+    return;
+  }
+
+  // Gérer les éléments de texte (comme les spans)
+  if (fieldConfig.isText) {
+    if (fieldName === 'order_reference') {
+      element.textContent = `Order: ${value}`;
+    } else {
+      element.textContent = value;
+    }
+    console.log(`Text element ${fieldName} set to "${element.textContent}"`);
+    return;
+  }
+
+  const oldValue = element.value;
+
+  if (fieldConfig.type === 'checkbox') {
+    element.checked = Boolean(value && value !== 'off');
+    console.log(`Checkbox ${fieldName} set to ${element.checked}`);
+  } else {
+    element.value = value;
+    console.log(`Field ${fieldName} changed from "${oldValue}" to "${element.value}"`);
+  }
+
+  // Déclencher l'événement change pour les champs qui en ont besoin
+  element.dispatchEvent(new Event('change', { bubbles: true }));
+  element.dispatchEvent(new Event('input', { bubbles: true }));
+}
+
+// Fonction pour appliquer les données à l'étape actuelle
+function populateCurrentStep() {
+  if (!window.editFormData) {
+    console.log('No edit data available');
+    return;
+  }
+
+  const data = window.editFormData;
+  const stepFields = FIELD_MAPPING[currentStep];
+
+  if (!stepFields) {
+    console.log(`No fields defined for step ${currentStep}`);
+    return;
+  }
+
+  console.log(`Populating step ${currentStep} with data`);
+  console.log(`Step ${currentStep} has ${Object.keys(stepFields).length} fields`);
+  console.log('Available data keys:', Object.keys(data));
+  console.log('Expected field mapping:', stepFields);
+
+  // Peupler seulement les champs de l'étape actuelle
+  Object.entries(stepFields).forEach(([fieldName, fieldConfig]) => {
+    const value = data[fieldName];
+    console.log(`Field ${fieldName}: value="${value}", config:`, fieldConfig);
+    if (value !== undefined && value !== null) {
+      setFieldValue(fieldName, value, fieldConfig);
+    } else {
+      console.log(`Skipping field ${fieldName} - value is undefined/null`);
+    }
+  });
+
+  console.log(`Finished populating step ${currentStep}`);
+}
+
+function populateAllSteps() {
+  if (!window.editFormData) {
+    console.log('No edit data to populate all steps');
+    return;
+  }
+
+  Object.entries(FIELD_MAPPING).forEach(([stepKey, stepFields]) => {
+    if (!stepFields) return;
+
+    Object.entries(stepFields).forEach(([fieldName, fieldConfig]) => {
+      const value = window.editFormData[fieldName];
+      if (value !== undefined && value !== null) {
+        setFieldValue(fieldName, value, fieldConfig);
+      }
+    });
+  });
+}
+
+// ===== GESTION DES PHOTOS =====
+function openPhotoModal(imageUrl, title = '') {
+  // Créer le modal s'il n'existe pas
+  let modal = document.getElementById('photoModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'photoModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-[80] hidden';
+    modal.innerHTML = `
+      <div class="relative max-w-4xl max-h-full p-4">
+        <img id="modalImage" class="max-w-full max-h-full object-contain" alt="Photo en grand">
+        <h3 id="modalTitle" class="text-white text-center mt-2 text-lg"></h3>
+        <button onclick="closePhotoModal()" class="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  // Configurer et afficher le modal
+  document.getElementById('modalImage').src = imageUrl;
+  document.getElementById('modalTitle').textContent = title;
+  modal.classList.remove('hidden');
+
+  // Fermer avec Escape
+  document.addEventListener('keydown', function escapeHandler(e) {
+    if (e.key === 'Escape') {
+      closePhotoModal();
+      document.removeEventListener('keydown', escapeHandler);
+    }
+  });
+}
+
+function closePhotoModal() {
+  const modal = document.getElementById('photoModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
+// Fonction pour supprimer une photo existante
+async function deleteExistingPhoto(photoId, buttonElement) {
+  if (!confirm('Êtes-vous sûr de vouloir supprimer cette photo ?')) {
+    return;
+  }
+
+  try {
+    // Désactiver le bouton pendant la suppression
+    buttonElement.disabled = true;
+    buttonElement.innerHTML = '<i class="fas fa-spinner fa-spin text-sm"></i>';
+
+    const response = await fetch(`/tech/delete-installation-photo/${photoId}/`, {
+      method: 'DELETE',
+      headers: {
+        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      // Supprimer l'élément photo du DOM
+      const photoCell = buttonElement.closest('[data-photo-id]');
+      if (photoCell) {
+        photoCell.style.transition = 'all 0.3s ease';
+        photoCell.style.opacity = '0';
+        photoCell.style.transform = 'scale(0.8)';
+
+        setTimeout(() => {
+          photoCell.remove();
+          console.log(`Photo ${photoId} supprimée avec succès`);
+        }, 300);
+      }
+
+      // Afficher un message de succès
+      showNotification('Photo supprimée avec succès', 'success');
+    } else {
+      const errorData = await response.json();
+      console.error('Erreur lors de la suppression:', errorData);
+      showNotification(errorData.message || 'Erreur lors de la suppression de la photo', 'error');
+
+      // Restaurer le bouton
+      buttonElement.disabled = false;
+      buttonElement.innerHTML = '<i class="fas fa-trash text-sm"></i>';
+    }
+  } catch (error) {
+    console.error('Erreur réseau:', error);
+    showNotification('Erreur de connexion lors de la suppression', 'error');
+
+    // Restaurer le bouton
+    buttonElement.disabled = false;
+    buttonElement.innerHTML = '<i class="fas fa-trash text-sm"></i>';
+  }
+}
+
+// Fonction pour afficher des notifications
+function showNotification(message, type = 'info') {
+  // Supprimer les anciennes notifications
+  const existingNotifications = document.querySelectorAll('.notification-toast');
+  existingNotifications.forEach(notif => notif.remove());
+
+  const notification = document.createElement('div');
+  notification.className = `notification-toast fixed top-4 right-4 p-4 rounded-lg shadow-lg z-[90] max-w-md transition-all duration-300 transform translate-x-full`;
+
+  const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+  const icon = type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle';
+
+  notification.classList.add(bgColor);
+  notification.innerHTML = `
+    <div class="flex items-center gap-3 text-white">
+      <i class="fas ${icon}"></i>
+      <span>${message}</span>
+      <button onclick="this.parentElement.parentElement.remove()" class="ml-2 hover:text-gray-200">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(notification);
+
+  // Animation d'entrée
+  setTimeout(() => {
+    notification.classList.remove('translate-x-full');
+  }, 100);
+
+  // Auto-suppression après 4 secondes
+  setTimeout(() => {
+    notification.classList.add('translate-x-full');
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.remove();
+      }
+    }, 300);
+  }, 4000);
+}
+
+function loadExistingPhotos(photos) {
+  console.log('Loading existing photos:', photos.length, photos);
+
+  // Conteneurs pour chaque type de photo
+  const previewBefore = document.getElementById('previewBefore');
+  const previewAfter = document.getElementById('previewAfter');
+  const previewEvidence = document.getElementById('previewEvidence');
+
+  console.log('Photo containers:', { previewBefore, previewAfter, previewEvidence });
+
+  if (!previewBefore || !previewAfter || !previewEvidence) {
+    console.warn('One or more photo preview containers not found');
+    return;
+  }
+
+  // Vider tous les conteneurs
+  previewBefore.innerHTML = '';
+  previewAfter.innerHTML = '';
+  previewEvidence.innerHTML = '';
+
+  // Distribuer les photos selon leur type
+  photos.forEach((photo, index) => {
+    const cell = document.createElement('div');
+    cell.className = "aspect-square w-full bg-gray-100 rounded overflow-hidden relative cursor-pointer hover:opacity-80 transition-opacity";
+
+    // Déterminer le label selon le type
+    let typeLabel = '';
+    switch(photo.photo_type) {
+      case 'before': typeLabel = 'Before'; break;
+      case 'after': typeLabel = 'After'; break;
+      case 'evidence': typeLabel = 'Evidence'; break;
+      default: typeLabel = 'Photo'; break;
+    }
+
+    cell.innerHTML = `
+      <img src="${photo.url}" class="w-full h-full object-cover" alt="${typeLabel} photo ${index + 1}">
+      <div class="absolute top-1 right-1 bg-black bg-opacity-60 text-white text-xs px-1 rounded">
+        ${new Date(photo.uploaded_at).toLocaleDateString()}
+      </div>
+      <div class="absolute inset-0 bg-black bg-opacity-0 hover:bg-opacity-20 transition-all duration-200 flex items-center justify-center opacity-0 hover:opacity-100">
+        <div class="flex gap-2">
+          <button onclick="event.stopPropagation(); openPhotoModal('${photo.url}', '${typeLabel} photo ${index + 1}')"
+                  class="bg-blue-600 hover:bg-blue-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+            <i class="fas fa-eye text-sm"></i>
+          </button>
+          <button onclick="event.stopPropagation(); deleteExistingPhoto(${photo.id}, this)"
+                  class="bg-red-600 hover:bg-red-700 text-white w-8 h-8 rounded-full flex items-center justify-center transition-colors">
+            <i class="fas fa-trash text-sm"></i>
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Ajouter un attribut data pour pouvoir identifier la photo
+    cell.setAttribute('data-photo-id', photo.id);
+
+    // Distribuer dans le bon conteneur selon le type
+    switch(photo.photo_type) {
+      case 'before':
+        previewBefore.appendChild(cell);
+        break;
+      case 'after':
+        previewAfter.appendChild(cell);
+        break;
+      case 'evidence':
+      default:
+        previewEvidence.appendChild(cell);
+        break;
+    }
+  });
+
+  console.log(`Loaded ${photos.length} existing photos by type`);
+}window.editInstallationReport = editInstallationReport;
+
+/* ===================== Photo previews ===================== */
+function previewFiles(input, gridId) {
+  const grid = document.getElementById(gridId);
+
+  // Supprimer SEULEMENT les nouvelles photos prévisualisées (pas les existantes)
+  // Les photos existantes ont l'attribut data-photo-id, les nouvelles non
+  const existingNewPhotos = grid.querySelectorAll(':not([data-photo-id])');
+  existingNewPhotos.forEach(photo => photo.remove());
+
+  // Ajouter les nouvelles photos sélectionnées
+  Array.from(input.files || []).forEach(file => {
+    const url = URL.createObjectURL(file);
+    const cell = document.createElement('div');
+    cell.className = "aspect-square w-full bg-gray-100 rounded overflow-hidden relative";
+    cell.innerHTML = `
+      <img src="${url}" class="w-full h-full object-cover" alt="Nouvelle photo">
+      <div class="absolute top-1 left-1 bg-blue-600 text-white text-xs px-1 rounded">
+        NOUVEAU
+      </div>
+    `;
+    // Ne pas ajouter data-photo-id pour distinguer des photos existantes
+    grid.appendChild(cell);
+  });
+}
+['repPhotosBefore','repPhotosAfter','repPhotosEvidence'].forEach(id => {
+  document.addEventListener('change', (e) => {
+    if (e.target.id !== id) return;
+    const grid = id === 'repPhotosBefore' ? 'previewBefore' : id === 'repPhotosAfter' ? 'previewAfter' : 'previewEvidence';
+    previewFiles(e.target, grid);
+  });
+});
+
+/* ===================== Gather / Submit ===================== */
+function gatherReportPayload(includeSignature=true){
+  const jobId = document.getElementById('reportJobId').value;
+  const payload = {
+    job_id: jobId,
+    order_reference: (document.getElementById('reportOrderRef').textContent||'').replace('Order: ','').trim(),
+    client_name: document.getElementById('repClient').value,
+    client_phone: document.getElementById('repPhone').value,
+    scheduled: document.getElementById('repScheduled').value,
+    arrival_at: document.getElementById('repArrival').value,
+    address: document.getElementById('repAddress').value,
+    latitude: document.getElementById('repLat').value,
+    longitude: document.getElementById('repLng').value,
+    access_level: document.getElementById('repAccess').value,
+    power_availability: document.getElementById('repPowerAvail').value,
+    site_notes: document.getElementById('repSiteNotes').value,
+
+    dish_serial: document.getElementById('repDishSerial').value,
+    router_serial: document.getElementById('repRouterSerial').value,
+    firmware: document.getElementById('repFirmware').value,
+    power_source: document.getElementById('repPower').value,
+    cable_length_m: document.getElementById('repCableLen').value,
+    splices: document.getElementById('repSplices').value,
+    ssid: document.getElementById('repSSID').value,
+    wifi_password: document.getElementById('repWifiPwd').value,
+    lan_ip: document.getElementById('repLanIP').value,
+    dhcp_range: document.getElementById('repDHCP').value,
+
+    mount_type: document.getElementById('repMountType').value,
+    mount_height_m: document.getElementById('repMountHeight').value,
+    grounding: document.getElementById('repGrounding').value,
+    weatherproofing: document.getElementById('repWeatherproof').value,
+    obstruction_pct: document.getElementById('repObstruction').value,
+    elevation_deg: document.getElementById('repElevation').value,
+    azimuth_deg: document.getElementById('repAzimuth').value,
+    obstruction_notes: document.getElementById('repObstructionNotes').value,
+    mount_notes: document.getElementById('repMountNotes').value,
+
+    weather_conditions: document.getElementById('repWeatherCond').value,
+    safety_equipment: {
+      helmet: document.getElementById('repSafeHelmet').checked,
+      harness: document.getElementById('repSafeHarness').checked,
+      gloves: document.getElementById('repSafeGloves').checked,
+      ladder_safety: document.getElementById('repSafeLadder').checked
+    },
+    hazards: document.getElementById('repHazards').value,
+
+    cable_entry_point: document.getElementById('repCableEntry').value,
+    cable_protection: document.getElementById('repCableProtection').value,
+    termination_type: document.getElementById('repTermType').value,
+    routing_notes: document.getElementById('repRoutingNotes').value,
+
+    power_stability_test: document.getElementById('repPowerStability').value,
+    ups_installed: document.getElementById('repUPSInstalled').value,
+    ups_model: document.getElementById('repUPSModel').value,
+    ups_runtime_min: document.getElementById('repUPSRt').value,
+
+    snr_db: document.getElementById('repSNR').value,
+    speed_down_mbps: document.getElementById('repDown').value,
+    speed_up_mbps: document.getElementById('repUp').value,
+    latency_ms: document.getElementById('repLatency').value,
+    test_tool: document.getElementById('repTestTool').value,
+    public_ip: document.getElementById('repPublicIP').value,
+    qos_vlan: document.getElementById('repQos').value,
+    final_link_status: document.getElementById('repLinkStatus').value,
+    test_notes: document.getElementById('repTestNotes').value,
+
+    /* Customer sign-off */
+    customer_name: (document.getElementById('custName').value || '').trim(),
+    customer_id: document.getElementById('custId').value,
+    customer_accept: document.getElementById('custAccept').checked,
+    customer_rating: Number(document.getElementById('custRating').value || 0),
+    customer_comments: document.getElementById('custComments').value,
+    signoff_at: document.getElementById('custSignoffAt').value,
+
+    reseller_name: document.getElementById('repResellerName').value,
+    reseller_id: document.getElementById('repResellerId').value,
+    sla_tier: document.getElementById('repSLA').value,
+    reseller_notes: document.getElementById('repResellerNotes').value
+  };
+  if (includeSignature && document.getElementById('sigCanvas')) {
+    payload.signature_data_url = document.getElementById('sigCanvas').toDataURL('image/png');
+  }
+  return payload;
+}
+/**
+ * Sauvegarde le rapport d'installation (brouillon ou final)
+ */
+// Fonction pour nettoyer les inputs file après sauvegarde
+function clearPhotoInputs() {
+  const photoInputs = ['repPhotosBefore', 'repPhotosAfter', 'repPhotosEvidence'];
+  const photoGrids = ['previewBefore', 'previewAfter', 'previewEvidence'];
+
+  photoInputs.forEach(inputId => {
+    const input = document.getElementById(inputId);
+    if (input) {
+      input.value = ''; // Vider la sélection de fichiers
+    }
+  });
+
+  // Supprimer aussi les prévisualisations des nouvelles photos (pas les existantes)
+  photoGrids.forEach(gridId => {
+    const grid = document.getElementById(gridId);
+    if (grid) {
+      // Supprimer SEULEMENT les nouvelles photos (sans data-photo-id)
+      const newPhotos = grid.querySelectorAll(':not([data-photo-id])');
+      newPhotos.forEach(photo => photo.remove());
+    }
+  });
+
+  console.log('Photo inputs and new previews cleared after save');
+}
+
+async function saveInstallationReport(submitFinal = false) {
+  const jobId = document.getElementById('reportJobId').value;
+
+  if (submitFinal) {
+    // Validation complète de toutes les étapes avant soumission finale
+    const allErrors = [];
+
+    for (let step = 0; step <= 8; step++) {
+      const validation = validateStep(step);
+      if (!validation.isValid) {
+        allErrors.push(`Étape ${step + 1}: ${validation.errors.join(', ')}`);
+      }
+    }
+
+    if (allErrors.length > 0) {
+      showValidationErrors(['Veuillez corriger les erreurs suivantes avant la soumission finale:', ...allErrors]);
+      return;
+    }
+
+    // Validation spécifique pour soumission finale
+    const nameVal = (document.getElementById('custName').value || '').trim();
+    if (!document.getElementById('custAccept').checked) {
+      showValidationErrors(['Le client doit confirmer l\'acceptation avant la soumission finale.']);
+      return;
+    }
+    if (!nameVal) {
+      showValidationErrors(['Le nom complet du client est requis pour la soumission finale.']);
+      return;
+    }
+
+    // Horodatage de signature si manquant
+    const signAt = document.getElementById('custSignoffAt');
+    if (signAt && !signAt.value) setSignoffNow();
+  }
+
+  const fd = new FormData();
+
+  // STEP 1: Job & Site
+  fd.append('on_site_arrival', document.getElementById('repArrival').value || '');
+  fd.append('site_address', document.getElementById('repAddress').value || '');
+  fd.append('site_latitude', document.getElementById('repLat').value || '');
+  fd.append('site_longitude', document.getElementById('repLng').value || '');
+  fd.append('access_level', document.getElementById('repAccess').value || '');
+  fd.append('power_availability', document.getElementById('repPowerAvail').value || '');
+  fd.append('site_notes', document.getElementById('repSiteNotes').value || '');
+
+  // STEP 2: Equipment - CPE
+  fd.append('dish_serial_number', document.getElementById('repDishSerial').value || '');
+  fd.append('router_serial_number', document.getElementById('repRouterSerial').value || '');
+  fd.append('firmware_version', document.getElementById('repFirmware').value || '');
+  fd.append('power_source', document.getElementById('repPower').value || '');
+  fd.append('cable_length', document.getElementById('repCableLen').value || '');
+  fd.append('splices_connectors', document.getElementById('repSplices').value || '');
+
+  // STEP 2: Equipment - LAN / Wi-Fi
+  fd.append('wifi_ssid', document.getElementById('repSSID').value || '');
+  fd.append('wifi_password', document.getElementById('repWifiPwd').value || '');
+  fd.append('lan_ip', document.getElementById('repLanIP').value || '');
+  fd.append('dhcp_range', document.getElementById('repDHCP').value || '');
+
+  // STEP 3: Mount & Alignment
+  fd.append('mount_type', document.getElementById('repMountType').value || '');
+  fd.append('mount_height', document.getElementById('repMountHeight').value || '');
+  fd.append('grounding', document.getElementById('repGrounding').value || '');
+  fd.append('weatherproofing', document.getElementById('repWeatherproof').value || '');
+  fd.append('obstruction_percentage', document.getElementById('repObstruction').value || '');
+  fd.append('elevation_angle', document.getElementById('repElevation').value || '');
+  fd.append('azimuth_angle', document.getElementById('repAzimuth').value || '');
+  fd.append('obstruction_notes', document.getElementById('repObstructionNotes').value || '');
+  fd.append('mounting_notes', document.getElementById('repMountNotes').value || '');
+
+  // STEP 4: Environment & Safety
+  fd.append('weather_conditions', document.getElementById('repWeatherCond').value || '');
+  fd.append('safety_helmet', document.getElementById('repSafeHelmet').checked ? 'on' : '');
+  fd.append('safety_harness', document.getElementById('repSafeHarness').checked ? 'on' : '');
+  fd.append('safety_gloves', document.getElementById('repSafeGloves').checked ? 'on' : '');
+  fd.append('safety_ladder', document.getElementById('repSafeLadder').checked ? 'on' : '');
+  fd.append('hazards_noted', document.getElementById('repHazards').value || '');
+
+  // STEP 5: Cabling & Routing
+  fd.append('cable_entry_point', document.getElementById('repCableEntry').value || '');
+  fd.append('cable_protection', document.getElementById('repCableProtection').value || '');
+  fd.append('termination_type', document.getElementById('repTermType').value || '');
+  fd.append('routing_notes', document.getElementById('repRoutingNotes').value || '');
+
+  // STEP 6: Power & Backup
+  fd.append('power_stability_test', document.getElementById('repPowerStability').value || '');
+  fd.append('ups_installed', document.getElementById('repUPSInstalled').value || '');
+  fd.append('ups_model', document.getElementById('repUPSModel').value || '');
+  fd.append('ups_runtime_minutes', document.getElementById('repUPSRt').value || '');
+
+  // STEP 7: Connectivity & Tests
+  fd.append('snr_db', document.getElementById('repSNR').value || '');
+  fd.append('speed_download_mbps', document.getElementById('repDown').value || '');
+  fd.append('speed_upload_mbps', document.getElementById('repUp').value || '');
+  fd.append('latency_ms', document.getElementById('repLatency').value || '');
+  fd.append('test_tool', document.getElementById('repTestTool').value || '');
+  fd.append('public_ip', document.getElementById('repPublicIP').value || '');
+  fd.append('qos_vlan', document.getElementById('repQos').value || '');
+  fd.append('final_link_status', document.getElementById('repLinkStatus').value || '');
+  fd.append('test_notes', document.getElementById('repTestNotes').value || '');
+
+  // STEP 9: Customer Sign-off
+  fd.append('customer_full_name', (document.getElementById('custName').value || '').trim());
+  fd.append('customer_id_document', document.getElementById('custId').value || '');
+  fd.append('customer_acceptance', document.getElementById('custAccept').checked ? 'on' : '');
+
+  // Signature canvas to base64 (save for both draft and final when present)
+  (function(){
+    const c = document.getElementById('sigCanvas');
+    if (!c) return;
+    try {
+      const dataUrl = c.toDataURL('image/png');
+      // Guard against empty/blank data URLs (very small length)
+      if (dataUrl && dataUrl.length > 100) {
+        fd.append('customer_signature', dataUrl);
+      }
+    } catch (_) { /* ignore */ }
+  })();
+
+  fd.append('customer_signoff_at', document.getElementById('custSignoffAt').value || '');
+  fd.append('customer_rating', document.getElementById('custRating').value || '');
+  fd.append('customer_comments', document.getElementById('custComments').value || '');
+
+  // Reseller Information
+  fd.append('reseller_name', document.getElementById('repResellerName').value || '');
+  fd.append('reseller_id', document.getElementById('repResellerId').value || '');
+  fd.append('sla_tier', document.getElementById('repSLA').value || '');
+  fd.append('reseller_notes', document.getElementById('repResellerNotes').value || '');
+
+  // STEP 8: Photos - Ajouter SEULEMENT les nouvelles photos sélectionnées
+  const photosBefore = document.getElementById('repPhotosBefore').files;
+  const photosAfter = document.getElementById('repPhotosAfter').files;
+  const photosEvidence = document.getElementById('repPhotosEvidence').files;
+
+  // Ajouter chaque nouvelle photo au FormData
+  // Note: Les photos existantes ne sont PAS re-soumises pour éviter la duplication
+  for (let i = 0; i < photosBefore.length; i++) {
+    fd.append('photos_before', photosBefore[i]);
+  }
+  for (let i = 0; i < photosAfter.length; i++) {
+    fd.append('photos_after', photosAfter[i]);
+  }
+  for (let i = 0; i < photosEvidence.length; i++) {
+    fd.append('photos_evidence', photosEvidence[i]);
+  }
+
+  console.log(`Sending ${photosBefore.length} before, ${photosAfter.length} after, ${photosEvidence.length} evidence photos`);
+
+  // Contrôle de soumission
+  fd.append('submit_final', submitFinal ? 'true' : 'false');
+
+  try {
+    // Détecter le mode édition
+    const isEditMode = document.getElementById('installationReportModal').dataset.editMode === 'true';
+    const endpoint = isEditMode ? 'edit' : 'save';
+
+    const res = await fetch(`/${CURRENT_LANG}/tech/api/installation-report/${jobId}/${endpoint}/`, {
+      method: 'POST',
+      headers: { 'X-CSRFToken': getCSRFToken() },
+      body: fd
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      let message = data.message;
+      if (isEditMode) {
+        message = `Report updated successfully! (Version ${data.version_number || 'N/A'})`;
+        if (data.time_left_hours !== undefined) {
+          const hoursLeft = Math.floor(data.time_left_hours);
+          const minutesLeft = Math.floor((data.time_left_hours % 1) * 60);
+          message += ` Time left: ${hoursLeft}h ${minutesLeft}m`;
+        }
+      } else {
+        message = message || (submitFinal ? 'Report submitted successfully!' : 'Draft saved!');
+      }
+
+      alert(message);
+
+      // Nettoyer les inputs file après sauvegarde réussie pour éviter la duplication
+      clearPhotoInputs();
+
+      // Marquer le formulaire comme sauvegardé pour éviter le message de modifications non sauvegardées
+      markFormAsSaved();
+
+      if (submitFinal || isEditMode) {
+        closeInstallationReport();
+        loadJobs();
+      }
+    } else {
+      alert(data.error || 'Erreur lors de la sauvegarde du rapport.');
+    }
+  } catch (e) {
+    console.error('Erreur:', e);
+    alert('Erreur de connexion au serveur.');
+  }
+}
+
+// Fonction pour soumission finale
+// Fonction pour soumission finale
+async function submitInstallationReport() {
+  await saveInstallationReport(true);
+}
+
+// Fonction pour sauvegarder en brouillon
+async function saveDraftReport() {
+  await saveInstallationReport(false);
+}
+
+// Exposer les fonctions globalement
+window.submitInstallationReport = submitInstallationReport;
+window.saveDraftReport = saveDraftReport;
+
+function downloadReportDraft(){
+  const payload = gatherReportPayload(false);
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `installation_report_${payload.order_reference || payload.job_id || 'draft'}.json`;
+  document.body.appendChild(a);
+  a.click();
+  URL.revokeObjectURL(a.href);
+  a.remove();
+}
+window.downloadReportDraft = downloadReportDraft;
+
+/* Notes & Photos stubs */
+function openNotes(){ document.getElementById('notesModal').classList.remove('hidden'); }
+function closeNotesModal(){ document.getElementById('notesModal').classList.add('hidden'); }
+function saveNote(){ alert('Note saved (demo).'); closeNotesModal(); }
+function uploadEvidence(jobId){
+  document.getElementById('uploadPhotoJobId').value = jobId || '';
+  document.getElementById('uploadPhotoModal').classList.remove('hidden');
+}
+function closeUploadPhotoModal(){ document.getElementById('uploadPhotoModal').classList.add('hidden'); }
+async function submitPhotos(){ alert('Photos uploaded (demo).'); closeUploadPhotoModal(); }
+window.openNotes = openNotes;
+window.closeNotesModal = closeNotesModal;
+window.uploadEvidence = uploadEvidence;
+window.closeUploadPhotoModal = closeUploadPhotoModal;
+window.submitPhotos = submitPhotos;
+
+/* Boot */
+document.addEventListener('DOMContentLoaded', () => {
+  loadJobs();
+  loadSurveyPanel();
+});
+</script>
+{% endblock %}

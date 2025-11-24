@@ -1,0 +1,175 @@
+{% load static i18n %}
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Site Survey Checklist Management" %}</h2>
+      <p class="text-sm text-gray-500">{% trans "Manage checklist items for site surveys conducted by technicians." %}</p>
+    </div>
+    <button onclick="openChecklistModal()"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+      <i class="fas fa-plus text-xs"></i> {% trans "Add Checklist Item" %}
+    </button>
+  </div>
+
+  <!-- Mobile cards -->
+  <div id="checklistCards" class="md:hidden grid grid-cols-1 gap-3">
+    <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+        <tr>
+          <th class="py-3 px-4">{% trans "Category" %}</th>
+          <th class="py-3 px-4">{% trans "Question" %}</th>
+          <th class="py-3 px-4">{% trans "Question Type" %}</th>
+          <th class="py-3 px-4">{% trans "Required" %}</th>
+          <th class="py-3 px-4">{% trans "Order" %}</th>
+          <th class="py-3 px-4">{% trans "Status" %}</th>
+          <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="checklistTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+    </table>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="flex flex-col sm:flex-row items-center justify-between mt-6 gap-4">
+    <!-- Results info -->
+    <div class="text-sm text-gray-700 order-2 sm:order-1">
+      {% trans "Showing" %} <span id="checklist-showing-start">1</span> {% trans "to" %} <span id="checklist-showing-end">10</span> {% trans "of" %} <span id="checklist-total-items">0</span> {% trans "results" %}
+    </div>
+
+    <!-- Pagination controls -->
+    <div class="flex items-center space-x-2 order-1 sm:order-2">
+      <button id="checklist-prev-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        <i class="fas fa-chevron-left mr-1"></i>{% trans "Previous" %}
+      </button>
+      <span id="checklist-page-info" class="px-3 py-2 text-sm text-gray-600">
+        {% trans "Page" %} <span id="checklist-current-page">1</span> {% trans "of" %} <span id="checklist-total-pages">1</span>
+      </span>
+      <button id="checklist-next-page"
+              class="px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+        {% trans "Next" %}<i class="fas fa-chevron-right ml-1"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- Checklist Item Modal -->
+<div id="checklistModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-screen overflow-y-auto">
+    <div class="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 rounded-t-2xl">
+      <div class="flex items-center justify-between">
+        <h3 id="checklistModalTitle" class="text-lg font-semibold text-gray-900">{% trans "Add Checklist Item" %}</h3>
+        <button onclick="closeChecklistModal()" class="text-gray-400 hover:text-gray-600 transition-colors">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+    </div>
+
+    <div class="p-6">
+      <form id="checklistForm">
+        <input type="hidden" id="checklistId" name="checklist_id">
+
+        <!-- Category -->
+        <div class="mb-4">
+          <label for="checklistCategory" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Category" %} <span class="text-red-500">*</span>
+          </label>
+          <select id="checklistCategory" name="category" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+            <option value="">{% trans "Select Category" %}</option>
+            <option value="location">{% trans "Location & Access" %}</option>
+            <option value="signal">{% trans "Signal Quality" %}</option>
+            <option value="mounting">{% trans "Mounting Options" %}</option>
+            <option value="safety">{% trans "Safety Considerations" %}</option>
+            <option value="technical">{% trans "Technical Requirements" %}</option>
+            <option value="environmental">{% trans "Environmental Factors" %}</option>
+          </select>
+        </div>
+
+        <!-- Question -->
+        <div class="mb-4">
+          <label for="checklistQuestion" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Question" %} <span class="text-red-500">*</span>
+          </label>
+          <textarea id="checklistQuestion" name="question" required rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="{% trans 'Enter the survey question...' %}"></textarea>
+        </div>
+
+        <!-- Question Type -->
+        <div class="mb-4">
+          <label for="checklistQuestionType" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Question Type" %} <span class="text-red-500">*</span>
+          </label>
+          <select id="checklistQuestionType" name="question_type" required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                  onchange="toggleChoicesField()">
+            <option value="">{% trans "Select Type" %}</option>
+            <option value="yes_no">{% trans "Yes/No" %}</option>
+            <option value="text">{% trans "Text Response" %}</option>
+            <option value="multiple_choice">{% trans "Multiple Choice" %}</option>
+            <option value="rating">{% trans "Rating (1-5)" %}</option>
+          </select>
+        </div>
+
+        <!-- Choices (for multiple choice questions) -->
+        <div id="choicesField" class="mb-4 hidden">
+          <label for="checklistChoices" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Choices" %} <span class="text-red-500">*</span>
+          </label>
+          <textarea id="checklistChoices" name="choices" rows="3"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                    placeholder="{% trans 'Enter choices separated by commas (e.g., Option 1, Option 2, Option 3)' %}"></textarea>
+          <p class="text-xs text-gray-500 mt-1">{% trans "Separate each choice with a comma" %}</p>
+        </div>
+
+        <!-- Display Order -->
+        <div class="mb-4">
+          <label for="checklistDisplayOrder" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Display Order" %}
+          </label>
+          <input type="number" id="checklistDisplayOrder" name="display_order" min="0" value="0"
+                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500">
+          <p class="text-xs text-gray-500 mt-1">{% trans "Lower numbers appear first" %}</p>
+        </div>
+
+        <!-- Required -->
+        <div class="mb-4">
+          <label class="flex items-center">
+            <input type="checkbox" id="checklistIsRequired" name="is_required" checked
+                   class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+            <span class="ml-2 text-sm text-gray-700">{% trans "This question is required" %}</span>
+          </label>
+        </div>
+
+        <!-- Active Status -->
+        <div class="mb-6">
+          <label class="flex items-center">
+            <input type="checkbox" id="checklistIsActive" name="is_active" checked
+                   class="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500">
+            <span class="ml-2 text-sm text-gray-700">{% trans "This question is active" %}</span>
+          </label>
+        </div>
+      </form>
+    </div>
+
+    <div class="sticky bottom-0 bg-gray-50 px-6 py-4 rounded-b-2xl border-t border-gray-200">
+      <div class="flex flex-col sm:flex-row gap-3 sm:justify-end">
+        <button onclick="closeChecklistModal()"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          {% trans "Cancel" %}
+        </button>
+        <button onclick="saveChecklistItem()"
+                class="w-full sm:w-auto px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-lg hover:bg-green-700 transition-colors">
+          <i class="fas fa-save mr-2"></i>{% trans "Save" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

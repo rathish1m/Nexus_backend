@@ -1,0 +1,122 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- ADD KIT MODAL -->
+<!-- <div id="hardware" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center px-4">
+  <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl border border-gray-200 relative"> -->
+    <!-- Header -->
+    <!-- <div class="flex items-center justify-between px-6 py-4 border-b">
+      <h3 class="text-lg font-semibold text-gray-800">{% trans "Add Starlink Kit" %}</h3>
+      <button type="button" class="text-gray-500 hover:text-red-500 text-2xl leading-none"
+              onclick="closeModal('hardware')">&times;</button>
+    </div> -->
+
+    <!-- Body -->
+    <!-- <form id="kitCreateForm" class="p-6 space-y-4" enctype="multipart/form-data">
+      {% csrf_token %}
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Name" %}</label>
+        <input type="text" name="name" id="kit_name" required
+               class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Model" %}</label>
+        <input type="text" name="model" id="kit_model" required
+               class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Kit Type" %}</label>
+        <select name="kit_type" id="kit_type" required
+                class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+          <option value="">{% trans "Select Kit Type" %}</option>
+          <option value="standard">{% trans "Standard Kit" %}</option>
+          <option value="mini">{% trans "Mini Kit" %}</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Description" %}</label>
+        <textarea name="description" id="kit_description" rows="3"
+                  class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Price (USD)" %}</label>
+        <input type="number" step="0.01" min="0" name="price_usd" id="kit_price_usd"
+               class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-gray-700">{% trans "Picture (optional)" %}</label>
+        <input type="file" name="picture" id="kit_picture" accept="image/*"
+               class="mt-1 w-full px-4 py-2 rounded-lg border border-gray-300 file:mr-3 file:px-3 file:py-2 file:border-0 file:bg-blue-600 file:text-white file:rounded-md">
+      </div> -->
+
+      <!-- Footer -->
+      <!-- <div class="flex items-center justify-end gap-2 pt-2 border-t">
+        <button type="button" onclick="closeModal('hardware')"
+                class="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">
+          {% trans "Cancel" %}
+        </button>
+        <button type="submit" id="kitCreateSubmit"
+                class="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700">
+          {% trans "Save Kit" %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div> -->
+
+<script>
+  // // Generic modal open/close (re-use if already defined)
+  // function openModal(id){ document.getElementById(id)?.classList.remove('hidden'); }
+  // function closeModal(id){ document.getElementById(id)?.classList.add('hidden'); }
+
+  // // CSRF helper (fallback to meta if present)
+  // function getCSRFToken() {
+  //   const meta = document.querySelector('meta[name="csrf-token"]');
+  //   if (meta) return meta.getAttribute('content');
+  //   const m = document.cookie.match(/csrftoken=([^;]+)/);
+  //   return m ? decodeURIComponent(m[1]) : '';
+  // }
+
+  // // Handle create
+  // const kitCreateForm = document.getElementById('kitCreateForm');
+  // kitCreateForm?.addEventListener('submit', async function(e){
+  //   e.preventDefault();
+
+  //   const submitBtn = document.getElementById('kitCreateSubmit');
+  //   const originalText = submitBtn.textContent;
+  //   submitBtn.disabled = true; submitBtn.textContent = '{% trans "Saving…" %}';
+
+  //   try {
+  //     const fd = new FormData(kitCreateForm);
+  //     // If your backend expects different field names, adjust here.
+
+  //     const res = await fetch("{% url 'add_kit' %}", {
+  //       method: 'POST',
+  //       headers: { 'X-CSRFToken': getCSRFToken() },
+  //       body: fd
+  //     });
+
+  //     const data = await res.json();
+  //     if (!res.ok || data.success === false) {
+  //       throw new Error(data.message || '{% trans "Failed to save kit." %}');
+  //     }
+
+  //     alert(data.message || '{% trans "Kit created successfully." %}');
+  //     kitCreateForm.reset();
+  //     closeModal('hardware');
+  //     // refresh table
+  //     typeof fetchKits === 'function' && fetchKits();
+
+  //   } catch (err) {
+  //     console.error(err);
+  //     alert(err.message || '{% trans "An error occurred while saving the kit." %}');
+  //   } finally {
+  //     submitBtn.disabled = false; submitBtn.textContent = originalText;
+  //   }
+  // });
+</script>

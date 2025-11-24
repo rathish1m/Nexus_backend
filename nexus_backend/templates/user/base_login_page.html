@@ -1,0 +1,55 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{% block page_title %}{% trans "Connexion – NEXUS Admin" %}{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+</head>
+
+<body class="bg-gradient-to-tr from-blue-50 via-white to-blue-100 text-black font-sans min-h-screen relative">
+
+<!-- 2FA Modal Block -->
+{% block extra_content %}{% endblock %}
+
+<!-- Login Container -->
+<div class="flex items-center justify-center min-h-screen">
+    <div class="bg-white p-8 sm:p-10 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 animate__animated animate__fadeIn">
+
+        <!-- Logo and Heading -->
+        <div class="text-center mb-8">
+            <img src="{% static 'images/logo/logo.png' %}" alt="NEXUS Logo" class="w-32 h-auto mx-auto mb-4">
+            <h1 class="text-2xl font-extrabold text-blue-700 tracking-tight">{% block auth_heading %}{% trans "Connexion" %}{% endblock %}</h1>
+            <p class="text-sm text-gray-500 mt-1">{% block auth_subtitle %}{% trans "Accédez à votre panneau d'administration" %}{% endblock %}</p>
+        </div>
+
+        <!-- Login and 2FA Form -->
+        <div class="space-y-4">
+            {% block content %}{% endblock %}
+        </div>
+
+        <!-- Language Switcher -->
+        <div class="mt-8 text-center">
+            <form action="{% url 'set_language' %}" method="post" class="inline-flex gap-3 justify-center">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{% block language_next %}{{ request.path }}{% endblock %}">
+                <button type="submit" name="language" value="fr"
+                        class="px-4 py-1.5 rounded text-sm font-medium transition
+                   {% if LANGUAGE_CODE == 'fr' %} bg-blue-600 text-white {% else %} text-gray-700 bg-gray-100 hover:bg-gray-200 {% endif %}">
+                    Français
+                </button>
+                <button type="submit" name="language" value="en"
+                        class="px-4 py-1.5 rounded text-sm font-medium transition
+                   {% if LANGUAGE_CODE == 'en' %} bg-blue-600 text-white {% else %} text-gray-700 bg-gray-100 hover:bg-gray-200 {% endif %}">
+                    English
+                </button>
+            </form>
+        </div>
+
+    </div>
+</div>
+</body>
+</html>

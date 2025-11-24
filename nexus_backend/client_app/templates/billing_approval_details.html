@@ -1,0 +1,415 @@
+{% extends 'client/billing_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<style>
+@keyframes gradient-shift {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.animate-gradient-slow { background-size:200% 200%; animation: gradient-shift 10s ease infinite; }
+
+@keyframes pulseRing {
+  0%   { box-shadow: 0 0 0 0 var(--ring-color, rgba(0,0,0,.0)); }
+  70%  { box-shadow: 0 0 0 14px rgba(0,0,0,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,0,0,0); }
+}
+.glow-red    { --ring-color: rgba(244,63,94,.45);   animation: pulseRing 1.6s ease-out infinite; }
+.glow-green  { --ring-color: rgba(16,185,129,.35);  animation: pulseRing 2.0s ease-out infinite; }
+.glow-orange { --ring-color: rgba(245,158,11,.35);  animation: pulseRing 1.8s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-slow, .glow-red, .glow-green, .glow-orange { animation: none !important; }
+}
+</style>
+
+<div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-4 sm:py-8">
+  <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Back Button -->
+    <div class="mb-6">
+  <a href="{% url 'billing_page' %}"
+         class="inline-flex items-center text-indigo-600 hover:text-indigo-800 font-medium transition">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+          <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd"/>
+        </svg>
+        {% trans "Back to Billing" %}
+      </a>
+    </div>
+
+    <!-- Page Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-t-2xl px-6 py-6 shadow-lg">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex-1">
+          <h1 class="text-2xl sm:text-3xl font-bold text-white">{% trans "Additional Equipment Required" %}</h1>
+          <p class="text-blue-100 text-sm mt-2">
+            {% trans "Order:" %} <span class="font-medium" id="orderReference"></span>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="bg-white rounded-b-2xl shadow-xl">
+
+      <!-- Loading State -->
+      <div id="loadingState" class="text-center py-16">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-4 border-blue-200 border-t-blue-600"></div>
+        <p class="text-gray-600 mt-4 text-lg">{% trans "Loading billing details..." %}</p>
+      </div>
+
+      <!-- Billing Content -->
+      <div id="billingContent" class="hidden">
+
+        <!-- Status Banner -->
+        <div id="statusBanner" class="hidden mx-6 mt-6">
+          <div class="flex items-start">
+            <i id="statusIcon" class="text-xl mt-0.5"></i>
+            <p id="statusText" class="text-sm font-medium flex-1"></p>
+          </div>
+        </div>
+
+        <!-- Cost Breakdown Section -->
+        <div class="p-6">
+          <h3 class="text-xl font-bold text-gray-900 mb-4 flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-indigo-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+            </svg>
+            {% trans "Cost Breakdown" %}
+          </h3>
+
+          <div class="overflow-x-auto rounded-lg border border-gray-200">
+            <table class="min-w-full divide-y divide-gray-200">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    {% trans "Item" %}
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider hidden sm:table-cell">
+                    {% trans "Description" %}
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-center text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    {% trans "Qty" %}
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    {% trans "Unit Price" %}
+                  </th>
+                  <th scope="col" class="px-4 py-3 text-right text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                    {% trans "Total" %}
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="costBreakdown" class="bg-white divide-y divide-gray-200">
+                <!-- Cost items will be inserted here by JavaScript -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Pricing Summary -->
+        <div class="px-6 pb-6">
+          <div class="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-6 shadow-inner">
+            <div class="space-y-3">
+              <div class="flex justify-between text-gray-700">
+                <span class="font-medium">{% trans "Subtotal:" %}</span>
+                <span id="subtotal" class="font-semibold">$0.00</span>
+              </div>
+              <div id="taxBreakdown" class="space-y-2">
+                <!-- Dynamic tax breakdown will be inserted here -->
+              </div>
+              <div class="flex justify-between text-gray-700">
+                <span class="font-medium">{% trans "Total Tax:" %}</span>
+                <span id="taxAmount" class="font-semibold">$0.00</span>
+              </div>
+              <hr class="border-gray-300">
+              <div class="flex justify-between text-xl sm:text-2xl font-bold text-gray-900">
+                <span>{% trans "Total Amount:" %}</span>
+                <span id="totalAmount" class="text-indigo-600">$0.00</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Customer Notes Section -->
+        <div id="notesSection" class="px-6 pb-6 hidden">
+          <label for="customerNotes" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Additional Notes (Optional)" %}
+          </label>
+          <textarea id="customerNotes"
+                    rows="3"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition"
+                    placeholder="{% trans 'Add any comments or questions about these additional costs...' %}"></textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div id="actionButtons" class="px-6 pb-6 hidden">
+          <div class="flex flex-col sm:flex-row gap-3 sm:gap-4">
+            <button type="button"
+                    onclick="rejectBilling()"
+                    class="flex-1 inline-flex items-center justify-center px-6 py-3 border-2 border-red-600 text-red-600 font-semibold rounded-lg hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+              </svg>
+              {% trans "Reject" %}
+            </button>
+            <button type="button"
+                    onclick="approveBilling()"
+                    class="flex-1 inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 shadow-lg hover:shadow-xl transition transform hover:scale-[1.02]">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+              </svg>
+              {% trans "Approve & Continue to Payment" %}
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const translations = {
+  confirmApprovalCosts: "{{ _('Are you sure you want to approve these additional costs?')|escapejs }}",
+  rejectReason: "{{ _('Please provide a reason for rejecting these additional costs:')|escapejs }}",
+  failedToRejectBilling: "{{ _('Failed to reject billing')|escapejs }}"
+};
+
+const billingId = {{ billing_id }};
+// Build API URL using Django reverse so that i18n language prefix is correct
+const billingApiUrl = "{% url 'site_survey:customer_billing_approval' 0 %}".slice(0, -2) + billingId + '/';
+
+// Load billing details on page load
+document.addEventListener('DOMContentLoaded', function() {
+  loadBillingDetails();
+});
+
+async function loadBillingDetails() {
+  const loadingState = document.getElementById('loadingState');
+  const billingContent = document.getElementById('billingContent');
+
+  try {
+    const response = await fetch(billingApiUrl + '?api=true', { headers: { 'Accept': 'application/json' } });
+
+    const data = await response.json();
+
+    if (data.success) {
+      renderBillingDetails(data.billing);
+      loadingState.classList.add('hidden');
+      billingContent.classList.remove('hidden');
+    } else {
+      showAppToast('{% trans "Failed to load billing details"|escapejs %}', 'error');
+      window.location.href = '{% url "billing_page" %}';
+    }
+  } catch (error) {
+    console.error('Error loading billing:', error);
+    showAppToast('{% trans "Failed to load billing details"|escapejs %}', 'error');
+    window.location.href = '{% url "billing_page" %}';
+  }
+}
+
+function renderBillingDetails(billing) {
+  // Update order reference
+  document.getElementById('orderReference').textContent = billing.billing_reference;
+
+  // Render cost breakdown
+  const costBreakdown = document.getElementById('costBreakdown');
+  costBreakdown.innerHTML = '';
+
+  billing.cost_breakdown.forEach(cost => {
+    const row = document.createElement('tr');
+    row.className = 'hover:bg-gray-50 transition';
+    row.innerHTML = `
+      <td class="px-4 py-3">
+        <div class="font-medium text-gray-900">${cost.item_name}</div>
+        <div class="text-xs text-gray-500 sm:hidden mt-1">${cost.description || ''}</div>
+        ${cost.justification ? `<div class="text-xs text-amber-600 mt-1"><i class="fas fa-info-circle mr-1"></i>${cost.justification}</div>` : ''}
+      </td>
+      <td class="px-4 py-3 text-sm text-gray-600 hidden sm:table-cell">
+        ${cost.description || '<span class="text-gray-400">—</span>'}
+      </td>
+      <td class="px-4 py-3 text-center font-medium text-gray-900">${cost.quantity}</td>
+      <td class="px-4 py-3 text-right text-gray-700">$${cost.unit_price.toFixed(2)}</td>
+      <td class="px-4 py-3 text-right font-semibold text-gray-900">$${cost.total_price.toFixed(2)}</td>
+    `;
+    costBreakdown.appendChild(row);
+  });
+
+  // Update totals
+  document.getElementById('subtotal').textContent = `$${billing.subtotal.toFixed(2)}`;
+
+  // Render dynamic tax breakdown
+  const taxBreakdown = document.getElementById('taxBreakdown');
+  taxBreakdown.innerHTML = '';
+  if (billing.tax_breakdown && billing.tax_breakdown.length > 0) {
+    billing.tax_breakdown.forEach(tax => {
+      const taxRow = document.createElement('div');
+      taxRow.className = 'flex justify-between text-gray-600 text-sm';
+      taxRow.innerHTML = `
+        <span class="font-medium">${tax.description} (${tax.percentage.toFixed(1)}%):</span>
+        <span class="font-semibold">$${tax.amount.toFixed(2)}</span>
+      `;
+      taxBreakdown.appendChild(taxRow);
+    });
+  } else {
+    const taxRow = document.createElement('div');
+    taxRow.className = 'flex justify-between text-gray-600 text-sm';
+    taxRow.innerHTML = `
+      <span class="font-medium">Tax (0%):</span>
+      <span class="font-semibold">$0.00</span>
+    `;
+    taxBreakdown.appendChild(taxRow);
+  }
+
+  document.getElementById('taxAmount').textContent = `$${billing.tax_amount.toFixed(2)}`;
+  document.getElementById('totalAmount').textContent = `$${billing.total_amount.toFixed(2)}`;
+
+  // Update status banner
+  updateStatusBanner(billing.status, billing.can_be_approved);
+
+  // Show/hide notes and action buttons
+  if (billing.can_be_approved) {
+    document.getElementById('notesSection').classList.remove('hidden');
+    document.getElementById('actionButtons').classList.remove('hidden');
+  }
+}
+
+function updateStatusBanner(status, canBeApproved) {
+  const statusBanner = document.getElementById('statusBanner');
+  const statusIcon = document.getElementById('statusIcon');
+  const statusText = document.getElementById('statusText');
+
+  if (!canBeApproved) {
+    statusBanner.classList.remove('hidden');
+
+    switch (status) {
+      case 'approved':
+        statusBanner.className = 'bg-blue-100 border border-blue-200 rounded-lg p-4 mx-6 mt-6';
+        statusIcon.className = 'fas fa-thumbs-up text-blue-600 mr-3 text-xl mt-0.5';
+        statusText.textContent = '{% trans "You have approved these additional costs. Please proceed to payment."|escapejs %}';
+        break;
+      case 'rejected':
+        statusBanner.className = 'bg-red-100 border border-red-200 rounded-lg p-4 mx-6 mt-6';
+        statusIcon.className = 'fas fa-times-circle text-red-600 mr-3 text-xl mt-0.5';
+        statusText.textContent = '{% trans "You have rejected these additional costs."|escapejs %}';
+        break;
+      case 'paid':
+        statusBanner.className = 'bg-green-100 border border-green-200 rounded-lg p-4 mx-6 mt-6';
+        statusIcon.className = 'fas fa-check-circle text-green-600 mr-3 text-xl mt-0.5';
+        statusText.textContent = '{% trans "Payment received. Installation will proceed as scheduled."|escapejs %}';
+        break;
+    }
+  }
+}
+
+async function approveBilling() {
+  if (!confirm(translations.confirmApprovalCosts)) return;
+
+  const customerNotes = document.getElementById('customerNotes').value;
+
+  try {
+    const response = await fetch(billingApiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        action: 'approve',
+        customer_notes: customerNotes
+      })
+    });
+
+    const responseText = await response.text();
+    const data = JSON.parse(responseText);
+
+    if (data.success) {
+      if (data.redirect_to_payment && data.payment_url) {
+        showAppToast('{% trans "Additional costs approved! Redirecting to payment..."|escapejs %}', 'success');
+        window.location.href = data.payment_url;
+      } else {
+        showAppToast('{% trans "Additional costs approved!"|escapejs %}', 'success');
+        window.location.href = '{% url "billing_page" %}';
+      }
+    } else {
+      showAppToast(data.message || '{% trans "Failed to approve billing"|escapejs %}', 'error');
+    }
+  } catch (error) {
+    console.error('Error approving billing:', error);
+    showAppToast('{% trans "Failed to approve billing"|escapejs %}', 'error');
+  }
+}
+
+async function rejectBilling() {
+  const reason = prompt(translations.rejectReason);
+  if (!reason) return;
+
+  try {
+    const response = await fetch(billingApiUrl, {
+
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken')
+      },
+      body: JSON.stringify({
+        action: 'reject',
+        customer_notes: reason
+      })
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      showAppToast('{% trans "Additional costs rejected"|escapejs %}', 'success');
+      window.location.href = '{% url "billing_page" %}';
+    } else {
+      showAppToast(data.message || '{% trans "Failed to reject billing"|escapejs %}', 'error');
+    }
+  } catch (error) {
+    console.error('Error rejecting billing:', error);
+    alert(translations.failedToRejectBilling);
+  }
+}
+
+/* --- Notification helpers --- */
+function showNotice(message, type='info', opts={}){
+  const {timeout=4000} = opts || {};
+  // Create a simple floating notice since the main page noticeHost might not exist here
+  const notice = document.createElement('div');
+  notice.className = `fixed z-[60] top-4 right-4 px-4 py-2 rounded-lg shadow-lg border text-sm ${getNoticeClasses(type)}`;
+  notice.innerHTML = `<span>${message}</span>`;
+  document.body.appendChild(notice);
+  setTimeout(() => {if(notice.parentNode) notice.parentNode.removeChild(notice);}, timeout || 4000);
+}
+
+function getNoticeClasses(type){
+  const colors = {
+    success: 'bg-green-50 border-green-200 text-green-800',
+    error: 'bg-red-50 border-red-200 text-red-800',
+    info: 'bg-blue-50 border-blue-200 text-blue-800',
+    warning: 'bg-yellow-50 border-yellow-200 text-yellow-800'
+  };
+  return colors[type] || colors.info;
+}
+
+function showAppToast(message, type = 'info') {
+  showNotice(message, type, {timeout: 5000});
+}
+
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+</script>
+
+{% endblock %}

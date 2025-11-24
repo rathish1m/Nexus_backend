@@ -1,0 +1,80 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8">
+  <title>{% trans "Nexus Backoffice Dashboard" %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .sidebar-slide {
+      transform: translateX(100%);
+      transition: transform 0.3s ease-in-out;
+    }
+    .sidebar-slide.open {
+      transform: translateX(0);
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-800 flex flex-col min-h-screen">
+
+<!-- Mobile Topbar -->
+<div class="bg-white px-4 py-3 flex justify-between items-center shadow md:hidden">
+  <img src="{% static 'images/logo/logo.png' %}" class="h-8" alt="Logo">
+  <button onclick="toggleMobileSidebar()" class="text-gray-600">
+    <i class="fas fa-bars fa-lg"></i>
+  </button>
+</div>
+
+<div class="flex flex-1 w-full flex-col md:flex-row">
+
+  <!-- Sidebar -->
+    {% include 'menus/desktop_client/desktop_menus.html' %}
+
+  <!-- Mobile Sidebar -->
+  <div class="fixed inset-0 bg-black bg-opacity-50 hidden z-40 md:hidden" id="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+
+    {% include 'menus/desktop_client/desktop_mobile_menus.html' %}
+  <!-- Main Content -->
+  <main class="flex-1 flex flex-col px-4 sm:px-6 lg:px-10 py-6">
+    {% block content %}
+    {% endblock %}
+  </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-600 mt-auto">
+  <div class="max-w-screen-xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-2">
+    <p class="text-center sm:text-left">&copy; 2025 <strong>Nexus Telecom</strong> — {% trans "All rights reserved." %}</p>
+    <div class="flex items-center gap-3 text-sm">
+      <a href="#" class="hover:text-blue-600 transition">{% trans "Privacy Policy" %}</a>
+      <span class="hidden sm:inline-block">|</span>
+      <a href="#" class="hover:text-blue-600 transition">{% trans "Terms of Service" %}</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  function toggleMobileSidebar() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('hidden');
+  }
+</script>
+
+    <script>
+  function openModal(modalId) {
+    document.getElementById(modalId).classList.remove('hidden');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.add('hidden');
+  }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,15 @@
+Hello Nexus team,
+
+A new customer feedback has been submitted for job {{ order.order_reference|default:feedback.installation.id }}.
+
+Customer: {{ feedback.customer.full_name|default:feedback.customer.email }}
+Rating: {{ feedback.rating }} / 5
+Status: {{ feedback.get_status_display }}
+
+Comment:
+{{ feedback.comment|default:"(no comment provided)" }}
+
+View details: {{ site_url }}/backoffice/feedbacks/{{ feedback.id }}/
+
+--
+Nexus Telecoms automated notification

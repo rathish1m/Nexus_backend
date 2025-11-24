@@ -1,0 +1,35 @@
+{% load static i18n %}
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Starlink Kits Management" %}</h2>
+      <p class="text-sm text-gray-500">{% trans "Manage Starlink kits inventory and details." %}</p>
+    </div>
+    <button onclick="openStarlinkKitModal()"
+            class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+      <i class="fas fa-plus text-xs"></i> {% trans "Add Starlink Kit" %}
+    </button>
+  </div>
+
+  <!-- Mobile cards -->
+  <div id="starlinkKitCards" class="md:hidden grid grid-cols-1 gap-3">
+    <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+  </div>
+
+  <!-- Desktop table -->
+  <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+    <table class="w-full text-sm text-left">
+      <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+        <tr>
+          <th class="py-3 px-4">{% trans "Name" %}</th>
+          <th class="py-3 px-4">{% trans "Model" %}</th>
+          <th class="py-3 px-4">{% trans "Description" %}</th>
+          <th class="py-3 px-4">{% trans "Price (USD)" %}</th>
+          <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+        </tr>
+      </thead>
+      <tbody id="starlinkKitTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+    </table>
+  </div>
+</section>

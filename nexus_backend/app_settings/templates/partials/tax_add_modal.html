@@ -1,0 +1,62 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- Modal Container -->
+<div id="taxModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+  <div class="bg-white p-6 rounded-lg shadow-md w-full max-w-md relative">
+    <!-- Close Button -->
+    <button onclick="closeTaxModal()" class="absolute top-2 right-2 text-gray-500 hover:text-red-500">
+      <i class="fas fa-times"></i>
+    </button>
+
+    <h2 class="text-xl font-semibold mb-4">{% trans "Add Tax Rate" %}</h2>
+    <form id="taxRateForm" class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">{% trans "Description" %}</label>
+        <select name="description" id="taxDescriptionSelect" required
+                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-300">
+          <option value="" disabled selected>{% trans "Select a tax type" %}</option>
+          <!-- Options loaded by JS -->
+        </select>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium">{% trans "Percentage (%)" %}</label>
+        <input type="number" name="percentage" step="0.01" required
+               class="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring focus:ring-blue-300">
+      </div>
+
+      <button type="submit"
+              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition">
+        {% trans "Add Tax" %}
+      </button>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Load choices from the backend and populate the dropdown
+  async function loadTaxChoices() {
+    try {
+      const res = await fetch("{% url 'taxes_choices' %}", { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      const data = await res.json();
+      const sel = document.getElementById('taxDescriptionSelect');
+      sel.innerHTML = '<option value="" disabled selected>{{ _("Select a tax type") }}</option>';
+
+      if (data.success && Array.isArray(data.choices)) {
+        data.choices.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.value;
+          opt.textContent = c.label;
+          sel.appendChild(opt);
+        });
+      }
+    } catch (e) {
+      console.error("Failed to load tax choices", e);
+    }
+  }
+
+  // If your modal opens dynamically, call this when opening the modal.
+  // Otherwise, you can also call it on DOMContentLoaded.
+  document.addEventListener('DOMContentLoaded', loadTaxChoices);
+</script>

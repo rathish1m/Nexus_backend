@@ -1,0 +1,153 @@
+{% extends 'tech/fe_dashboard_main.html' %}
+{% load static i18n %}
+
+{% block title %}{% trans "Customer Activation" %}{% endblock %}
+
+{% block content %}
+<div id="activationsContainer" class="w-full px-6 py-6"
+  data-pending-url="{% url 'activation_pending_api' %}"
+  data-confirm-activation-url-template="{% url 'confirm_activation' 0 %}"
+  data-confirm-activation-request-url-template="{% url 'confirm_activation_request' 0 %}"
+  data-cancel-activation-url-template="{% url 'cancel_activation' 0 %}"
+  data-detail-url-template="{% url 'activation_detail_page' 0 %}"
+  data-detail-label="{% trans 'Details' %}"
+  data-cancel-activation-request-url-template="{% url 'cancel_activation_request' 0 %}"
+  data-loading-msg="{% trans 'Loading...' %}"
+  data-no-pending-msg="{% trans 'No pending activations.' %}"
+  data-confirm-label="{% trans 'Confirm' %}"
+  data-cancel-label="{% trans 'Cancel' %}"
+  data-refresh-label="{% trans 'Refresh' %}"
+  data-page-size="10"
+  data-prev-label="{% trans 'Prev' %}"
+  data-next-label="{% trans 'Next' %}">
+  <script>
+    // Early inline debug: helps detect if template is rendered and if external scripts are blocked
+    try {
+      console.debug('[nexus-debug] client_activation template rendered. activationsContainer present:', !!document.getElementById('activationsContainer'));
+      // Report whether the activations.js file tag exists in DOM (not whether it executed)
+      const scripts = Array.from(document.getElementsByTagName('script')).map(s => s.src || '[inline]');
+      console.debug('[nexus-debug] scripts on page (first 10):', scripts.slice(0, 10));
+    } catch (e) {
+      // ignore
+    }
+  </script>
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+    <div class="flex items-center gap-3">
+      <span class="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-white/15">
+        <i class="fas fa-user-check text-2xl"></i>
+      </span>
+      <div>
+        <h1 class="text-2xl font-extrabold">{% trans "Customer Activation" %}</h1>
+        <p class="text-indigo-100 text-sm mt-1">{% trans "Manage and confirm customer activations." %}</p>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI section (separate block inspired by Dashboard) -->
+  <div id="activationKpiBlock" class="mb-6">
+    <div id="activationKpis" class="grid grid-cols-1 sm:grid-cols-4 gap-6 mb-4">
+      <div class="bg-gradient-to-r from-indigo-50 to-indigo-100 border border-indigo-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-200 ease-in-out text-center" data-kpi="planned_today">
+        <div class="text-sm font-medium text-indigo-700">{% trans "Planned today" %}</div>
+        <div class="text-3xl font-bold text-indigo-800 mt-3" id="kpi_planned_today">—</div>
+        <p class="text-xs text-indigo-600 mt-2">{% trans "Planned activations" %}</p>
+      </div>
+      <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-200 ease-in-out text-center" data-kpi="pending">
+        <div class="text-sm font-medium text-blue-700">{% trans "Pending" %}</div>
+        <div class="text-3xl font-bold text-blue-800 mt-3" id="kpi_pending">—</div>
+        <p class="text-xs text-blue-600 mt-2">{% trans "Awaiting confirmation" %}</p>
+      </div>
+      <div class="bg-gradient-to-r from-yellow-50 to-yellow-100 border border-yellow-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-200 ease-in-out text-center" data-kpi="in_progress">
+        <div class="text-sm font-medium text-yellow-700">{% trans "In Progress" %}</div>
+        <div class="text-3xl font-bold text-yellow-800 mt-3" id="kpi_in_progress">—</div>
+        <p class="text-xs text-yellow-600 mt-2">{% trans "Being processed" %}</p>
+      </div>
+      <div class="bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-2xl shadow-lg p-5 transform hover:scale-105 transition-all duration-200 ease-in-out text-center" data-kpi="completed">
+        <div class="text-sm font-medium text-green-700">{% trans "Completed" %}</div>
+        <div class="text-3xl font-bold text-green-800 mt-3" id="kpi_completed">—</div>
+        <p class="text-xs text-green-600 mt-2">{% trans "Finished activations" %}</p>
+      </div>
+    </div>
+
+    <div id="activationFilters" class="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div>
+        <label class="sr-only" for="kpiTechnician">{% trans "Technician" %}</label>
+        <select id="kpiTechnician" aria-label="Technician" class="w-full border border-gray-300 p-2 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+          <option value="">{% trans "All Technicians" %}</option>
+        </select>
+      </div>
+      <div class="flex items-center gap-2">
+        <label class="sr-only" for="kpiDateRange">{% trans "Date range" %}</label>
+        <div class="w-full">
+          <div class="flex gap-2">
+            <button data-range="24h" class="kpi-range flex-1 px-3 py-2 rounded-lg border bg-white text-sm">24h</button>
+            <button data-range="7d" class="kpi-range flex-1 px-3 py-2 rounded-lg border bg-white text-sm">7d</button>
+            <button data-range="30d" class="kpi-range flex-1 px-3 py-2 rounded-lg border bg-white text-sm">30d</button>
+            <button id="kpiCustom" class="px-3 py-2 rounded-lg border bg-white text-sm">{% trans "Custom" %}</button>
+          </div>
+        </div>
+      </div>
+      <div>
+        <label class="sr-only" for="filterStatus">{% trans "Status" %}</label>
+        <select id="filterStatus" class="w-full border border-gray-300 p-2 rounded-lg bg-white hover:bg-gray-50 focus:ring-2 focus:ring-indigo-500">
+          <option value="">{% trans "All Statuses" %}</option>
+          <option value="pending">{% trans "Pending" %}</option>
+          <option value="in_progress">{% trans "In Progress" %}</option>
+          <option value="completed">{% trans "Completed" %}</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div class="bg-white border border-gray-200 rounded-2xl shadow p-6">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left" id="activationsTable">
+          <thead class="bg-gray-100 text-gray-700 uppercase text-xs">
+            <tr>
+              <th class="px-4 py-3">#</th>
+              <th class="px-4 py-3">{% trans "Order Ref" %}</th>
+              <th class="px-4 py-3">{% trans "Customer" %}</th>
+              <th class="px-4 py-3">{% trans "Plan" %}</th>
+              <th class="px-4 py-3">{% trans "Kit" %}</th>
+              <th class="px-4 py-3">{% trans "Plus Code" %}</th>
+              <th class="px-4 py-3">{% trans "Status" %}</th>
+              <th class="px-4 py-3">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="activationsBody" class="divide-y divide-gray-100">
+            <tr><td colspan="8" class="px-4 py-6 text-center text-gray-500">{% trans "Loading..." %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="mt-4 flex items-center justify-between">
+      <div id="activationMsg" class="text-sm text-gray-700"></div>
+      <div id="activationsPager" class="flex items-center gap-2 text-sm"></div>
+    </div>
+  </div>
+</div>
+<!-- Modal container for activation details (populated by activations.js) -->
+<div id="activationDetailsModalPlaceholder"></div>
+  <!-- Fallback: ensure activations JS is loaded even if extra_scripts block isn't rendered -->
+  <!-- Ensure activations.js is present as a fallback even when extra_scripts is not inserted by the base template -->
+  <script src="{% static 'tech/activations.js' %}"></script>
+  <!-- Open Location Code lib (for client-side Plus Code generation) -->
+  <script src="https://cdn.jsdelivr.net/npm/open-location-code@1.0.4/openlocationcode.min.js"></script>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script>
+    // Small runtime sanity checks to help debug missing network activity.
+    console.debug('extra_scripts block: activations.js block present (fallback include should load the file)');
+    console.debug('window._nexus_fetchPending available?:', typeof window._nexus_fetchPending);
+    try {
+      if (typeof window._nexus_fetchPending === 'function') {
+        console.debug('Invoking window._nexus_fetchPending(1) to trigger fetchPending');
+        window._nexus_fetchPending(1);
+      } else {
+        console.debug('window._nexus_fetchPending not present — activations.js may have thrown earlier');
+      }
+    } catch (e) {
+      console.error('Error invoking _nexus_fetchPending:', e);
+    }
+  </script>
+{% endblock %}

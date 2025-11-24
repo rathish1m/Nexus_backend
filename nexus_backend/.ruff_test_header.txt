@@ -1,0 +1,2 @@
+# ruff: noqa: E402
+# Django setup must come before other imports in standalone test scripts

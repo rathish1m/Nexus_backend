@@ -1,0 +1,70 @@
+{% load i18n %}
+<!-- Payment Modal (Single & Consolidated) -->
+<div id="paymentModal" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800/75 hidden px-4">
+  <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 relative animate-fade-in">
+    <button type="button" onclick="closePaymentModal()" class="absolute top-4 right-6 text-gray-500 hover:text-red-600 text-2xl transition">&times;</button>
+
+    <!-- Header -->
+    <div class="bg-gradient-to-r from-blue-500 to-blue-600 -mx-6 -mt-6 p-6 rounded-t-2xl text-white">
+      <h2 class="text-xl font-bold tracking-wide">{% trans "Payment Portal" %}</h2>
+      <p class="text-blue-100 text-sm mt-1">{% trans "Complete your transaction securely." %}</p>
+    </div>
+
+    <!-- Payment Form -->
+    <form id="paymentForm" class="space-y-6 mt-4">
+      {% csrf_token %}
+      <!-- Mode controls -->
+      <input type="hidden" id="selectedMode" name="mode" value="invoice">
+      <input type="hidden" id="selectedOrderId" name="order_id">
+      <input type="hidden" id="selectedInvoiceId" name="invoice_id">
+      <input type="hidden" id="selectedConsolidatedNumber" name="consolidated_number">
+      <input type="hidden" id="cashCurrency" name="currency" value="USD">
+
+      <!-- Total Preview -->
+      <div class="bg-gray-100 border rounded-lg p-4 flex items-center justify-between">
+        <span class="text-gray-600 font-medium">{% trans "Total to Pay" %}</span>
+        <span class="text-gray-900 font-bold text-lg">$<span id="orderTotalDisplay">0.00</span></span>
+      </div>
+
+      <!-- Payment Method -->
+      <fieldset class="space-y-3">
+        <legend class="text-gray-700 font-bold">{% trans "Select Payment Method" %}</legend>
+        <div class="flex space-x-6">
+          <label class="inline-flex items-center text-gray-900 group">
+            <input type="radio" name="paymentMethod" value="cash" checked class="text-blue-600 focus:ring-blue-500">
+            <span class="ml-2 cursor-pointer group-hover:text-blue-500">{% trans "Cash" %}</span>
+          </label>
+          <label class="inline-flex items-center text-gray-900 group">
+            <input type="radio" name="paymentMethod" value="terminal" class="text-blue-600 focus:ring-blue-500">
+            <span class="ml-2 cursor-pointer group-hover:text-blue-500">{% trans "Terminal" %}</span>
+          </label>
+        </div>
+      </fieldset>
+
+      <!-- Cash Field -->
+      <div id="cashFields" class="space-y-3">
+        <label class="block text-gray-700 font-medium">{% trans "Cash Amount" %}</label>
+        <input type="number" id="cashAmount" name="amount" step="0.01" min="0"
+               class="w-full border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+               placeholder="0.00" readonly>
+        <p class="text-sm text-gray-500">{% trans "Ensure the amount matches the total." %}</p>
+      </div>
+
+      <!-- Terminal Field -->
+      <div id="terminalFields" class="space-y-3 hidden">
+        <label class="block text-gray-700 font-medium">{% trans "Transaction Reference" %}</label>
+        <input type="text" id="terminalReference" name="terminal_reference"
+               class="w-full border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+               autocomplete="off" placeholder="e.g., TRX-12345">
+      </div>
+
+      <!-- Submit Button -->
+      <div>
+        <button type="submit"
+          class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white text-lg font-semibold py-3 rounded-lg shadow-xl transition">
+          {% trans "Complete Payment" %}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

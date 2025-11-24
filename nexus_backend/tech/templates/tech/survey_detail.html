@@ -1,0 +1,405 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans "Site Survey Details – Nexus Dashboard" %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --sidebar-bg: #ffffff;
+            --sidebar-hover: #f0f4ff;
+            --sidebar-text: #374151;
+            --sidebar-active: #2563eb;
+        }
+
+        .sidebar-slide {
+            transform: translateX(100%);
+            transition: transform 0.3s ease-in-out;
+        }
+
+        .sidebar-slide.open {
+            transform: translateX(0);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .status-approved {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+
+        .status-rejected {
+            background-color: #fecaca;
+            color: #991b1b;
+        }
+
+        .status-completed {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .response-badge {
+            display: inline-block;
+            padding: 0.125rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-right: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .response-info {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+
+        .response-warning {
+            background-color: #fef3c7;
+            color: #92400e;
+        }
+
+        .response-success {
+            background-color: #dcfce7;
+            color: #166534;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans flex flex-col min-h-screen">
+
+<!-- Header -->
+<header class="bg-white shadow px-6 py-4 flex justify-between items-center md:hidden">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Logo" class="h-10">
+    <button onclick="toggleMobileSidebar()" class="text-gray-600 focus:outline-none">
+        <i class="fas fa-bars fa-lg"></i>
+    </button>
+</header>
+
+<div class="flex flex-1 flex-col md:flex-row w-full">
+
+    <!-- Sidebar (Desktop) -->
+    <aside class="bg-white shadow-lg w-64 hidden md:flex flex-col">
+        <div class="p-6 border-b border-gray-200">
+            <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+        </div>
+        <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium text-gray-700">
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Main</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-gauge w-5 mr-3 text-blue-500"></i> {% trans "Dashboard" %}
+                </a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Field OPS</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'fe_ops_dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-hard-hat w-5 mr-3 text-blue-500"></i> {% trans "FE Dashboard" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_dashboard' %}" class="flex items-center px-4 py-2 rounded-lg bg-blue-50 text-blue-700">
+                    <i class="fas fa-clipboard-check w-5 mr-3"></i> {% trans "Site Survey" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'installation_job_list' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-tools w-5 mr-3 text-blue-500"></i> {% trans "Installation Jobs" %}
+                </a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">Management</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'billing' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-file-invoice-dollar w-5 mr-3 text-blue-500"></i> {% trans "Billing" %}
+                </a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'settings' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+                    <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i> {% trans "Settings" %}
+                </a>
+            </div>
+
+            <a href="/{{ LANGUAGE_CODE }}{% url 'logout_request' %}" class="flex items-center px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+                <i class="fas fa-sign-out-alt w-5 mr-3"></i> {% trans "Logout" %}
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Sidebar (Mobile) -->
+    <div class="fixed inset-0 z-40 bg-black bg-opacity-50 md:hidden hidden" id="mobile-overlay"
+         onclick="toggleMobileSidebar()"></div>
+    <aside id="mobileSidebar" class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden">
+        <div class="flex justify-end mb-4">
+            <button onclick="toggleMobileSidebar()" class="text-gray-500 hover:text-gray-700">
+                <i class="fas fa-times fa-lg"></i>
+            </button>
+        </div>
+        <nav class="space-y-3 text-sm font-medium text-gray-700">
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Main</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Dashboard" %}</a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Field OPS</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'fe_ops_dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "FE Dashboard" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_dashboard' %}" class="block px-3 py-2 rounded bg-blue-50 text-blue-700">{% trans "Site Survey" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'installation_job_list' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Installation Jobs" %}</a>
+            </div>
+
+            <div class="mb-4">
+                <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Management</h3>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'billing' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Billing" %}</a>
+                <a href="/{{ LANGUAGE_CODE }}{% url 'settings' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Settings" %}</a>
+            </div>
+
+            <a href="/{{ LANGUAGE_CODE }}{% url 'logout_request' %}" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 hover:text-red-700 transition">{% trans "Logout" %}</a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 px-6 py-8">
+        <div class="mb-8">
+            <!-- Back Button -->
+            <div class="mb-4">
+                <a href="/{{ LANGUAGE_CODE }}{% url 'survey_dashboard' %}"
+                   class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors duration-200">
+                    <i class="fas fa-arrow-left mr-2"></i>
+                    {% trans "Retour au Dashboard" %}
+                </a>
+            </div>
+
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">{% trans "Site Survey Details" %}</h1>
+            <p class="text-gray-600">{% trans "Survey for Order" %} {{ survey.order.order_reference }}</p>
+        </div>
+
+        <!-- Survey Information Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Survey Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-info-circle mr-2 text-blue-500"></i>
+                    {% trans "Survey Information" %}
+                </h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Order" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.order.order_reference }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Technician" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.technician.get_full_name|default:"Unassigned" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Scheduled Date" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.scheduled_date|default:"-" }}</dd>
+                    </div>
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Status" %}</dt>
+                        <dd>
+                            {% if survey.status == 'approved' %}
+                            <span class="status-badge status-approved">{% trans "Approved" %}</span>
+                            {% elif survey.status == 'rejected' %}
+                            <span class="status-badge status-rejected">{% trans "Rejected" %}</span>
+                            {% elif survey.status == 'completed' %}
+                            <span class="status-badge status-completed">{% trans "Completed" %}</span>
+                            {% else %}
+                            <span class="status-badge status-pending">{% trans "Pending" %}</span>
+                            {% endif %}
+                        </dd>
+                    </div>
+                </dl>
+            </div>
+
+            <!-- Location Information -->
+            <div class="bg-white rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                    <i class="fas fa-map-marker-alt mr-2 text-green-500"></i>
+                    {% trans "Location" %}
+                </h3>
+                <dl class="space-y-3">
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Address" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.survey_address|default:"Not specified" }}</dd>
+                    </div>
+                    {% if survey.survey_latitude and survey.survey_longitude %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Coordinates" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.survey_latitude }}, {{ survey.survey_longitude }}</dd>
+                    </div>
+                    {% endif %}
+                    <div>
+                        <dt class="text-sm font-medium text-gray-500">{% trans "Location Notes" %}</dt>
+                        <dd class="text-sm text-gray-900">{{ survey.location_notes|default:"No location notes" }}</dd>
+                    </div>
+                </dl>
+            </div>
+        </div>
+
+        <!-- Checklist Responses -->
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-6">{% trans "Survey Responses" %}</h3>
+
+            {% for response in survey.responses.all %}
+            <div class="border border-gray-200 rounded-lg p-4 mb-4">
+                <div class="flex justify-between items-start mb-3">
+                    <div>
+                        <h5 class="font-medium text-gray-900">{{ response.checklist_item.question }}</h5>
+                        <p class="text-sm text-gray-500">{{ response.checklist_item.get_category_display }}</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-2 mb-3">
+                    {% if response.response_text %}
+                    <span class="response-badge response-info">
+                        <i class="fas fa-comment mr-1"></i>{% trans "Response:" %} {{ response.response_text }}
+                    </span>
+                    {% endif %}
+                    {% if response.response_rating %}
+                    <span class="response-badge response-warning">
+                        <i class="fas fa-star mr-1"></i>{% trans "Rating:" %} {{ response.response_rating }}/5
+                    </span>
+                    {% endif %}
+                    {% if response.response_choice %}
+                    <span class="response-badge response-success">
+                        <i class="fas fa-check-circle mr-1"></i>{% trans "Choice:" %} {{ response.response_choice }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if response.additional_notes %}
+                <div class="mt-3 p-3 bg-gray-50 rounded">
+                    <p class="text-sm text-gray-600">
+                        <strong>{% trans "Notes:" %}</strong> {{ response.additional_notes }}
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Overall Assessment -->
+        {% if survey.overall_assessment %}
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Overall Assessment" %}</h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="md:col-span-2">
+                    <h5 class="font-medium text-gray-900 mb-2">{% trans "Assessment Summary" %}</h5>
+                    <p class="text-gray-700">{{ survey.overall_assessment }}</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">{% trans "Recommended Mounting" %}</h5>
+                        <p class="text-sm text-gray-600">{{ survey.recommended_mounting|default:"Not specified" }}</p>
+                    </div>
+
+                    <div>
+                        <h5 class="font-medium text-gray-900 mb-2">{% trans "Installation Feasible" %}</h5>
+                        <div class="flex items-center">
+                            {% if survey.installation_feasible %}
+                            <i class="fas fa-check-circle text-green-500 mr-2"></i>
+                            <span class="text-green-700 font-medium">{% trans "Yes" %}</span>
+                            {% elif survey.installation_feasible == False %}
+                            <i class="fas fa-times-circle text-red-500 mr-2"></i>
+                            <span class="text-red-700 font-medium">{% trans "No" %}</span>
+                            {% else %}
+                            <i class="fas fa-question-circle text-yellow-500 mr-2"></i>
+                            <span class="text-yellow-700 font-medium">{% trans "Not assessed" %}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Photos -->
+        {% if survey.photos.all %}
+        <div class="bg-white rounded-lg shadow p-6 mb-8">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Survey Photos" %}</h3>
+
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {% for photo in survey.photos.all %}
+                <div class="relative group">
+                    <img src="{{ photo.photo.url }}" class="w-full h-32 object-cover rounded-lg" alt="{{ photo.description }}">
+                    <div class="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 rounded-lg"></div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black to-transparent p-3 rounded-b-lg">
+                        <p class="text-white text-xs font-medium">{{ photo.get_photo_type_display }}</p>
+                        {% if photo.description %}
+                        <p class="text-gray-200 text-xs">{{ photo.description }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Approval Section -->
+        {% if survey.status == 'requires_approval' %}
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-yellow-800 mb-4 flex items-center">
+                <i class="fas fa-exclamation-triangle mr-2"></i>
+                {% trans "Approval Required" %}
+            </h3>
+
+            <form method="post" class="space-y-4">
+                {% csrf_token %}
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Approval Notes" %}</label>
+                    <textarea name="approval_notes" rows="3" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Optional approval notes...' %}"></textarea>
+                </div>
+
+                <div class="flex gap-3">
+                    <button type="submit" name="action" value="approve" class="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition flex items-center">
+                        <i class="fas fa-check mr-2"></i>
+                        {% trans "Approve Survey" %}
+                    </button>
+                    <button type="submit" name="action" value="reject" class="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition flex items-center">
+                        <i class="fas fa-times mr-2"></i>
+                        {% trans "Reject Survey" %}
+                    </button>
+                </div>
+
+                <div class="border-t border-yellow-200 pt-4 mt-4">
+                    <h4 class="font-medium text-yellow-800 mb-2">{% trans "Reject Survey" %}</h4>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">{% trans "Reason for Rejection" %}</label>
+                        <textarea name="rejection_reason" rows="2" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="{% trans 'Required if rejecting...' %}"></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+    <div class="max-w-7xl mx-auto px-4">
+        <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+    </div>
+</footer>
+
+<!-- Scripts -->
+<script>
+    function toggleMobileSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobile-overlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('hidden');
+    }
+</script>
+
+</body>
+</html>

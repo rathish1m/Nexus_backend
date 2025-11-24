@@ -1,0 +1,772 @@
+{% extends 'client/billing_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<style>
+/* ====== Minimal, professional polish ====== */
+@keyframes gradient-shift {0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+.animate-gradient-slow { background-size:200% 200%; animation: gradient-shift 10s ease infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-gradient-slow { animation: none !important; }
+}
+
+.payment-option { transition: all .2s ease; }
+.payment-option.selected { border-color:#059669!important; background:#ecfdf5; }
+
+/* Modal */
+#paymentStatusModal { backdrop-filter: blur(1px); }
+</style>
+
+<div class="min-h-screen bg-gray-50 py-4 sm:py-8">
+  <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+
+    <!-- Breadcrumb -->
+    <nav class="mb-5 text-sm text-gray-500" aria-label="{% trans 'Breadcrumb' %}">
+      <a href="{% url 'billing_page' %}" class="hover:text-emerald-700">{% trans "Billing" %}</a>
+      <span class="mx-2">/</span>
+      <span class="text-gray-700">{% trans "Payment" %}</span>
+    </nav>
+
+    <!-- Header -->
+    <header class="rounded-t-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-6 py-6 shadow-lg">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex-1">
+          <h1 class="text-2xl sm:text-3xl font-bold text-white">{% trans "Complete Your Payment" %}</h1>
+          <p class="text-emerald-100 text-sm mt-2">
+            {% trans "Additional equipment for your Starlink installation" %}
+          </p>
+        </div>
+        <div class="mt-4 sm:mt-0 text-right">
+          <div class="text-3xl sm:text-4xl font-bold text-white">${{ billing.total_amount|floatformat:2 }}</div>
+          <div class="text-emerald-100 text-sm">{% trans "Total Due" %}</div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Card -->
+    <main class="bg-white rounded-b-2xl shadow-xl">
+
+      <!-- Summary -->
+      <section class="p-6 border-b border-gray-200">
+        <h3 class="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+          </svg>
+          {% trans "Payment Summary" %}
+        </h3>
+
+        <div class="bg-gray-50 rounded-lg p-6">
+          <dl class="space-y-3">
+            <div class="flex justify-between text-gray-700">
+              <dt class="font-medium">{% trans "Billing Reference:" %}</dt>
+              <dd class="font-semibold">{{ billing.billing_reference }}</dd>
+            </div>
+            <div class="flex justify-between text-gray-700">
+              <dt class="font-medium">{% trans "Order Reference:" %}</dt>
+              <dd class="font-semibold">{{ billing.survey.order.order_reference }}</dd>
+            </div>
+            <hr class="border-gray-200">
+            <div class="flex justify-between text-gray-700">
+              <dt class="font-medium">{% trans "Subtotal:" %}</dt>
+              <dd class="font-semibold">${{ billing.subtotal|floatformat:2 }}</dd>
+            </div>
+            <div class="flex justify-between text-gray-700">
+              <dt class="font-medium">{% trans "Tax:" %}</dt>
+              <dd class="font-semibold">${{ billing.tax_amount|floatformat:2 }}</dd>
+            </div>
+            <hr class="border-gray-200">
+            <div class="flex justify-between text-xl sm:text-2xl font-bold text-gray-900">
+              <dt>{% trans "Total Amount:" %}</dt>
+              <dd class="text-emerald-600">${{ billing.total_amount|floatformat:2 }}</dd>
+            </div>
+          </dl>
+        </div>
+
+        <!-- Security note -->
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-6">
+          <div class="flex items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-blue-500 mr-3 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+            </svg>
+            <div>
+              <h4 class="font-medium text-blue-800">{% trans "Secure Payment" %}</h4>
+              <p class="text-blue-700 text-sm mt-1">{% trans "Your payment data is encrypted. We use industry-standard security controls." %}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Methods -->
+      <section class="p-6">
+        <h3 class="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-2 text-emerald-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/>
+          </svg>
+          {% trans "Select Payment Method" %}
+        </h3>
+
+        <div class="rounded-xl border bg-white mb-6">
+          <div class="px-4 py-3 border-b text-sm font-medium text-gray-900">
+            {% trans "Choose your preferred payment method" %}
+          </div>
+          <div class="p-4">
+            <div id="paymentMethodButtons" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <!-- Filled by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Mobile Money (DRC-only: enter 9 local digits, +243 fixed) -->
+        <div id="mobileMoneyPhoneGroup" class="hidden rounded-xl border bg-white mb-6">
+          <div class="px-4 py-3 border-b text-sm font-medium text-gray-900">
+            {% trans "Mobile Money" %}
+          </div>
+
+          <div class="p-4 space-y-3">
+            <label for="mobileMoneyPhone" class="text-sm font-medium text-gray-800">
+              {% trans "Phone Number" %}
+            </label>
+
+            <div class="flex items-stretch">
+              <div class="inline-flex items-center gap-2 px-3 border border-r-0 border-gray-300 rounded-l-lg bg-gray-50 text-gray-700 whitespace-nowrap select-none" aria-hidden="true">
+                <img src="{% static 'img/flags/cd.svg' %}" alt="" class="h-4 w-6 rounded-sm" onerror="this.style.display='none'">
+                <span class="font-semibold">+243</span>
+              </div>
+              <input
+                type="tel"
+                id="mobileMoneyPhone"
+                inputmode="numeric"
+                autocomplete="tel-national"
+                placeholder="{% trans '970000000' %}"
+                class="flex-1 block w-full border border-gray-300 rounded-r-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                aria-describedby="mobileMoneyHelp mobileMoneyError"
+                aria-required="true"
+                pattern="^[0-9]{9}$"
+                maxlength="9"
+              />
+            </div>
+
+            <p id="mobileMoneyHelp" class="text-xs text-gray-600">
+              {% trans "Enter only your 9 local digits. The country code (+243) is added automatically." %}
+            </p>
+            <p id="mobileMoneyError" class="text-xs text-rose-600 hidden"></p>
+          </div>
+        </div>
+
+        <!-- Card Email -->
+        <div id="cardEmailWrapper" class="hidden rounded-xl border bg-white mb-6">
+          <div class="px-4 py-3 border-b text-sm font-medium text-gray-900">
+            {% trans "Card Payment" %}
+          </div>
+          <div class="p-4 space-y-2">
+            <label for="cardEmail" class="text-sm text-gray-700">{% trans "Email Address" %}</label>
+            <input type="email" id="cardEmail"
+                   placeholder="{% trans 'Enter your email address' %}"
+                   class="mt-1 block w-full border rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            <p class="text-xs text-gray-500">{% trans "Used for the receipt and verification." %}</p>
+          </div>
+        </div>
+
+        <!-- Manual Reference -->
+        <div id="paymentReferenceGroup" class="hidden mb-6">
+          <label for="payment_reference" class="block text-sm font-medium text-gray-700 mb-2">
+            {% trans "Payment Reference / Transaction ID" %}
+          </label>
+          <input type="text" id="payment_reference"
+                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                 placeholder="{% trans 'Enter your payment reference or transaction ID' %}">
+          <p class="mt-2 text-sm text-gray-500">{% trans "Provide the reference from your payment provider." %}</p>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex items-center justify-between">
+          <a href="{% url 'billing_page' %}" class="text-sm text-gray-600 hover:text-gray-900">
+            {% trans "Back to Billing" %}
+          </a>
+          <button type="button" id="proceedToPaymentBtn" onclick="processPayment()" disabled
+                  class="inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white font-semibold rounded-lg hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 disabled:opacity-50">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            {% trans "Select Payment Method" %}
+          </button>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- Payment Status Modal -->
+<div id="paymentStatusModal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/50">
+  <div class="w-[min(92vw,520px)] rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true">
+    <div class="px-5 py-4 border-b">
+      <h3 id="psmTitle" class="text-base sm:text-lg font-semibold text-gray-900"></h3>
+    </div>
+    <div class="px-5 py-4">
+      <p id="psmMessage" class="text-sm text-gray-700 whitespace-pre-line"></p>
+    </div>
+    <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
+      <button id="psmCancel" type="button"
+              class="px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-100">
+        {% trans "Close" %}
+      </button>
+      <button id="psmConfirm" type="button"
+              class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700">
+        {% trans "OK" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== Utilities ========== */
+function getCookie(name){
+  let v=null;
+  if(document.cookie&&document.cookie!==''){
+    const cookies=document.cookie.split(';');
+    for(let i=0;i<cookies.length;i++){
+      const c=cookies[i].trim();
+      if(c.substring(0,name.length+1)===name+'='){ v=decodeURIComponent(c.substring(name.length+1)); break; }
+    }
+  }
+  return v;
+}
+function $(sel){ return document.querySelector(sel); }
+function byId(id){ return document.getElementById(id); }
+
+/* ========== DRC mobile input: exactly 9 digits, +243 auto ========== */
+(function setupMobileMoneyPhone(){
+  const input  = byId("mobileMoneyPhone");
+  const errEl  = byId("mobileMoneyError");
+  if (!input) return;
+
+  const onlyDigits = (s)=> String(s||"").replace(/\D/g,"");
+
+  function setError(msg){
+    if (errEl) {
+      errEl.textContent = msg || "";
+      errEl.classList.toggle("hidden", !msg);
+    }
+    input.classList.toggle("border-rose-400", !!msg);
+    input.classList.toggle("focus:ring-rose-500", !!msg);
+    input.classList.toggle("focus:border-rose-500", !!msg);
+    input.setAttribute("aria-invalid", msg ? "true" : "false");
+  }
+
+  function isValidLocal9(raw){
+    return /^[0-9]{9}$/.test(onlyDigits(raw));
+  }
+
+  function toE164(raw){
+    const d = onlyDigits(raw);
+    return isValidLocal9(d) ? "+243" + d : null;
+  }
+
+  function validate(showMsg=true){
+    const ok = isValidLocal9(input.value);
+    if (!ok && showMsg) {
+      setError("{% trans 'Enter exactly 9 digits (e.g., 970000000). Do not include +243.' %}");
+    } else {
+      setError("");
+    }
+    return ok;
+  }
+
+  input.addEventListener("input", ()=>{
+    // Force digits and 9 max
+    let d = onlyDigits(input.value).slice(0,9);
+    if (d !== input.value) input.value = d;
+    validate(false);
+  });
+  input.addEventListener("blur", ()=> validate(true));
+
+  // Expose for submit
+  window.MobileMoneyPhone = {
+    isValid: ()=> validate(true),
+    e164: ()=> toE164(input.value)
+  };
+})();
+
+/* ========== Modal helpers ========== */
+(function setupPaymentModal(){
+  const modal=byId("paymentStatusModal");
+  const titleEl=byId("psmTitle");
+  const msgEl=byId("psmMessage");
+  const okBtn=byId("psmConfirm");
+  const cancel=byId("psmCancel");
+  let okHandler=null, cancelHandler=null;
+
+  function openPaymentModal({title="",message="",okText="{% trans 'OK' %}",cancelText="{% trans 'Close' %}",showCancel=true,onOk=null,onCancel=null}={}){
+    if(!modal) return;
+    titleEl.textContent=title||"";
+    msgEl.textContent=message||"";
+    okBtn.textContent=okText;
+    cancel.textContent=cancelText;
+    cancel.classList.toggle("hidden",!showCancel);
+    okHandler=typeof onOk==="function"?onOk:null;
+    cancelHandler=typeof onCancel==="function"?onCancel:null;
+    modal.classList.remove("hidden"); modal.classList.add("flex");
+  }
+  function closePaymentModal(){ if(!modal) return; modal.classList.add("hidden"); modal.classList.remove("flex"); }
+  okBtn?.addEventListener("click",()=>{ try{okHandler&&okHandler();}finally{closePaymentModal();} });
+  cancel?.addEventListener("click",()=>{ try{cancelHandler&&cancelHandler();}finally{closePaymentModal();} });
+  document.addEventListener("keydown",(e)=>{ if(!modal||modal.classList.contains("hidden"))return; if(e.key==="Escape") closePaymentModal(); });
+
+  window.openPaymentModal=openPaymentModal;
+  window.closePaymentModal=closePaymentModal;
+})();
+function confirmModal(opts={}){ return new Promise(res=>{ window.openPaymentModal({ ...opts, showCancel:true, onOk:()=>res(true), onCancel:()=>res(false) }); }); }
+function infoModal(opts={}){ return new Promise(res=>{ window.openPaymentModal({ ...opts, showCancel:false, onOk:()=>res() }); }); }
+
+/* ========== Methods from context ========== */
+window.paymentMethodsData = window.paymentMethodsData || [
+{% for method in payment_methods %}
+  { name: "{{ method.name|escapejs }}", description: "{{ method.description|default_if_none:''|escapejs }}" }{% if not forloop.last %},{% endif %}
+{% endfor %}
+];
+
+window.selectedPaymentMethod=null;
+window.paymentMethodConfig={};
+window._pmIsLoading=false;
+window._pmLastSignature=null;
+
+function normalizeMethodKey(name){
+  const k=String(name||"").toLowerCase();
+  if(k.includes("mobile")||k.includes("momo")||k.includes("mpesa")||k.includes("m-pesa")||k.includes("airtel")||k.includes("orange money")||k.includes("vodacom")) return "mobile";
+  if(k.includes("card")||k.includes("credit")||k.includes("visa")||k.includes("mastercard")) return "card";
+  if(k.includes("bank")||k.includes("transfer")||k.includes("wire")) return "bank";
+  if(k.includes("book")||k.includes("shop")||k.includes("counter")) return "book";
+  return "other";
+}
+function getLabelForMethod(methodKey){
+  const k=String(methodKey||"").toLowerCase();
+  if(k==="mobile") return "{% trans 'Pay with Mobile Money' %}";
+  if(k==="card")   return "{% trans 'Pay with Credit Card' %}";
+  if(k==="bank")   return "{% trans 'Pay with Bank Transfer' %}";
+  if(k==="book")   return "{% trans 'Pay at Counter' %}";
+  return "{% trans 'Complete Payment' %}";
+}
+async function loadPaymentMethods(force=false){
+  if(window._pmIsLoading) return;
+  window._pmIsLoading=true;
+  const container=byId("paymentMethodButtons");
+  if(!container){ window._pmIsLoading=false; return; }
+  try{
+    const methods=Array.isArray(window.paymentMethodsData)?window.paymentMethodsData:[];
+    if(!methods.length){ container.innerHTML=`<p class="text-gray-600 text-sm">{% trans "No payment methods available." %}</p>`; return; }
+    const signature=JSON.stringify(methods.map(m=>(m&&m.name?m.name.toLowerCase().trim():"")).sort());
+    if(!force && signature===window._pmLastSignature && container.children.length) return;
+    window._pmLastSignature=signature;
+
+    container.innerHTML="";
+    window.paymentMethodConfig={};
+    const seen=new Set();
+    methods.forEach(m=>{
+      const raw=(m&&m.name)?String(m.name):"";
+      const key=normalizeMethodKey(raw);
+      if(!key||seen.has(key)) return; seen.add(key);
+      window.paymentMethodConfig[key]={
+        label:getLabelForMethod(key),
+        showPhone:key==="mobile",
+        showEmail:key==="card",
+        showReference:(key==="bank"||key==="book"||key==="other"),
+        originalName:raw
+      };
+      const btn=document.createElement("button");
+      btn.type="button";
+      btn.id=`pm-btn-${key}`;
+      btn.className="payment-option flex items-center justify-center gap-2 w-full py-3 px-4 border-2 border-gray-200 rounded-lg text-sm font-medium bg-white shadow hover:shadow-md hover:bg-gray-50";
+      const icon = key==="mobile"?"📱": key==="card"?"💳": key==="bank"?"🏦": key==="book"?"🧾":"💰";
+      btn.innerHTML=`${icon} ${raw || window.paymentMethodConfig[key].label}`;
+      btn.addEventListener("click",()=>selectPaymentMethod(key));
+      container.appendChild(btn);
+    });
+    if(!container.children.length){ container.innerHTML=`<p class="text-gray-600 text-sm">{% trans "No online payment methods available." %}</p>`; }
+  } finally { window._pmIsLoading=false; }
+}
+function selectPaymentMethod(methodKey){
+  window.selectedPaymentMethod=methodKey;
+  const cfg=window.paymentMethodConfig[methodKey]||{};
+  byId("mobileMoneyPhoneGroup")?.classList.toggle("hidden",!cfg.showPhone);
+  byId("cardEmailWrapper")?.classList.toggle("hidden",!cfg.showEmail);
+  byId("paymentReferenceGroup")?.classList.toggle("hidden",!cfg.showReference);
+
+  const phone=byId("mobileMoneyPhone"), email=byId("cardEmail"), ref=byId("payment_reference");
+  if(phone) cfg.showPhone ? phone.setAttribute("required","") : phone.removeAttribute("required");
+  if(email) cfg.showEmail ? email.setAttribute("required","") : email.removeAttribute("required");
+  if(ref)   cfg.showReference ? ref.setAttribute("required","") : ref.removeAttribute("required");
+
+  const cta=byId("proceedToPaymentBtn");
+  if(cta){ cta.textContent=cfg.label||"{% trans 'Complete Payment' %}"; cta.disabled=false; }
+
+  ["mobile","card","bank","book","other"].forEach(k=>{
+    const el=byId("pm-btn-"+k);
+    if(!el) return;
+    if(k===methodKey) el.classList.add("selected","ring-2","ring-emerald-500","border-emerald-300");
+    else el.classList.remove("selected","ring-2","ring-emerald-500","border-emerald-300");
+  });
+}
+
+/* ========== Process Payment (card window opens ONLY after success) ========== */
+let _payBusy=false;
+async function processPayment(){
+  if(_payBusy) return;
+  const methodKey=window.selectedPaymentMethod;
+  if(!methodKey){
+    await infoModal({ title:"{% trans 'Select Payment Method' %}", message:"{% trans 'Please choose a payment method to continue.' %}" });
+    return;
+  }
+  const cfg=window.paymentMethodConfig[methodKey]||{};
+  const langPrefix=window.location.pathname.split("/")[1];
+  const endpoint=`/${langPrefix}/site-survey/billing/payment/{{ billing.id }}/`;
+
+  const payload={ payment_method: cfg.originalName || methodKey };
+
+  if(cfg.showPhone){
+    if(!window.MobileMoneyPhone?.isValid()){
+      byId("mobileMoneyPhone")?.focus();
+      return;
+    }
+    const e164 = window.MobileMoneyPhone.e164(); // "+243XXXXXXXXX"
+    if(!e164){
+      await infoModal({ title:"{% trans 'Invalid Number' %}", message:"{% trans 'Please correct your mobile number and try again.' %}" });
+      return;
+    }
+    payload.phone_number = e164;
+  }
+  if(cfg.showEmail){
+    const email=byId("cardEmail")?.value?.trim();
+    if(!email){
+      await infoModal({ title:"{% trans 'Missing Email' %}", message:"{% trans 'Please enter your email address.' %}" });
+      return;
+    }
+    payload.email=email;
+  }
+  if(cfg.showReference){
+    const ref=byId("payment_reference")?.value?.trim();
+    if(!ref){
+      await infoModal({ title:"{% trans 'Missing Reference' %}", message:"{% trans 'Please provide your payment reference or transaction ID.' %}" });
+      return;
+    }
+    payload.payment_reference=ref;
+  }
+
+  // Friendly heads-up (no popup yet)
+  if(methodKey==="mobile"){
+    const ok=await confirmModal({
+      title:"{% trans 'Send Mobile Payment Request' %}",
+      message:"{% trans 'We will send a payment request to your mobile wallet. Approve it on your phone. Do not close this window until you have completed the payment to avoid delays in processing your order.' %}",
+      okText:"{% trans 'Send Request' %}",
+      cancelText:"{% trans 'Cancel' %}",
+    });
+    if(!ok) return;
+  }
+  if(methodKey==="card"){
+    const ok=await confirmModal({
+      title:"{% trans 'Redirect to Card Payment' %}",
+      message:"{% trans 'After we contact the payment gateway, a secure payment page may open in a new window. Complete the payment there. Do not close this window until you finish to avoid delays.' %}",
+      okText:"{% trans 'Continue' %}",
+      cancelText:"{% trans 'Cancel' %}",
+    });
+    if(!ok) return;
+  }
+
+  // Disable CTA
+  const cta=byId("proceedToPaymentBtn");
+  const old=cta?cta.textContent:"";
+  if(cta){ cta.disabled=true; cta.textContent="{% trans 'Processing…' %}"; }
+  _payBusy=true;
+
+  try{
+    const res = await fetch(endpoint,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With":"XMLHttpRequest"
+      },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json().catch(()=> ({}));
+
+    if(res.ok && data?.success){
+      if(methodKey==="mobile"){
+        showMobileVerificationCountdown(data);
+        return;
+      }
+
+      if(methodKey==="card"){
+        const url=data.url;
+        if(url){
+          // Open the payment window ONLY NOW (after success)
+          window.open(url,"_blank","noopener,noreferrer");
+          await infoModal({
+  title:"{% trans 'Secure Card Payment Opened' %}",
+  message:"{% trans 'A secure payment page has been opened in a new window. Please complete your payment there. Once the payment is confirmed, click OK on this page to return to your billing. Do not close this window until your payment is fully completed to avoid any delay in processing.' %}"
+});
+          try {
+  const langPrefix = window.location.pathname.split("/")[1];
+  await fetch(`{% url 'probe_payment_status' %}`, {
+    method: "POST",
+    headers: {
+      "Content-Type":"application/json",
+      "X-CSRFToken": getCookie("csrftoken"),
+      "X-Requested-With":"XMLHttpRequest"
+    },
+    body: JSON.stringify({
+      // send what you have:
+      order_number: (data.order_number || null),
+      trans_id: (data.transaction_id || null),
+      order_reference: "{{ billing.survey.order.order_reference }}"
+    })
+  });
+} catch (_) { /* ignore probe errors */ }
+
+          window.location.href="{% url 'billing_page' %}";
+          return;
+        }else{
+          await infoModal({
+            title:"{% trans 'Payment Link' %}",
+            message:(data.message || "{% trans 'Payment initialized, but no redirect URL was returned.' %}")
+          });
+          return;
+        }
+      }
+
+      // Other methods (manual etc.)
+      await infoModal({
+        title:"{% trans 'Payment Processed' %}",
+        message:(data.message || "{% trans 'Your payment has been processed successfully.' %}")
+      });
+      window.location.href="{% url 'billing_page' %}";
+      return;
+    }
+
+    // Failure
+    await infoModal({
+      title:"{% trans 'Payment Failed' %}",
+      message:(data?.message || "{% trans 'Payment processing failed. Please try again or contact support.' %}")
+    });
+
+  }catch(err){
+    console.error("Payment error:",err);
+    await infoModal({ title:"{% trans 'Error' %}", message:"{% trans 'An unexpected error occurred while processing the payment. Please try again.' %}" });
+  }finally{
+    _payBusy=false;
+    if(cta){ cta.disabled=false; cta.textContent=old; }
+  }
+}
+
+/* ========== Boot ========== */
+document.addEventListener("DOMContentLoaded", ()=>{
+  loadPaymentMethods(true);
+  byId("proceedToPaymentBtn")?.addEventListener("click", processPayment);
+});
+</script>
+
+{% endblock %}
+
+<script>
+// Mobile verification countdown + single-shot probe (non-dismissible overlay)
+function showMobileVerificationCountdown(data={}){
+  // Build overlay once
+  let overlay = document.getElementById("mm-verify-overlay");
+  if (overlay){ try{ overlay.remove(); }catch(_){} }
+  overlay = document.createElement('div');
+  overlay.id = 'mm-verify-overlay';
+  overlay.className = 'fixed inset-0 z-[120] flex items-center justify-center bg-black/60';
+  overlay.innerHTML = `
+    <div class="w-[min(92vw,520px)] rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true">
+      <div class="px-5 py-4 border-b">
+        <h3 class="text-base sm:text-lg font-semibold text-gray-900" id="mmv-title">{% trans 'Confirming Payment' %}</h3>
+      </div>
+      <div class="px-5 py-6">
+        <div class="flex flex-col items-center text-center gap-4">
+          <div class="relative" style="width:128px;height:128px;">
+            <svg class="absolute inset-0 -rotate-90" width="128" height="128" viewBox="0 0 128 128" aria-hidden="true">
+              <circle cx="64" cy="64" r="56" stroke="currentColor" stroke-width="10" fill="none" class="opacity-15"></circle>
+              <circle id="mmv-ring" cx="64" cy="64" r="56" stroke="#10B981" stroke-linecap="round" stroke-width="10" fill="none" stroke-dasharray="351.858" stroke-dashoffset="0"></circle>
+            </svg>
+            <div id="mmv-core" class="absolute inset-6 rounded-full grid place-items-center shadow-[0_10px_25px_rgba(16,185,129,.35),0_2px_10px_rgba(16,185,129,.25)] bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,.18),rgba(16,185,129,.06))]">
+              <div id="mmv-spin" class="w-[18px] h-[18px] rounded-full border-4 border-emerald-300 border-t-emerald-600 animate-spin"></div>
+            </div>
+          </div>
+          <div class="leading-none">
+            <div id="mmv-mm" class="text-5xl font-black tracking-tight">5</div>
+            <div class="text-xs text-gray-600">{% trans 'seconds' %}: <span id="mmv-ss">00</span></div>
+          </div>
+          <div id="mmv-status" class="text-gray-900 font-semibold">
+            {% trans 'Please complete the payment on your mobile phone.' %}
+          </div>
+          <div class="text-sm text-gray-600">
+            {% trans 'This can take up to' %} 5 {% trans 'minutes depending on your mobile operator.' %}
+          </div>
+          <div id="mmv-extra" class="text-xs text-gray-500">
+            {% trans 'When your payment is done, click the button below to verify.' %}
+          </div>
+          <div id="mmv-actions" class="mt-2"></div>
+        </div>
+      </div>
+      <div class="px-5 py-4 bg-gray-50 flex items-center justify-end">
+        <button id="mmv-primary" type="button" class="px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700">{% trans 'Payment done' %}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const ring = document.getElementById('mmv-ring');
+  const btn  = document.getElementById('mmv-primary');
+  const sMM  = document.getElementById('mmv-mm');
+  const sSS  = document.getElementById('mmv-ss');
+  const sSt  = document.getElementById('mmv-status');
+  const sEx  = document.getElementById('mmv-extra');
+  const sAct = document.getElementById('mmv-actions');
+  const spin = document.getElementById('mmv-spin');
+  const title= document.getElementById('mmv-title');
+
+  const minutesTotal = 5;
+  const totalMs = minutesTotal * 60 * 1000;
+  let start = Date.now();
+  let deadline = start + totalMs;
+  const CIRC = 2*Math.PI*56;
+
+  function setProgress(rem){
+    const ratio = Math.max(0, Math.min(1, rem/totalMs));
+    const offset = CIRC * (1 - ratio);
+    if (ring) ring.setAttribute('stroke-dashoffset', String(offset));
+  }
+  function setClock(rem){
+    const clamped = Math.max(0, rem);
+    const secs = Math.ceil(clamped/1000);
+    const minsLeft = Math.max(0, Math.floor((secs-1)/60)+1);
+    const secPart = (secs % 60 === 0) ? 0 : secs % 60;
+    if (sMM) sMM.textContent = String(minsLeft);
+    if (sSS) sSS.textContent = String(secPart).padStart(2,'0');
+  }
+  setClock(totalMs); setProgress(totalMs);
+  const t = setInterval(()=>{
+    const rem = deadline - Date.now();
+    setClock(rem); setProgress(rem);
+    if (rem <= 0){ clearInterval(t); if(sMM) sMM.textContent='0'; if(sSS) sSS.textContent='00'; renderTimeout(); }
+  },1000);
+
+  function setBusy(b){ if(btn){ btn.disabled = !!b; btn.classList.toggle('opacity-60', !!b); } }
+
+  function renderSuccess(){
+    if (spin){ spin.className = 'psm-ok psm-success'; spin.innerHTML = '<svg viewBox="0 0 24 24" class="h-5 w-5"><path fill="currentColor" d="M9 16.2l-3.5-3.5-1.4 1.4L9 19 20 8l-1.4-1.4z"/></svg>'; }
+    if (sSt) sSt.textContent = "{% trans 'Payment successful — your order is validated.' %}";
+    if (sEx) sEx.textContent = "{% trans 'You can safely continue.' %}";
+    if (title) title.textContent = "{% trans 'Payment Confirmed' %}";
+    if (btn){
+      btn.textContent = "{% trans 'Continue' %}";
+      btn.disabled = false; btn.classList.remove('opacity-60');
+      btn.onclick = ()=>{ window.location.href = "{% url 'billing_page' %}"; };
+    }
+  }
+  function renderFailure(){
+    if (spin){ spin.className = ''; spin.textContent = '!'; }
+    if (sSt) sSt.textContent = "{% trans 'Payment failed or was cancelled.' %}";
+    if (sEx) sEx.textContent = "{% trans 'Please try again or choose a different payment method.' %}";
+    if (btn){ btn.textContent = "{% trans 'Close' %}"; btn.disabled = false; btn.classList.remove('opacity-60'); btn.onclick = ()=> overlay.remove(); }
+  }
+  function renderTimeout(){
+    if (spin){ spin.className = ''; spin.textContent = '…'; }
+    if (title) title.textContent = "{% trans 'Payment Pending' %}";
+    if (sSt) sSt.textContent = "{% trans 'Still waiting for confirmation from your mobile operator.' %}";
+    if (sEx) sEx.textContent = "{% trans 'You can try again, or view your billing page to check the latest status.' %}";
+    sAct.innerHTML = '';
+    const retry = document.createElement('button');
+    retry.type='button'; retry.className='mt-2 px-3 py-2 rounded border';
+    retry.textContent = "{% trans 'Try Again' %}";
+    retry.onclick = ()=>{ if(spin){ spin.className='w-[18px] h-[18px] rounded-full border-4 border-emerald-300 border-t-emerald-600 animate-spin'; spin.innerHTML=''; }
+      if (sSt) sSt.textContent = "{% trans 'Please complete the payment on your mobile phone.' %}";
+      if (sEx) sEx.textContent = "{% trans 'When your payment is done, click the button below to verify.' %}";
+      start = Date.now(); deadline = start + totalMs; setClock(totalMs); setProgress(totalMs);
+    };
+    sAct.appendChild(retry);
+    if (btn){ btn.textContent = "{% trans 'Go to Billing' %}"; btn.disabled=false; btn.classList.remove('opacity-60'); btn.onclick=()=>{ window.location.href = "{% url 'billing_page' %}"; }; }
+  }
+
+  async function verifyOnce(){
+    // Open a separate verification modal and probe once
+    // Build verification modal
+    let vmodal = document.getElementById('mmv-verify-modal');
+    if (vmodal){ try{ vmodal.remove(); }catch(_){} }
+    vmodal = document.createElement('div');
+    vmodal.id = 'mmv-verify-modal';
+    vmodal.className = 'fixed inset-0 z-[140] flex items-center justify-center bg-black/60';
+    vmodal.innerHTML = `
+      <div class="w-[min(92vw,520px)] rounded-2xl bg-white shadow-2xl overflow-hidden" role="dialog" aria-modal="true">
+        <div class="px-5 py-4 border-b">
+          <h3 class="text-base sm:text-lg font-semibold text-gray-900">{% trans 'Checking Payment' %}</h3>
+        </div>
+        <div class="px-5 py-6">
+          <div class="grid place-items-center text-center gap-3" aria-busy="true" aria-live="polite">
+            <div class="w-14 h-14 rounded-full grid place-items-center shadow-[0_10px_25px_rgba(16,185,129,.35),0_2px_10px_rgba(16,185,129,.25)] bg-[radial-gradient(circle_at_30%_30%,rgba(16,185,129,.18),rgba(16,185,129,.06))]">
+              <div class="w-6 h-6 rounded-full border-4 border-emerald-300 border-t-emerald-600 animate-spin"></div>
+            </div>
+            <div id="mmvv-status" class="text-gray-900 font-semibold">{% trans 'Please wait, we are verifying your payment.' %}</div>
+            <div id="mmvv-extra" class="text-sm text-gray-600">{% trans "Please don't close this window. When verification is completed, it will auto close." %}</div>
+          </div>
+        </div>
+        <div class="px-5 py-4 bg-gray-50 flex items-center justify-end gap-2">
+          <button id="mmvv-retry" type="button" class="hidden px-4 py-2 rounded-xl border border-gray-300 bg-white text-gray-700 hover:bg-gray-100">{% trans 'Retry Verification' %}</button>
+          <button id="mmvv-close" type="button" class="hidden px-4 py-2 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700">{% trans 'Close' %}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(vmodal);
+
+    const $status = document.getElementById('mmvv-status');
+    const $extra  = document.getElementById('mmvv-extra');
+    const $retry  = document.getElementById('mmvv-retry');
+    const $close  = document.getElementById('mmvv-close');
+
+    // Lock interactions until first response
+    function setLocked(lock){
+      if (lock){
+        vmodal.addEventListener('keydown', trapEsc, { once: true });
+      }
+    }
+    function trapEsc(e){ if (e.key === 'Escape') e.preventDefault(); }
+
+    setLocked(true);
+
+    try{
+      const payload = {
+        order_number: (data.order_number || null),
+        trans_id: (data.transaction_id || null),
+        order_reference: "{{ billing.survey.order.order_reference }}"
+      };
+      const r = await fetch(`{% url 'mobile_probe' %}`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken'), 'X-Requested-With': 'XMLHttpRequest' }, body: JSON.stringify(payload)
+      });
+      const j = await r.json().catch(()=>({}));
+      const status = String(j?.status || '').toLowerCase();
+      if (status === 'paid' || j?.success === true){
+        if ($status) $status.textContent = "{% trans 'Payment successful — your order is validated.' %}";
+        if ($extra)  $extra.textContent  = "{% trans 'Redirecting…' %}";
+        setTimeout(()=>{ try{ vmodal.remove(); }catch(_){} window.location.href = "{% url 'billing_page' %}"; }, 700);
+      } else if (status === 'failed'){
+        if ($status) $status.textContent = "{% trans 'Payment failed or was cancelled.' %}";
+        if ($extra)  $extra.textContent  = "{% trans 'Please try again or choose a different payment method.' %}";
+        if ($retry){ $retry.classList.remove('hidden'); $retry.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} verifyOnce(); } }
+        if ($close){ $close.classList.remove('hidden'); $close.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} } }
+      } else {
+        if ($status) $status.textContent = "{% trans 'Still waiting for confirmation from your mobile operator.' %}";
+        if ($extra)  $extra.textContent  = "{% trans 'You can try again in a moment using the button below.' %}";
+        if ($retry){ $retry.classList.remove('hidden'); $retry.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} verifyOnce(); } }
+        if ($close){ $close.classList.remove('hidden'); $close.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} } }
+      }
+    }catch(_e){
+      if ($status) $status.textContent = "{% trans 'Network error while checking payment. Please try again.' %}";
+      if ($retry){ $retry.classList.remove('hidden'); $retry.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} verifyOnce(); } }
+      if ($close){ $close.classList.remove('hidden'); $close.onclick = ()=>{ try{ vmodal.remove(); }catch(_){} } }
+    }
+  }
+
+  if (btn){ btn.onclick = ()=> verifyOnce(); }
+}
+</script>

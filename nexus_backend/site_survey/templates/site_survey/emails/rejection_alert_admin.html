@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Alerte - Survey Rejeté</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .email-container {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #fd7e14 0%, #e8590c 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 30px;
+        }
+        .alert-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .info-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 20px;
+            margin: 20px 0;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        .info-value {
+            color: #212529;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-weight: 600;
+            margin: 10px 5px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        .rejection-reason {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin: 15px 0;
+        }
+        .actions-required {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .center-text {
+            text-align: center;
+            margin: 30px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <div class="header">
+            <div style="font-size: 48px; margin-bottom: 10px;">⚠️</div>
+            <h1>Alerte - Survey Rejeté</h1>
+            <p style="margin: 10px 0 0 0; opacity: 0.9;">Suivi administratif requis</p>
+        </div>
+
+        <div class="content">
+            <p><strong>Équipe Administrative,</strong></p>
+
+            <p>Un site survey vient d'être rejeté et nécessite un suivi administratif.</p>
+
+            <div class="info-grid">
+                <span class="info-label">Survey ID:</span>
+                <span class="info-value">#{{ survey.id }}</span>
+
+                <span class="info-label">Commande:</span>
+                <span class="info-value">{{ order.order_reference|default:"N/A" }}</span>
+
+                <span class="info-label">Technician:</span>
+                <span class="info-value">{{ technician.full_name|default:technician.username|default:"N/A" }}</span>
+
+                <span class="info-label">Email Technician:</span>
+                <span class="info-value">{{ technician.email|default:"N/A" }}</span>
+
+                <span class="info-label">Date de rejet:</span>
+                <span class="info-value">{{ current_date }}</span>
+            </div>
+
+            <div class="rejection-reason">
+                <strong>📝 Raison du rejet:</strong><br>
+                {{ rejection_reason }}
+            </div>
+
+            <div class="actions-required">
+                <strong>🔧 Actions de suivi recommandées:</strong>
+                <ul style="margin: 10px 0;">
+                    <li>Vérifier que le technician a reçu la notification</li>
+                    <li>Évaluer si une replanification est nécessaire</li>
+                    <li>Contacter le client si délai important</li>
+                    <li>Envisager l'assignation à un autre technician</li>
+                    <li>Documenter les actions prises</li>
+                </ul>
+            </div>
+
+            <div class="alert-box">
+                <strong>⏰ Suivi requis:</strong> Ce rejet doit être traité dans les 24h pour maintenir la satisfaction client et éviter les retards d'installation.
+            </div>
+
+            <div class="center-text">
+                <a href="{{ survey_url }}" class="btn">📋 Voir le Survey Complet</a>
+                <a href="{{ dashboard_url }}" class="btn">📊 Dashboard Surveys</a>
+            </div>
+
+            <p><strong>Notifications envoyées automatiquement:</strong></p>
+            <ul>
+                <li>✉️ Email envoyé au technician</li>
+                <li>📱 SMS envoyé au technician (si configuré)</li>
+                <li>📧 Email informatif envoyé au client</li>
+            </ul>
+
+            <p>Cordialement,<br>
+            <strong>Système de notification automatique Nexus</strong></p>
+        </div>
+
+        <div class="footer">
+            <p>Alerte automatique générée le {{ current_date }}.</p>
+            <p><strong>Nexus Admin</strong> - Système de gestion des site surveys</p>
+        </div>
+    </div>
+</body>
+</html>

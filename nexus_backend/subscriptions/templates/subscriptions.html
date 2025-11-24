@@ -1,0 +1,602 @@
+{% extends 'subscriptions/subscription_mainbase.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<!-- Animations + micro-interactions + action buttons -->
+<style>
+  @keyframes fade-in { 0% {opacity:0; transform: translateY(10px)} 100% {opacity:1; transform: translateY(0)} }
+  @keyframes slide-up { 0% {opacity:0; transform: translateY(20px)} 100% {opacity:1; transform: translateY(0)} }
+
+  .animate-fade-in { animation: fade-in .6s ease-out both }
+  .animate-slide-up { animation: slide-up .6s ease-out both }
+  .delay-100 { animation-delay: .1s }
+  .delay-200 { animation-delay: .2s }
+  .delay-300 { animation-delay: .3s }
+
+  .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+  .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.12) }
+
+  .badge { display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .5rem; border-radius:999px; font-size:.75rem; font-weight:600 }
+
+  /* Professional action buttons */
+  .btn { display:inline-flex; align-items:center; gap:.45rem; border:1px solid transparent; border-radius:.65rem; padding:.45rem .7rem; font-size:.8rem; font-weight:600; transition:.15s ease; }
+  .btn:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,.35); }
+  .btn-primary { background:#4f46e5; color:#fff; border-color:#4f46e5; }
+  .btn-primary:hover { background:#4338ca; border-color:#4338ca; }
+  .btn-ghost { background:#fff; color:#374151; border-color:#e5e7eb; }
+  .btn-ghost:hover { background:#f9fafb; }
+  .btn-danger { background:#e11d48; color:#fff; border-color:#e11d48; }
+  .btn-danger:hover { background:#be123c; border-color:#be123c; }
+  .btn-icon { padding:.45rem; width:2.25rem; height:2.25rem; justify-content:center; }
+  .btn-outline { background:#fff; color:#374151; border-color:#d1d5db; }
+  .btn-outline:hover { background:#f3f4f6; }
+
+  .btn-group { display:inline-flex; align-items:center; gap:.4rem; }
+  .dropdown { position:relative; display:inline-block; }
+  .dropdown-menu {
+    position:absolute; right:0; top:calc(100% + .4rem);
+    min-width: 12rem; background:#fff; border:1px solid #e5e7eb; border-radius:.75rem;
+    padding:.35rem; box-shadow: 0 12px 28px rgba(0,0,0,.12), 0 2px 6px rgba(0,0,0,.06);
+    opacity:0; transform: translateY(-4px); pointer-events:none; transition:.15s ease;
+    z-index: 30;
+  }
+  .dropdown.open .dropdown-menu { opacity:1; transform: translateY(0); pointer-events:auto; }
+  .dropdown-item { display:flex; align-items:center; gap:.55rem; padding:.6rem .65rem; border-radius:.55rem; color:#374151; font-size:.85rem; font-weight:600; }
+  .dropdown-item:hover { background:#f3f4f6; }
+  .dropdown-divider { height:1px; margin:.25rem 0; background:#e5e7eb; }
+
+  @media (max-width: 520px) {
+    .btn-label { display:none; }
+    .btn { padding:.45rem; }
+  }
+</style>
+
+<main class="flex-1 px-4 py-6">
+
+  <!-- Colored Page Header -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8 animate-fade-in">
+    <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight flex items-center gap-3">
+      <i class="fas fa-receipt text-3xl opacity-90"></i>
+      {% trans "All Customer Subscriptions" %}
+    </h1>
+    <p class="mt-2 text-sm text-indigo-100">
+      {% trans "Track active plans, pending activations, cancellations, and billing health." %}
+    </p>
+  </header>
+
+  <!-- Summary Section -->
+  <section class="mb-8 animate-fade-in">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <article class="card-hover bg-gradient-to-br from-fuchsia-500 to-pink-600 text-white rounded-2xl shadow-lg p-6 animate-slide-up">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium opacity-90">{% trans "Total Customers" %}</span>
+          <i class="fas fa-users text-white/90 text-lg"></i>
+        </div>
+        <div class="text-4xl font-extrabold counter" data-target="{{ total_subscriptions }}">0</div>
+      </article>
+
+      <article class="card-hover bg-gradient-to-br from-emerald-400 to-green-600 text-white rounded-2xl shadow-lg p-6 animate-slide-up delay-100">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium opacity-90">{% trans "Active Subscriptions" %}</span>
+          <i class="fas fa-check-circle text-white/90 text-lg"></i>
+        </div>
+        <div class="text-4xl font-extrabold counter" data-target="{{ active_subscriptions }}">0</div>
+      </article>
+
+      <article class="card-hover bg-gradient-to-br from-amber-400 to-orange-500 text-white rounded-2xl shadow-lg p-6 animate-slide-up delay-200">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium opacity-90">{% trans "Pending Activations" %}</span>
+          <i class="fas fa-hourglass-half text-white/90 text-lg"></i>
+        </div>
+        <div class="text-4xl font-extrabold counter" data-target="{{ pending_activations }}">0</div>
+      </article>
+
+      <article class="card-hover bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-2xl shadow-lg p-6 animate-slide-up delay-300">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-sm font-medium opacity-90">{% trans "Canceled Subscriptions" %}</span>
+          <i class="fas fa-times-circle text-white/90 text-lg"></i>
+        </div>
+        <div class="text-4xl font-extrabold counter" data-target="{{ cancelled_activations }}">0</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- Alerts Section -->
+  <section id="alertsSection" class="mb-8 space-y-4 animate-fade-in">
+    <div id="overdueAlert" class="hidden rounded-2xl shadow-lg p-5 bg-gradient-to-r from-amber-400 to-orange-500 text-white">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <i class="fas fa-exclamation-triangle"></i> {% trans "Overdue Payments" %}
+        </h3>
+        <button onclick="toggleAlert('overdueList')" class="text-sm underline hover:opacity-80">
+          {% trans "Toggle List" %}
+        </button>
+      </div>
+      <ul id="overdueList" class="list-disc list-inside space-y-1 hidden"></ul>
+    </div>
+
+    <div id="deactivatedAlert" class="hidden rounded-2xl shadow-lg p-5 bg-gradient-to-r from-red-500 to-pink-600 text-white">
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-lg font-semibold flex items-center gap-2">
+          <i class="fas fa-user-slash"></i> {% trans "Deactivated Customers" %}
+        </h3>
+        <button onclick="toggleAlert('deactivatedList')" class="text-sm underline hover:opacity-80">
+          {% trans "Toggle List" %}
+        </button>
+      </div>
+      <ul id="deactivatedList" class="list-disc list-inside space-y-1 hidden"></ul>
+    </div>
+  </section>
+
+  <!-- Subscription Table Card -->
+  <section class="w-full animate-fade-in">
+    <div class="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-xl p-6 border border-gray-200">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="text-xl sm:text-2xl font-semibold text-gray-900 flex items-center gap-2">
+          <i class="fas fa-list-check text-indigo-600"></i>
+          {% trans "Manage Subscriptions" %}
+        </h2>
+      </div>
+
+      <!-- Search & Filter -->
+      <div class="mb-4 flex flex-col sm:flex-row gap-4">
+        <input
+          type="text"
+          id="subscriptionSearch"
+          placeholder="{% trans 'Search subscriptions...' %}"
+          class="w-full sm:w-1/3 px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          onkeyup="fetchSubscriptions()"
+        />
+        <select
+          id="subscriptionStatus"
+          onchange="fetchSubscriptions()"
+          class="w-full sm:w-1/4 px-4 py-2 rounded-lg border border-gray-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">{% trans "All Statuses" %}</option>
+          <option value="active">{% trans "Active" %}</option>
+          <option value="pending">{% trans "Pending" %}</option>
+          <option value="canceled">{% trans "Canceled" %}</option>
+        </select>
+
+
+          <!-- inside the Search & Filter block, add this small chunk anywhere -->
+<label class="ml-auto inline-flex items-center gap-2 text-sm text-gray-600">
+  <span>{% trans "Rows per page" %}</span>
+  <select id="perPageSelect" class="border border-gray-300 rounded-lg px-2 py-1">
+    <option value="10">10</option>
+    <option value="20" selected>20</option>
+    <option value="50">50</option>
+    <option value="100">100</option>
+  </select>
+</label>
+
+      </div>
+
+      <!-- Table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table class="min-w-full text-sm text-left text-gray-800" id="subscriptionTable">
+          <thead class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <!-- Removed Customer -->
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Account" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Plan" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "KIT ID" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Cycle Cost" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Start Date" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Next Billing" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Status" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Location" %}</th>
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Usage" %}</th>
+              <!-- Actions is LAST -->
+              <th class="px-6 py-4 whitespace-nowrap">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="subscriptionTableBody" class="bg-white divide-y divide-gray-100">
+            <tr>
+              <td colspan="10" class="text-center px-6 py-8 text-gray-400 text-sm">
+                {% trans "Loading subscriptions..." %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-between items-center mt-5 px-1 text-sm text-gray-500">
+        <span>{% trans "Showing all subscriptions" %}</span>
+        <nav id="subscriptionPaginationContainer" class="inline-flex space-x-1"></nav>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- LOCATION MODAL (Leaflet) -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+<div id="locationModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b">
+      <h3 class="text-lg font-semibold">{% trans "Installation Location" %}</h3>
+      <button class="text-gray-500 hover:text-gray-700" onclick="closeLocationModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-0">
+      <div id="map" style="height: 420px; width: 100%;"></div>
+      <div id="locAddress" class="px-5 py-3 text-sm text-gray-600 border-t"></div>
+    </div>
+  </div>
+</div>
+
+<!-- USAGE MODAL -->
+<div id="usageModal" class="hidden fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden">
+    <div class="flex items-center justify-between px-5 py-3 border-b">
+      <h3 class="text-lg font-semibold">{% trans "Data Usage" %}</h3>
+      <button class="text-gray-500 hover:text-gray-700" onclick="closeUsageModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="p-5">
+      <div id="usageContent" class="text-sm text-gray-700">
+        <p>{% trans "Loading usage..." %}</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentPage = 1;
+let perPage = 20;
+let totalPages = 1;
+let totalCount = 0;
+
+document.addEventListener("DOMContentLoaded", function () {
+  wirePerPage();
+  fetchSubscriptions(1);
+  animateCounters();
+
+  // Close any open dropdown when clicking outside / pressing ESC
+  document.addEventListener('click', (e) => {
+    document.querySelectorAll('.dropdown.open').forEach(dd => {
+      if (!dd.contains(e.target)) dd.classList.remove('open');
+    });
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll('.dropdown.open').forEach(dd => dd.classList.remove('open'));
+  });
+});
+
+function wirePerPage() {
+  const sel = document.getElementById("perPageSelect");
+  if (!sel) return;
+  sel.addEventListener("change", () => {
+    perPage = Number(sel.value || 20);
+    fetchSubscriptions(1);
+  });
+}
+
+function toggleAlert(listId) {
+  document.getElementById(listId).classList.toggle("hidden");
+}
+
+function fetchSubscriptions(page = 1) {
+  currentPage = page;
+
+  const searchTerm = document.getElementById("subscriptionSearch")?.value.trim() || "";
+  const statusFilter = document.getElementById("subscriptionStatus")?.value || "all";
+
+  const url = new URL("{% url 'getallcust_subscr' %}", window.location.origin);
+  url.searchParams.append("search", searchTerm);
+  url.searchParams.append("status", statusFilter);
+  url.searchParams.append("page", String(page));
+  url.searchParams.append("per_page", String(perPage));
+
+  // loading row
+  document.getElementById("subscriptionTableBody").innerHTML =
+    `<tr><td colspan="10" class="text-center px-6 py-8 text-gray-400 text-sm">{% trans "Loading subscriptions..." %}</td></tr>`;
+
+  fetch(url)
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.success) {
+        populateSubscriptionTable(data.subscriptions || []);
+        // fallback defensively if backend doesn't send these
+        totalPages = Number(data.total_pages || 1);
+        totalCount = Number(data.total_count || (data.subscriptions || []).length);
+        currentPage = Number(data.page || page);
+        buildPagination();
+        populateAlerts(data.overdue_customers || [], data.deactivated_customers || []);
+      } else {
+        showLoadError();
+      }
+    })
+    .catch((error) => {
+      console.error("Error fetching subscriptions:", error);
+      showLoadError();
+    });
+}
+
+function showLoadError() {
+  document.getElementById("subscriptionTableBody").innerHTML =
+    `<tr><td colspan="10" class="text-center py-6 text-rose-600">{% trans "Failed to load data." %}</td></tr>`;
+  document.getElementById("subscriptionPaginationContainer").innerHTML = "";
+}
+
+function populateSubscriptionTable(subscriptions) {
+  const tbody = document.getElementById("subscriptionTableBody");
+  tbody.innerHTML = "";
+
+  if (!subscriptions.length) {
+    tbody.innerHTML = `
+      <tr><td colspan="10" class="text-center px-6 py-8 text-gray-400 text-sm">{% trans "No subscriptions found." %}</td></tr>`;
+    return;
+  }
+
+  subscriptions.forEach((sub) => {
+    const statusBadge = getStatusBadge(sub.status);
+
+    const cycle = (sub.billing_cycle || '').toString().toLowerCase() || 'monthly';
+    const cost  = (sub.cycle_cost != null && sub.cycle_cost !== '') ? `$${sub.cycle_cost}` : "—";
+    const cycleCost = cost !== "—" ? `${cost} / ${cycle}` : "—";
+
+    const actions = getActionButtons(sub);
+
+    const locBtn = `
+      <button class="btn btn-outline"
+              onclick="showLocation(${Number(sub.latitude)||null}, ${Number(sub.longitude)||null}, \`${(sub.address||'').replace(/`/g,'\\`')}\`)">
+        <i class="fas fa-location-dot"></i><span class="btn-label">{% trans "Location" %}</span>
+      </button>`;
+
+    const usageBtn = `
+      <button class="btn btn-ghost"
+              onclick="viewUsage('${sub.id}')">
+        <i class="fas fa-chart-line"></i><span class="btn-label">{% trans "Usage" %}</span>
+      </button>`;
+
+    const row = `
+      <tr class="hover:bg-indigo-50/40 transition">
+        <td class="px-6 py-4">${sub.user_email || "—"}</td>
+        <td class="px-6 py-4">${sub.plan_name || "—"}</td>
+        <td class="px-6 py-4">${sub.kit_id || "—"}</td>
+        <td class="px-6 py-4">${cycleCost}</td>
+        <td class="px-6 py-4">${sub.started_at || "—"}</td>
+        <td class="px-6 py-4">${sub.next_billing_date || "—"}</td>
+        <td class="px-6 py-4">${statusBadge}</td>
+        <td class="px-6 py-4">${locBtn}</td>
+        <td class="px-6 py-4">${usageBtn}</td>
+        <td class="px-6 py-4">${actions}</td>
+      </tr>
+    `;
+    tbody.insertAdjacentHTML("beforeend", row);
+  });
+}
+
+/* ---------- Pagination UI ---------- */
+function buildPagination() {
+  const nav = document.getElementById("subscriptionPaginationContainer");
+  if (!nav) return;
+  nav.innerHTML = "";
+
+  const mkBtn = (label, page, disabled = false, active = false, title = "") => {
+    const a = document.createElement("button");
+    a.type = "button";
+    a.textContent = label;
+    a.title = title;
+    a.className =
+      "px-3 py-1.5 rounded-md border text-sm " +
+      (active
+        ? "bg-indigo-600 text-white border-indigo-600"
+        : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50");
+    if (disabled) {
+      a.disabled = true;
+      a.className = "px-3 py-1.5 rounded-md border text-sm bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed";
+    } else {
+      a.onclick = () => fetchSubscriptions(page);
+    }
+    nav.appendChild(a);
+  };
+
+  const page = currentPage;
+  const total = Math.max(1, totalPages);
+  const around = 2;
+
+  mkBtn("«", 1, page === 1, false, "{% trans 'First page' %}");
+  mkBtn("‹", Math.max(1, page - 1), page === 1, false, "{% trans 'Previous page' %}");
+
+  const start = Math.max(1, page - around);
+  const end = Math.min(total, page + around);
+
+  if (start > 1) mkBtn("1", 1, false, page === 1);
+  if (start > 2) addEllipsis(nav);
+
+  for (let p = start; p <= end; p++) mkBtn(String(p), p, false, p === page);
+
+  if (end < total - 1) addEllipsis(nav);
+  if (end < total) mkBtn(String(total), total, false, page === total);
+
+  mkBtn("›", Math.min(total, page + 1), page >= total, false, "{% trans 'Next page' %}");
+  mkBtn("»", total, page >= total, false, "{% trans 'Last page' %}");
+}
+
+function addEllipsis(nav) {
+  const span = document.createElement("span");
+  span.textContent = "…";
+  span.className = "px-2 text-gray-400 select-none";
+  nav.appendChild(span);
+}
+
+function getStatusBadge(status) {
+  if (!status) return "";
+  const s = status.toLowerCase();
+  const cfg = {
+    active:   { bg: "bg-emerald-100", text: "text-emerald-700", icon: "fa-check-circle" },
+    pending:  { bg: "bg-amber-100",   text: "text-amber-700",   icon: "fa-hourglass-half" },
+    canceled: { bg: "bg-rose-100",    text: "text-rose-700",    icon: "fa-times-circle" },
+  }[s] || { bg: "bg-gray-100", text: "text-gray-700", icon: "fa-info-circle" };
+
+  return `<span class="badge ${cfg.bg} ${cfg.text}">
+      <i class="fas ${cfg.icon} text-xs"></i> ${status}
+    </span>`;
+}
+
+function getActionButtons(sub) {
+  const isActive = (sub.status || "").toLowerCase() === "active";
+  const primaryClass = isActive ? 'btn-danger' : 'btn-primary';
+  const primaryIcon  = isActive ? 'fa-ban' : 'fa-rotate';
+  const primaryText  = isActive ? '{% trans "Cancel" %}' : '{% trans "Renew" %}';
+  const orderRef = sub.order_ref || '';
+
+  return `
+    <div class="btn-group">
+      <form action="/subscriptions/${sub.id}/${isActive ? 'cancel' : 'renew'}/" method="post" class="inline"
+            onsubmit="return confirm('${isActive ? '{% trans "Cancel this subscription?" %}' : '{% trans "Renew this subscription?" %}'}')">
+        <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+        <button type="submit" class="btn ${primaryClass}">
+          <i class="fas ${primaryIcon}"></i><span class="btn-label">${primaryText}</span>
+        </button>
+      </form>
+
+      <div class="dropdown">
+        <button type="button" class="btn btn-ghost btn-icon" aria-haspopup="menu" aria-expanded="false"
+                onclick="this.parentElement.classList.toggle('open')" title="{% trans 'More actions' %}">
+          <i class="fas fa-ellipsis-vertical"></i>
+        </button>
+        <div class="dropdown-menu" role="menu">
+          <a class="dropdown-item" href="/billing/${orderRef}/details/" ${orderRef ? '' : 'onclick="return false;" style="opacity:.5;pointer-events:none;"'}>
+            <i class="fas fa-file-invoice-dollar"></i> {% trans "Billing" %}
+          </a>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item" href="/subscriptions/${sub.id}/">
+            <i class="fas fa-eye"></i> {% trans "View Subscription" %}
+          </a>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ---------- Counters ---------- */
+function animateCounters() {
+  document.querySelectorAll(".counter").forEach(counter => {
+    const target = +counter.getAttribute("data-target");
+    const updateCount = () => {
+      const current = +counter.innerText;
+      const increment = Math.max(1, Math.ceil(target / 60));
+      if (current < target) {
+        counter.innerText = Math.min(target, current + increment);
+        setTimeout(updateCount, 16);
+      } else {
+        counter.innerText = target;
+      }
+    };
+    updateCount();
+  });
+}
+
+/* ---------- Location (Leaflet) ---------- */
+let _leafletMap = null;
+let _leafletMarker = null;
+
+function showLocation(lat, lng, addr) {
+  const modal = document.getElementById("locationModal");
+  const addrEl = document.getElementById("locAddress");
+  addrEl.textContent = addr || "{% trans 'No address available.' %}";
+  modal.classList.remove("hidden");
+
+  setTimeout(() => {
+    if (!_leafletMap) {
+      _leafletMap = L.map('map');
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(_leafletMap);
+    }
+    const hasCoords = typeof lat === 'number' && typeof lng === 'number' && !isNaN(lat) && !isNaN(lng);
+    const center = hasCoords ? [lat, lng] : [0, 0];
+    _leafletMap.setView(center, hasCoords ? 14 : 2);
+
+    if (_leafletMarker) _leafletMap.removeLayer(_leafletMarker);
+    if (hasCoords) {
+      _leafletMarker = L.marker(center).addTo(_leafletMap);
+      _leafletMarker.bindPopup(addr || "{% trans 'Installation location' %}").openPopup();
+    }
+    _leafletMap.invalidateSize();
+  }, 100);
+}
+
+function closeLocationModal() {
+  document.getElementById("locationModal").classList.add("hidden");
+}
+
+/* ---------- Usage Modal ---------- */
+function viewUsage(subId) {
+  const modal = document.getElementById("usageModal");
+  const box = document.getElementById("usageContent");
+  box.innerHTML = `<p class="text-gray-500">{% trans "Loading usage..." %}</p>`;
+  modal.classList.remove("hidden");
+
+  fetch(`/subscriptions/${subId}/usage/`)
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(data => {
+      if (!data || data.success === false) throw new Error();
+      const rows = (data.rows || []).map(r => `
+        <tr class="border-b last:border-0">
+          <td class="px-3 py-2 text-gray-700">${r.date || '—'}</td>
+          <td class="px-3 py-2 font-medium">${r.gb != null ? r.gb+' GB' : '—'}</td>
+        </tr>`).join('');
+      box.innerHTML = `
+        <div class="mb-3 text-sm text-gray-700">${data.summary || ''}</div>
+        <div class="overflow-x-auto border rounded-lg">
+          <table class="min-w-full text-sm">
+            <thead class="bg-gray-50">
+              <tr>
+                <th class="px-3 py-2 text-left">{% trans "Date" %}</th>
+                <th class="px-3 py-2 text-left">{% trans "Usage" %}</th>
+              </tr>
+            </thead>
+            <tbody>${rows || `<tr><td colspan="2" class="px-3 py-4 text-center text-gray-400">{% trans "No usage yet." %}</td></tr>`}</tbody>
+          </table>
+        </div>`;
+    })
+    .catch(() => {
+      box.innerHTML = `<p class="text-rose-600">{% trans "Failed to load usage." %}</p>`;
+    });
+}
+
+function closeUsageModal() {
+  document.getElementById("usageModal").classList.add("hidden");
+}
+
+/* --- Alerts helper (kept) --- */
+function populateAlerts(overdue = [], deactivated = []) {
+  const overdueAlert = document.getElementById("overdueAlert");
+  const overdueList  = document.getElementById("overdueList");
+  const deactAlert   = document.getElementById("deactivatedAlert");
+  const deactList    = document.getElementById("deactivatedList");
+
+  if (overdue && overdue.length) {
+    overdueList.innerHTML = overdue.map(c => `
+      <li>
+        <strong>${c.name || '—'}</strong> (${c.email || '—'}) - ${c.days_overdue ?? '—'} days overdue
+        <a href="/subscriptions/${c.id}/deactivate/"
+           class="ml-2 inline-block text-xs bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded-full">
+          Deactivate
+        </a>
+      </li>`).join("");
+    overdueAlert.classList.remove("hidden");
+  } else {
+    overdueList.innerHTML = "";
+    overdueAlert.classList.add("hidden");
+  }
+
+  if (deactivated && deactivated.length) {
+    deactList.innerHTML = deactivated.map(c => `
+      <li>
+        <strong>${c.name || '—'}</strong> (${c.email || '—'}) — Deactivated on ${c.deactivated_at || '—'}
+      </li>`).join("");
+    deactAlert.classList.remove("hidden");
+  } else {
+    deactList.innerHTML = "";
+    deactAlert.classList.add("hidden");
+  }
+}
+</script>
+{% endblock %}

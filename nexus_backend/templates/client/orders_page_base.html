@@ -1,0 +1,115 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>{% trans "Nexus | Customer Orders" %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"/>
+
+  <style>
+    @keyframes fade-in { from {opacity:0; transform:translateY(6px)} to {opacity:1; transform:none} }
+    .animate-fade-in { animation: fade-in .45s ease both; }
+    @keyframes gradient-move { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+    .animate-gradient { background-size:200% 200%; animation: gradient-move 6s ease infinite; }
+
+    /* Mobile drawer */
+    .sidebar-drawer { transform: translateX(100%); transition: transform .3s ease; }
+    .sidebar-drawer.open { transform: translateX(0); }
+  </style>
+</head>
+
+<body class="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
+
+  <!-- Main layout fills available height -->
+  <div class="flex-1 grid grid-cols-1 md:grid-cols-[16rem_minmax(0,1fr)]">
+    <!-- ============== Desktop Sidebar ============== -->
+    {% include 'menus/mobile_client/menus.html' %}
+
+    <!-- ============== Main ============== -->
+    <main class="flex-1 w-full min-w-0">
+      <!-- Topbar (mobile-friendly) -->
+<div class="sticky top-0 z-30 bg-gray-50/70 backdrop-blur border-b w-full">
+  <div class="w-full px-4 sm:px-6 lg:px-8 py-3 md:py-4 flex items-center justify-between gap-3">
+
+    <!-- Title -->
+    <h1 class="text-xl sm:text-2xl md:text-3xl font-extrabold bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 bg-clip-text text-transparent animate-gradient break-words">
+      {% trans "Orders" %}
+    </h1>
+
+    <!-- Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Back: icon-only on mobile -->
+      <a href="{% url 'dashboard' %}"
+         class="inline-flex md:hidden items-center justify-center w-10 h-10 rounded-lg bg-white/80 backdrop-blur border shadow hover:bg-white transition"
+         aria-label="{% trans 'Back to Dashboard' %}" title="{% trans 'Back to Dashboard' %}">
+        <i class="fas fa-arrow-left text-gray-700"></i>
+      </a>
+
+      <!-- Back: full button on md+ -->
+      <a href="{% url 'dashboard' %}"
+         class="hidden md:inline-flex items-center px-4 py-2 rounded-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white font-semibold shadow hover:opacity-90 transition">
+        <i class="fas fa-arrow-left mr-2"></i> {% trans "Back to Dashboard" %}
+      </a>
+
+      <!-- Mobile menu trigger -->
+      <button class="md:hidden p-3 rounded-lg shadow bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+              onclick="toggleMobileSidebar(true)"
+              aria-label="{% trans 'Open menu' %}">
+        <i class="fas fa-bars"></i>
+      </button>
+    </div>
+  </div>
+</div>
+
+      <!-- Content container -->
+      <div class="w-full px-4 sm:px-6 lg:px-8 py-6 space-y-8">
+        <section class="w-full">
+          {% block content %}{% endblock %}
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <!-- ============== Mobile Overlay + Drawer ============== -->
+  <div id="mobile-overlay" class="fixed inset-0 bg-black/50 z-40 hidden" onclick="toggleMobileSidebar(false)"></div>
+  {% include 'menus/mobile_client/mobile_menu.html' %}
+
+  <!-- ============== Footer sticks to bottom ============== -->
+  <footer class="mt-auto bg-white border-t text-sm text-gray-500 text-center py-4">
+    <div class="max-w-7xl mx-auto px-4">
+      <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+      <p class="mt-1">
+        <a href="#" class="hover:text-blue-600">{% trans "Terms" %}</a> ·
+        <a href="#" class="hover:text-blue-600">{% trans "Privacy" %}</a> ·
+        <a href="#" class="hover:text-blue-600">{% trans "Contact" %}</a>
+      </p>
+    </div>
+  </footer>
+
+  <script>
+    function toggleElement(id, show = true) {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("hidden", !show);
+    }
+
+    function toggleMobileSidebar(open) {
+      const sidebar = document.getElementById('mobileSidebar');
+      const overlay = document.getElementById('mobile-overlay');
+      if (open) {
+        sidebar.classList.add('open');
+        overlay.classList.remove('hidden');
+      } else {
+        sidebar.classList.remove('open');
+        overlay.classList.add('hidden');
+      }
+    }
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') toggleMobileSidebar(false);
+    });
+  </script>
+</body>
+</html>

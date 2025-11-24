@@ -1,0 +1,420 @@
+{% extends 'client/client_support_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<main class="bg-white">
+  <section class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- Header -->
+    <header class="text-center space-y-2">
+      <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">{% trans "Support Center" %}</h1>
+      <p class="text-gray-600">{% trans "Open a ticket, track requests, and find quick answers." %}</p>
+    </header>
+
+    <!-- Quick actions -->
+    <section class="grid gap-4 sm:grid-cols-3">
+      <a href="#new-ticket" class="group rounded-xl border bg-white shadow-sm px-5 py-4 hover:shadow transition">
+        <div class="flex items-center gap-3">
+          <div class="grid place-items-center w-10 h-10 rounded-lg bg-indigo-600 text-white">
+            <i class="fas fa-plus"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900">{% trans "Open a Ticket" %}</h3>
+            <p class="text-xs text-gray-500">{% trans "Fast and simple." %}</p>
+          </div>
+        </div>
+      </a>
+      <a href="mailto:support@example.com" class="group rounded-xl border bg-white shadow-sm px-5 py-4 hover:shadow transition">
+        <div class="flex items-center gap-3">
+          <div class="grid place-items-center w-10 h-10 rounded-lg bg-blue-600 text-white">
+            <i class="fas fa-envelope"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900">{% trans "Email Support" %}</h3>
+            <p class="text-xs text-gray-500">support@example.com</p>
+          </div>
+        </div>
+      </a>
+      <a href="tel:+243970000000" class="group rounded-xl border bg-white shadow-sm px-5 py-4 hover:shadow transition">
+        <div class="flex items-center gap-3">
+          <div class="grid place-items-center w-10 h-10 rounded-lg bg-emerald-600 text-white">
+            <i class="fas fa-phone-alt"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-gray-900">{% trans "Call Us" %}</h3>
+            <p class="text-xs text-gray-500">+243 97 000 0000</p>
+          </div>
+        </div>
+      </a>
+    </section>
+
+    <!-- Main content -->
+    <section class="grid gap-6 lg:grid-cols-3">
+      <!-- Form -->
+      <div id="new-ticket" class="lg:col-span-2 rounded-xl border bg-white shadow-sm">
+        <div class="px-5 py-4 border-b">
+          <div class="flex items-start justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-gray-900">{% trans "Create a Ticket" %}</h2>
+              <p class="text-xs text-gray-600 mt-1">{% trans "Provide a clear subject and details." %}</p>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 text-[11px] text-gray-600">
+              <i class="fas fa-clock text-indigo-600"></i>
+              <span>{% trans "Typical reply:" %} <b class="text-gray-800">{% trans "within 24 hours" %}</b></span>
+            </div>
+          </div>
+        </div>
+
+        <form id="ticketForm" class="p-5 space-y-5">
+          {% csrf_token %}
+
+          <!-- Subject -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label for="t_subject" class="block text-sm font-medium text-gray-900">
+                {% trans "Subject" %} <span class="text-rose-600">*</span>
+              </label>
+              <span id="subjectCounter" class="text-[11px] text-gray-500">0/200</span>
+            </div>
+            <input id="t_subject" name="subject" type="text" maxlength="200"
+                   placeholder="{% trans 'Brief summary (e.g., “Frequent evening disconnects”)' %}"
+                   class="mt-1 w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                   required aria-describedby="subjectCounter">
+          </div>
+
+          <!-- Category & Priority -->
+          <div class="grid sm:grid-cols-2 gap-4">
+            <div>
+              <label for="t_category" class="block text-sm font-medium text-gray-900">
+                {% trans "Category" %} <span class="text-rose-600">*</span>
+              </label>
+              <select id="t_category" name="category"
+                      class="mt-1 w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="technical" selected>{% trans "Technical" %}</option>
+                <option value="billing">{% trans "Billing" %}</option>
+                <option value="account">{% trans "Account" %}</option>
+                <option value="other">{% trans "Other" %}</option>
+              </select>
+            </div>
+            <div>
+              <label for="t_priority" class="block text-sm font-medium text-gray-900">
+                {% trans "Priority" %} <span class="text-rose-600">*</span>
+              </label>
+              <select id="t_priority" name="priority"
+                      class="mt-1 w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+                <option value="normal" selected>{% trans "Normal" %}</option>
+                <option value="high">{% trans "High" %}</option>
+                <option value="low">{% trans "Low" %}</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Message -->
+          <div>
+            <div class="flex items-center justify-between">
+              <label for="t_message" class="block text-sm font-medium text-gray-900">
+                {% trans "Describe your issue" %} <span class="text-rose-600">*</span>
+              </label>
+              <span id="messageCounter" class="text-[11px] text-gray-500">0/5000</span>
+            </div>
+            <textarea id="t_message" name="message" rows="7" maxlength="5000"
+                      placeholder="{% trans 'Include steps, error messages, when it started, and recent changes.' %}"
+                      class="mt-1 w-full rounded-lg border-gray-300 px-3 py-2 shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      required aria-describedby="messageCounter"></textarea>
+            <p class="mt-2 text-xs text-gray-600">
+              {% trans "Tip: include screenshots, timestamps, and your kit/plan if relevant." %}
+            </p>
+          </div>
+
+          <!-- Actions -->
+          <div class="flex flex-wrap items-center gap-3">
+            <button id="ticketSubmitBtn" type="submit"
+                    class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 text-white font-medium shadow-sm hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-60">
+              <i class="fas fa-paper-plane"></i><span>{% trans "Submit Ticket" %}</span>
+            </button>
+            <button type="button" class="px-4 py-2 rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                    onclick="document.getElementById('ticketForm')?.reset(); updateCounters();">
+              {% trans "Clear" %}
+            </button>
+            <span id="ticketHint" class="text-xs text-gray-500"></span>
+          </div>
+        </form>
+      </div>
+
+      <!-- FAQ -->
+      <aside class="space-y-4">
+        <div class="rounded-xl border bg-white shadow-sm p-5">
+          <div class="flex items-center justify-between">
+            <h3 class="font-semibold text-gray-900">{% trans "Starlink FAQ" %}</h3>
+            <input id="faqSearch" type="text" placeholder="{% trans 'Search FAQ…' %}"
+                   class="hidden sm:block w-44 rounded-lg border-gray-300 text-sm focus:ring-2 focus:ring-indigo-500 px-2 py-1">
+          </div>
+          <div class="mt-3 space-y-2" id="faqList">
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Speeds & latency" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Expect tens to a few hundred Mbps; latency often < 50 ms but varies." %}</div>
+            </details>
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Data caps" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Residential plans typically avoid hard caps; management may apply." %}</div>
+            </details>
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Weather impact" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Heavy rain/snow may affect signal; ensure an unobstructed sky view." %}</div>
+            </details>
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Portability / roaming" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Support varies by plan and region; check your account for options." %}</div>
+            </details>
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Public IP & port forwarding" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Residential uses CGNAT; some business tiers offer public/static IP." %}</div>
+            </details>
+            <details class="rounded-lg border p-3">
+              <summary class="cursor-pointer font-medium text-gray-900">{% trans "Use my own router?" %}</summary>
+              <div class="mt-2 text-sm text-gray-700">{% trans "Yes, via Ethernet; bridge/bypass mode depends on kit revision." %}</div>
+            </details>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <!-- Recent tickets -->
+    <section class="rounded-xl border bg-white shadow-sm overflow-hidden">
+      <div class="px-5 py-4 border-b flex items-center justify-between">
+        <h2 class="text-base sm:text-lg font-semibold text-gray-900">{% trans "Your Recent Tickets" %}</h2>
+        <span id="ticketsHint" class="text-xs text-gray-500">{% trans "Loading…" %}</span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="min-w-full text-sm text-left text-gray-800">
+          <thead class="bg-white text-gray-600 uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <th class="px-5 py-3">{% trans "Ticket #" %}</th>
+              <th class="px-5 py-3">{% trans "Subject" %}</th>
+              <th class="px-5 py-3">{% trans "Status" %}</th>
+              <th class="px-5 py-3">{% trans "Updated" %}</th>
+              <th class="px-5 py-3">{% trans "Action" %}</th>
+            </tr>
+          </thead>
+          <tbody id="ticketsTableBody" class="divide-y divide-gray-100">
+            <tr><td colspan="5" class="px-5 py-10 text-center text-gray-400">{% trans "Loading…" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="flex items-center justify-end px-5 py-4 border-t bg-white text-xs sm:text-sm text-gray-600">
+        <nav id="ticketsPager" class="inline-flex flex-wrap gap-1"></nav>
+      </div>
+    </section>
+  </section>
+
+  <!-- Popup modal for “View” — NO IFRAME (fetch HTML and inject) -->
+  <div id="ticketModal" class="fixed inset-0 z-[70] hidden items-center justify-center">
+    <!-- Backdrop -->
+    <div id="ticketModalBackdrop" class="absolute inset-0 bg-black/50"></div>
+
+    <!-- Dialog -->
+    <div class="relative bg-white w-[96%] sm:w-[88%] lg:w-[70%] max-w-4xl rounded-2xl shadow-2xl border overflow-hidden">
+      <div class="flex items-center justify-between px-4 sm:px-5 py-3 border-b bg-white">
+        <div class="min-w-0">
+          <h3 id="ticketModalTitle" class="text-base sm:text-lg font-semibold text-gray-900 truncate">
+            {% trans "Ticket" %} —
+          </h3>
+          <p id="ticketModalSub" class="text-xs text-gray-500"></p>
+        </div>
+        <button id="ticketModalClose" type="button"
+                class="w-9 h-9 rounded-full inline-flex items-center justify-center hover:bg-gray-100"
+                aria-label="{% trans 'Close' %}">
+          <i class="fas fa-times text-gray-600"></i>
+        </button>
+      </div>
+
+      <div class="relative">
+        <!-- Loader -->
+        <div id="ticketModalLoader" class="absolute inset-0 grid place-items-center bg-white/70">
+          <div class="inline-flex items-center gap-2 text-gray-600">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <span class="text-sm">{% trans "Loading ticket…" %}</span>
+          </div>
+        </div>
+
+        <!-- Content (filled dynamically) -->
+        <div id="ticketModalBody" class="max-h-[80vh] overflow-auto bg-white p-4"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 hidden px-4 z-[80]" role="status" aria-live="polite" aria-atomic="true">
+    <div id="toastBox" class="px-4 py-2 rounded-lg shadow bg-gray-900 text-white text-sm"></div>
+  </div>
+</main>
+
+<script>
+/* ---------- Endpoints ---------- */
+const URLS = {
+  tickets: "{% url 'tickets_list_api' %}",
+  create:  "{% url 'ticket_create_api' %}",
+};
+
+/* ---------- Helpers ---------- */
+function getCookie(name){ const v=`; ${document.cookie}`.split(`; ${name}=`); if(v.length===2) return decodeURIComponent(v.pop().split(';').shift()); }
+function csrfHeader(){ const t=getCookie('csrftoken'); return t?{'X-CSRFToken':t}:{ }; }
+function toast(msg, ok=true, asHtml=false){
+  const t=document.getElementById('toast'), b=document.getElementById('toastBox');
+  if(!t){ asHtml?console.log(msg):alert(msg); return; }
+  b.className="px-4 py-2 rounded-lg shadow text-sm "+(ok?"bg-gray-900 text-white":"bg-red-600 text-white");
+  if(asHtml) b.innerHTML=msg; else b.textContent=msg;
+  t.classList.remove("hidden"); setTimeout(()=>t.classList.add("hidden"), 2600);
+}
+function fmtDate(s){ if(!s) return "—"; const d=new Date(s); return isNaN(d)?s:d.toLocaleString(); }
+function escapeHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+/* Counters */
+function updateCounters(){
+  const subj=document.getElementById('t_subject'); const sc=document.getElementById('subjectCounter');
+  const msg=document.getElementById('t_message');  const mc=document.getElementById('messageCounter');
+  if(subj&&sc) sc.textContent=`${subj.value.length}/${subj.maxLength||200}`;
+  if(msg&&mc)  mc.textContent=`${msg.value.length}/${msg.maxLength||5000}`;
+}
+['t_subject','t_message'].forEach(id=>{ const el=document.getElementById(id); if(el){ el.addEventListener('input',updateCounters); el.addEventListener('blur',updateCounters);} });
+
+/* Tickets table render */
+function badge(sv){
+  const s=String(sv||'').toLowerCase();
+  const cls=s==='open'?'bg-emerald-50 text-emerald-700 ring-emerald-200':s==='pending'?'bg-amber-50 text-amber-700 ring-amber-200':'bg-gray-100 text-gray-700 ring-gray-200';
+  return `<span class="inline-block rounded-full px-2 py-0.5 text-[11px] ring-1 ${cls} capitalize">${s||'—'}</span>`;
+}
+function row(t){
+  const href = t.detail_url || '#';
+  return `<tr class="hover:bg-gray-50">
+    <td class="px-5 py-3 font-semibold text-indigo-700">#${t.id}</td>
+    <td class="px-5 py-3">${t.subject||'—'}</td>
+    <td class="px-5 py-3">${badge(t.status)}</td>
+    <td class="px-5 py-3">${fmtDate(t.updated_at)}</td>
+    <td class="px-5 py-3">
+      <a href="${href}" data-id="${t.id}" data-href="${href}" class="js-view-ticket text-indigo-600 hover:underline">{% trans "View" %}</a>
+    </td>
+  </tr>`;
+}
+
+/* Load tickets */
+async function loadTickets(page=1){
+  const body=document.getElementById('ticketsTableBody'); const pager=document.getElementById('ticketsPager'); const hint=document.getElementById('ticketsHint');
+  try{
+    const res=await fetch(`${URLS.tickets}?page=${page}`,{headers:{"X-Requested-With":"XMLHttpRequest","Accept":"application/json"}});
+    const j=await res.json(); const items=j.tickets||j.results||[]; const pageNo=j.page||j.current||1; const total=j.total_pages||j.pages||1;
+
+    body.innerHTML= items.length?items.map(row).join(''):`<tr><td colspan="5" class="px-5 py-10 text-center text-gray-500">{% trans "No tickets found." %}</td></tr>`;
+    pager.innerHTML=""; const add=(lbl,p,dis=false,solid=false)=>pager.insertAdjacentHTML("beforeend",
+      `<button ${dis?'disabled':''} class="px-3 py-1 rounded-lg ring-1 ring-gray-200 ${solid?'bg-indigo-600 text-white':'bg-white hover:bg-gray-50'} ${dis?'opacity-60 cursor-not-allowed':''}" onclick="loadTickets(${p})">${lbl}</button>`);
+    add("&laquo;",Math.max(1,pageNo-1),pageNo<=1);
+    const W=5; let s=Math.max(1,pageNo-Math.floor(W/2)), e=Math.min(total,s+W-1); if(e-s<W-1) s=Math.max(1,e-W+1);
+    for(let i=s;i<=e;i++) add(i,i,false,i===pageNo);
+    add("&raquo;",Math.min(total,pageNo+1),pageNo>=total);
+    if(hint) hint.textContent= items.length? "{% trans 'Updated' %}" : "{% trans 'No tickets' %}";
+  }catch(e){
+    console.error(e);
+    body.innerHTML=`<tr><td colspan="5" class="px-5 py-10 text-center text-red-500">{% trans "Failed to load tickets." %}</td></tr>`;
+    if(hint) hint.textContent="{% trans 'Error' %}";
+  }
+}
+
+/* ---------- Modal: open detail/trail WITHOUT IFRAME ---------- */
+const ticketModal          = document.getElementById('ticketModal');
+const ticketModalLoader    = document.getElementById('ticketModalLoader');
+const ticketModalTitle     = document.getElementById('ticketModalTitle');
+const ticketModalSub       = document.getElementById('ticketModalSub');
+const ticketModalClose     = document.getElementById('ticketModalClose');
+const ticketModalBackdrop  = document.getElementById('ticketModalBackdrop');
+const ticketModalBody      = document.getElementById('ticketModalBody');
+
+async function openTicketModal(id, href){
+  if(!ticketModal) return;
+  ticketModalTitle.textContent = `{{ _('Ticket') }} #${id}`;
+  ticketModalSub.textContent   = href || '';
+  ticketModal.classList.remove('hidden');
+  ticketModal.classList.add('flex');
+  ticketModalLoader.classList.remove('hidden');
+  ticketModalBody.innerHTML = "";
+
+  // Prefer a partial from the server when inmodal=1
+  const url = href ? href + (href.includes('?') ? '&' : '?') + 'inmodal=1' : '#';
+
+  try{
+    const res = await fetch(url, {
+      headers: { "X-Requested-With": "XMLHttpRequest", "Accept": "text/html" },
+      credentials: "same-origin"
+    });
+    if(!res.ok) throw new Error("{% trans 'Failed to load ticket details.' %}");
+    const html = await res.text();
+
+    // If your detail view returns a full page, extract a specific root node if available
+    const doc = new DOMParser().parseFromString(html, "text/html");
+    const root = doc.querySelector("#ticketDetailRoot") || doc.body;
+    ticketModalBody.innerHTML = root ? root.innerHTML : html;
+  }catch(err){
+    ticketModalBody.innerHTML = `
+      <div class="p-6">
+        <p class="text-rose-600 font-medium mb-2">{% trans 'Could not load the ticket.' %}</p>
+        <pre class="text-xs text-gray-600 bg-gray-50 p-3 rounded-lg overflow-auto">${escapeHtml(err.message||String(err))}</pre>
+      </div>`;
+  }finally{
+    ticketModalLoader.classList.add('hidden');
+  }
+}
+
+function closeTicketModal(){
+  if(!ticketModal) return;
+  ticketModal.classList.add('hidden');
+  ticketModal.classList.remove('flex');
+  ticketModalBody.innerHTML = "";
+  ticketModalSub.textContent = "";
+}
+ticketModalClose?.addEventListener('click', closeTicketModal);
+ticketModalBackdrop?.addEventListener('click', closeTicketModal);
+window.addEventListener('keydown', (e)=>{ if(e.key === 'Escape') closeTicketModal(); });
+
+/* Delegate clicks on "View" to open modal (no iframe) */
+document.addEventListener('click', (e)=>{
+  const a = e.target.closest('.js-view-ticket');
+  if(!a) return;
+  const href = a.getAttribute('data-href') || a.getAttribute('href') || '#';
+  const id   = a.getAttribute('data-id') || '';
+  if(href && href !== '#'){
+    e.preventDefault();
+    openTicketModal(id, href);
+  }
+});
+
+/* Create Ticket */
+(function(){
+  const form=document.getElementById('ticketForm'); if(!form) return;
+  form.addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+    const cachedForm=form, hint=document.getElementById('ticketHint'), btn=document.getElementById('ticketSubmitBtn');
+    if(hint) hint.textContent="{{ _('Submitting…') }}"; if(btn) btn.disabled=true;
+    try{
+      const res=await fetch(URLS.create,{method:"POST",headers:{"X-Requested-With":"XMLHttpRequest","Accept":"application/json",...csrfHeader()},body:new FormData(cachedForm)});
+      const raw=await res.text(); let j={}; try{ j=raw?JSON.parse(raw):{} }catch{ throw new Error("{{ _('Unexpected server response.') }}"); }
+      if(!res.ok||!j.success) throw new Error(j.message||"{{ _('Could not create ticket.') }}");
+      const link=j.detail_url?` <a href="${j.detail_url}" class="underline font-semibold js-view-ticket" data-id="${j.id}" data-href="${j.detail_url}">{{ _('View') }}</a>`:"";
+      toast(`{{ _('Ticket') }} #${j.id} {{ _('created successfully.') }}${link}`,true,true);
+      cachedForm.reset(); updateCounters(); if(hint) hint.textContent="{{ _('Submitted.') }}"; loadTickets(1);
+    }catch(err){
+      console.error(err); toast(err.message||"{{ _('Could not create ticket. Please try again.') }}",false); if(hint) hint.textContent="{{ _('Error — try again.') }}";
+    }finally{ if(btn) btn.disabled=false; }
+  });
+})();
+
+/* FAQ search */
+document.getElementById('faqSearch')?.addEventListener('input',(e)=>{
+  const q=e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#faqList details').forEach(d=>{ d.style.display=(!q||d.textContent.toLowerCase().includes(q))?'':'none'; });
+});
+
+/* Init */
+document.addEventListener('DOMContentLoaded',()=>{ updateCounters(); loadTickets(1); });
+</script>
+{% endblock %}

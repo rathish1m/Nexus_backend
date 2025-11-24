@@ -1,0 +1,91 @@
+@page {
+  size: A4;
+  margin: 22mm 16mm 22mm;
+}
+
+* { box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, sans-serif;
+  color: #111827;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.muted { color: #6B7280; }
+
+/* Header */
+.inv-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  border-bottom: 2px solid #E5E7EB;
+  padding-bottom: 12px;
+}
+.brand { display: grid; gap: 8px; }
+.logo { width: 160px; height: auto; }
+.brand-name { font-size: 20px; font-weight: 800; }
+.brand-meta { font-size: 11px; color: #374151; }
+
+.inv-title h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+.inv-title .meta { margin-top: 6px; font-size: 11px; color: #374151; }
+
+/* Bill To */
+.billto { margin: 18px 0 14px; }
+.billto h2 { margin: 0 0 6px; font-size: 13px; color: #374151; text-transform: uppercase; letter-spacing: .04em; }
+.to-card {
+  border: 1px solid #E5E7EB; border-radius: 8px; padding: 10px 12px;
+  background: #F9FAFB;
+}
+.to-name { font-weight: 700; margin-bottom: 3px; }
+.to-line { color: #4B5563; }
+
+/* Items */
+.items-table {
+  width: 100%; border-collapse: collapse; margin-top: 6px;
+  border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;
+}
+.items-table thead th {
+  background: linear-gradient(90deg, #6366F1, #0EA5E9);
+  color: white; padding: 8px 10px; font-weight: 600; font-size: 11px;
+}
+.items-table td {
+  padding: 8px 10px; border-top: 1px solid #F3F4F6; vertical-align: top;
+}
+.items-table .tl { text-align: left; }
+.items-table .tr { text-align: right; }
+.items-table .desc { font-weight: 600; }
+.items-table .muted { font-size: 11px; }
+
+/* Totals */
+.totals { display: flex; justify-content: flex-end; margin-top: 14px; }
+.totals-table {
+  width: 320px; border-collapse: collapse; border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;
+}
+.totals-table td { padding: 8px 10px; border-top: 1px solid #F3F4F6; }
+.totals-table .label { color: #374151; }
+.totals-table .value { text-align: right; font-weight: 600; }
+.totals-table .grand .label { font-weight: 800; }
+.totals-table .grand .value {
+  background: #111827; color: #fff; font-weight: 800;
+}
+
+/* Notes */
+.notes { margin-top: 14px; }
+.notes h3 { margin: 0 0 6px; font-size: 12px; color: #374151; text-transform: uppercase; letter-spacing: .04em; }
+
+/* Footer */
+.inv-footer {
+  margin-top: 24px; padding-top: 12px; border-top: 2px solid #E5E7EB;
+  display: grid; gap: 4px; text-align: center;
+}
+.inv-footer .thanks { font-weight: 700; }
+
+/* Make sure long words wrap */
+table, td, th { word-break: break-word; }

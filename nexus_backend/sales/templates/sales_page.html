@@ -1,0 +1,400 @@
+{% extends 'sales/sales_agent_page.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<!-- Critical, tiny CSS only -->
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:.001; transform: translateY(4px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .35s ease-out both; }
+  }
+  .modal-backdrop {position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.45);z-index:50}
+  .modal-backdrop.show {display:flex}
+  .modal-card {max-height:80vh}
+  .tbl {width:100%;border-collapse:separate;border-spacing:0}
+  .tbl th,.tbl td {padding:.65rem .75rem;font-size:.875rem;border-bottom:1px solid #E5E7EB}
+  .tbl th {text-align:left;color:#374151;background:#F9FAFB;position:sticky;top:0}
+  .chip {display:inline-flex;align-items:center;gap:.4rem;padding:.15rem .5rem;border-radius:999px;border:1px solid #E5E7EB;background:#fff;font-size:.75rem;color:#374151}
+  .chip-dot {width:.45rem;height:.45rem;border-radius:999px}
+  .dot-paid{background:#10B981}.dot-await{background:#F59E0B}.dot-unpaid{background:#EF4444}.dot-cancelled{background:#9CA3AF}
+</style>
+
+<div class="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+  <!-- ===== Header ===== -->
+  <header class="rounded-2xl bg-white border border-gray-200 p-6 sm:p-7 shadow-sm mb-8">
+    <div class="flex items-start sm:items-center gap-4">
+      <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-blue-50 border border-blue-100">
+        <!-- briefcase-user icon -->
+        <svg viewBox="0 0 24 24" class="w-6 h-6" aria-hidden="true" fill="currentColor">
+          <path d="M10 6h4a2 2 0 0 1 2 2v1h2.5A1.5 1.5 0 0 1 20 10.5v7A2.5 2.5 0 0 1 17.5 20h-11A2.5 2.5 0 0 1 4 17.5v-7A1.5 1.5 0 0 1 5.5 9H8V8a2 2 0 0 1 2-2Zm4 2V8a.5.5 0 0 0-.5-.5h-3A.5.5 0 0 0 10 8v0h4Z"/>
+          <path d="M12 12.25a2.25 2.25 0 1 1 0 4.5a2.25 2.25 0 0 1 0-4.5Z"/>
+          <path d="M6.5 18.5c.9-2 3.1-3.25 5.5-3.25s4.6 1.25 5.5 3.25"/>
+        </svg>
+      </span>
+      <div>
+        <h1 class="text-xl sm:text-2xl font-semibold text-gray-900">
+          {% trans "Sales Agent Dashboard" %}
+        </h1>
+        <p class="mt-1 text-sm text-gray-600">
+          {% trans "Monitor your customers, orders, and sales performance at a glance." %}
+        </p>
+      </div>
+      <div class="ml-auto">
+        <button onclick="openRegisterModal()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <!-- user-plus -->
+          <svg viewBox="0 0 24 24" class="w-4 h-4" aria-hidden="true" fill="currentColor">
+            <path d="M15 14a5 5 0 1 0-6 0C6.33 14 4 16.33 4 19v.5A1.5 1.5 0 0 0 5.5 21h9a1.5 1.5 0 0 0 1.5-1.5V19c0-2.67-2.33-5-5-5Zm6-2h-2V10h-2V8h2V6h2v2h2v2h-2v2Z"/>
+          </svg>
+          {% trans "Register Customer" %}
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== Stats (light, fast) ===== -->
+  <section aria-label="{% trans 'Key metrics' %}" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+    <!-- Total Customers -->
+    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm animate-fade-in">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{% trans "Total Customers" %}</span>
+        <span class="inline-grid place-items-center w-9 h-9 rounded-lg bg-blue-50 border border-blue-100">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 text-blue-600" fill="currentColor" aria-hidden="true"><path d="M7 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm10 0a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM7 10c-2.76 0-5 2.24-5 5v1.5A1.5 1.5 0 0 0 3.5 18h7A1.5 1.5 0 0 0 12 16.5V15c0-2.76-2.24-5-5-5Zm10 0c-.9 0-1.74.24-2.47.66a6 6 0 0 1 2.47 4.84v1.5c0 .19-.02.37-.06.54H20.5A1.5 1.5 0 0 0 22 16.5V15c0-2.76-2.24-5-5-5Z"/></svg>
+        </span>
+      </div>
+      <div class="mt-3 text-3xl font-semibold text-gray-900">{{ user_count }}</div>
+    </article>
+
+    <!-- Pending Orders -->
+    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm animate-fade-in" style="animation-delay:.03s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{% trans "Pending Orders" %}</span>
+        <span class="inline-grid place-items-center w-9 h-9 rounded-lg bg-amber-50 border border-amber-100">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 text-amber-600" fill="currentColor" aria-hidden="true"><path d="M12 8a1 1 0 0 1 1 1v3.06l2.03 1.17a1 1 0 1 1-1 1.73l-2.53-1.46A1 1 0 0 1 11 12V9a1 1 0 0 1 1-1Zm0-6a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Z"/></svg>
+        </span>
+      </div>
+      <div class="mt-3 text-3xl font-semibold text-gray-900">{{ pending_order }}</div>
+    </article>
+
+    <!-- Completed Orders -->
+    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm animate-fade-in" style="animation-delay:.06s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{% trans "Completed Orders" %}</span>
+        <span class="inline-grid place-items-center w-9 h-9 rounded-lg bg-emerald-50 border border-emerald-100">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 text-emerald-600" fill="currentColor" aria-hidden="true"><path d="M9.5 16.5 5 12l1.5-1.5 3 3 7-7L18 8l-8.5 8.5Z"/><path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Z" opacity=".15"/></svg>
+        </span>
+      </div>
+      <div class="mt-3 text-3xl font-semibold text-gray-900">{{ completed_order }}</div>
+    </article>
+
+    <!-- Sales This Month -->
+    <article class="rounded-xl border border-gray-200 bg-white p-5 shadow-sm animate-fade-in" style="animation-delay:.09s">
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-semibold uppercase tracking-wide text-gray-500">{% trans "Sales This Month" %}</span>
+        <span class="inline-grid place-items-center w-9 h-9 rounded-lg bg-pink-50 border border-pink-100">
+          <svg viewBox="0 0 24 24" class="w-5 h-5 text-pink-600" fill="currentColor" aria-hidden="true"><path d="M4 12h16v2H4v-2Zm0-6h16v2H4V6Zm0 12h16v2H4v-2Z"/></svg>
+        </span>
+      </div>
+      <div class="mt-3 text-3xl font-semibold text-gray-900">${{ amount_paid }}</div>
+    </article>
+  </section>
+
+  <!-- ===== Customers List ===== -->
+  <section aria-label="{% trans 'Customers' %}">
+    {% include 'partials/customer_list.html' %}
+  </section>
+</div>
+
+<!-- ===== Register Modal (existing partial) ===== -->
+{% include 'partials/register_customer_modal.html' %}
+
+<!-- ===== Subscription Billing Modal ===== -->
+<div id="subsModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="subsTitle">
+  <div class="w-[min(100%-2rem, 1000px)] rounded-2xl bg-white border border-gray-200 shadow-2xl modal-card overflow-hidden">
+    <header class="flex items-center gap-3 px-5 py-4 border-b border-gray-200 bg-gray-50">
+      <h3 id="subsTitle" class="text-base sm:text-lg font-semibold text-gray-900">
+        {% trans "Subscription Billing" %}
+      </h3>
+      <span id="subsUserLabel" class="text-sm text-gray-500"></span>
+      <button type="button" class="ml-auto px-2 py-1 rounded hover:bg-gray-100" onclick="closeSubsModal()" aria-label="{% trans 'Close' %}">
+        ✕
+      </button>
+    </header>
+
+    <div class="px-5 py-4 overflow-auto">
+      <div class="mb-3 text-xs text-gray-500">
+        {% trans "Status column reflects the exact payment_status from the linked order." %}
+      </div>
+
+      <div class="overflow-auto border border-gray-200 rounded-xl">
+        <table class="tbl" aria-describedby="subsHelp">
+          <thead>
+            <tr>
+              <th style="min-width:110px">{% trans "Order Ref" %}</th>
+              <th style="min-width:220px">{% trans "Plan" %}</th>
+              <th style="min-width:110px">{% trans "Billing Cycle" %}</th>
+              <th style="min-width:130px">{% trans "Price" %}</th>
+              <th style="min-width:130px">{% trans "Start" %}</th>
+              <th style="min-width:130px">{% trans "Next Bill" %}</th>
+              <th style="min-width:150px">{% trans "Status" %}</th> <!-- exact order.payment_status -->
+            </tr>
+          </thead>
+          <tbody id="subsTbody">
+            <tr><td colspan="7" class="text-center text-sm text-gray-500 py-6">{% trans "Loading…" %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p id="subsHelp" class="sr-only">
+        {% trans "Status shows order.payment_status. The original subscription lifecycle is shown as a small badge." %}
+      </p>
+
+      <!-- Pagination -->
+      <div class="mt-4 flex items-center justify-between">
+        <div class="text-sm text-gray-500">
+          <span id="subsPageMeta"></span>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="subsPrev" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm disabled:opacity-50" disabled>{% trans "Prev" %}</button>
+          <button id="subsNext" class="px-3 py-1.5 rounded border border-gray-300 bg-white text-sm disabled:opacity-50" disabled>{% trans "Next" %}</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Page Scripts (tiny, no frameworks) ===== -->
+<script defer>
+  // -------- Safe, regex-free CSRF cookie helper --------
+  function getCookie(name) {
+    const parts = (document.cookie || '').split('; ');
+    for (const part of parts) {
+      const eqIndex = part.indexOf('=');
+      if (eqIndex === -1) continue;
+      const key = part.slice(0, eqIndex);
+      const val = part.slice(eqIndex + 1);
+      if (key === name) return decodeURIComponent(val);
+    }
+    return null;
+  }
+
+  // -------- Register modal (existing) --------
+  let _lastFocus=null;
+  function openRegisterModal(){
+    const modal=document.getElementById('registerModal');
+    if(!modal) return;
+    _lastFocus=document.activeElement;
+    modal.classList.remove('hidden'); modal.classList.add('flex');
+    const first=modal.querySelector('input,select,textarea,button,[tabindex]:not([tabindex="-1"])');
+    if(first) first.focus();
+    document.addEventListener('keydown',_escCloseRegister);
+    document.addEventListener('keydown',_trapTabRegister);
+    modal.addEventListener('click',_modalBackdropLock,true);
+  }
+  function closeRegisterModal(){
+    const modal=document.getElementById('registerModal');
+    if(!modal) return;
+    modal.classList.add('hidden'); modal.classList.remove('flex');
+    document.removeEventListener('keydown',_escCloseRegister);
+    document.removeEventListener('keydown',_trapTabRegister);
+    modal.removeEventListener('click',_modalBackdropLock,true);
+    if(_lastFocus && typeof _lastFocus.focus==='function') _lastFocus.focus();
+  }
+  if(typeof window!=='undefined'){
+    window.openRegisterModal = openRegisterModal;
+    window.closeRegisterModal = closeRegisterModal;
+  }
+  function _modalBackdropLock(e){
+    const dialog=document.getElementById('registerModalDialog');
+    if(dialog && !dialog.contains(e.target)){ e.stopPropagation(); e.preventDefault(); }
+  }
+  function _escCloseRegister(e){ if(e.key==='Escape') closeRegisterModal(); }
+  function _trapTabRegister(e){
+    if(e.key!=='Tab') return;
+    const modal=document.getElementById('registerModal');
+    if(!modal || modal.classList.contains('hidden')) return;
+    const nodes=modal.querySelectorAll('a,button,input,select,textarea,[tabindex]:not([tabindex="-1"])');
+    const focusables=[...nodes].filter(el=>!el.hasAttribute('disabled') && el.offsetParent!==null);
+    if(!focusables.length) return;
+    const first=focusables[0], last=focusables[focusables.length-1];
+    if(e.shiftKey && document.activeElement===first){ last.focus(); e.preventDefault(); }
+    else if(!e.shiftKey && document.activeElement===last){ first.focus(); e.preventDefault(); }
+  }
+
+  // Drag & drop highlight
+  addEventListener('dragover',e=>{
+    const dz=e.target.closest?.('[data-dropzone]'); if(!dz) return;
+    e.preventDefault(); dz.classList.add('ring-2','ring-blue-400','bg-blue-50/40');
+  });
+  addEventListener('dragleave',e=>{
+    const dz=e.target.closest?.('[data-dropzone]'); if(!dz) return;
+    dz.classList.remove('ring-2','ring-blue-400','bg-blue-50/40');
+  });
+  addEventListener('drop',e=>{
+    const dz=e.target.closest?.('[data-dropzone]'); if(!dz) return;
+    e.preventDefault(); dz.classList.remove('ring-2','ring-blue-400','bg-blue-50/40');
+    const input=dz.querySelector('input[type="file"]'); if(input) input.files=e.dataTransfer.files;
+  });
+
+  // Submit registration
+  document.getElementById('registerForm')?.addEventListener('submit', async (e)=>{
+    e.preventDefault();
+    const form=e.target, csrfToken=getCookie('csrftoken'), fd=new FormData();
+    const generatedPassword=(Math.random().toString(36).slice(-10)+"#A1");
+    fd.append('generated_password',generatedPassword);
+
+    const isPersonal = !document.getElementById('personalKYC')?.classList.contains('hidden');
+    const customerType = isPersonal ? 'personal' : 'business';
+
+    if(isPersonal){
+      fd.append('personal_full_name',form.personal_full_name?.value||'');
+      fd.append('personal_email',form.personal_email?.value||'');
+      fd.append('id_number',form.id_number?.value||'');
+      const cc=form.personal_country_code?.value||'';
+      const phone=(form.personal_phone?.value||'').replace(/^0+/, '');
+      fd.append('personal_phone',cc+phone);
+      const files=form.personal_kyc_docs?.files||[];
+      for(const f of files) fd.append('personal_kyc_docs',f);
+    }else{
+      fd.append('rep_full_name',form.rep_full_name?.value||'');
+      fd.append('rep_email',form.rep_email?.value||'');
+      fd.append('business_name',form.business_name?.value||'');
+      fd.append('business_reg',form.business_reg?.value||'');
+      fd.append('business_id',form.business_id?.value||'');
+      fd.append('tax_id',form.tax_id?.value||'');
+      const cc=form.rep_country_code?.value||'';
+      const phone=(form.rep_phone?.value||'').replace(/^0+/, '');
+      fd.append('rep_phone',cc+phone);
+      for(const f of (form.rep_kyc_docs?.files||[])) fd.append('rep_kyc_docs',f);
+      for(const f of (form.business_kyc_docs?.files||[])) fd.append('business_kyc_docs',f);
+    }
+    fd.append('customer_type',customerType);
+
+    try{
+      const res=await fetch('{% url "register_customer" %}',{
+        method:'POST',
+        headers:{'X-CSRFToken':csrfToken||''},
+        body:fd,
+        keepalive:true,
+      });
+      const result=await res.json().catch(()=>null);
+      if(result?.success){
+        alert('{% trans "Customer registered. Login details sent by SMS and email." %}');
+        closeRegisterModal(); form.reset();
+      }else{
+        alert('{% trans "Registration failed:" %} '+(result?.message||''));
+      }
+    }catch(err){
+      console.error(err);
+      alert('{% trans "Something went wrong. Please try again." %}');
+    }
+  });
+
+  // -------- Subscription Billing Modal (new) --------
+  const subsModal = document.getElementById('subsModal');
+  const subsTbody = document.getElementById('subsTbody');
+  const subsPageMeta = document.getElementById('subsPageMeta');
+  const subsPrev = document.getElementById('subsPrev');
+  const subsNext = document.getElementById('subsNext');
+  const subsUserLabel = document.getElementById('subsUserLabel');
+
+  let _subsUserId = null;
+  let _subsPage = 1;
+  let _subsPerPage = 5;
+  let _subsTotalPages = 1;
+
+  function openSubsModalForUser(userId, userLabel) {
+    _subsUserId = userId;
+    _subsPage = 1;
+    if (subsUserLabel) subsUserLabel.textContent = userLabel ? `• ${userLabel}` : '';
+    subsModal.classList.add('show');
+    loadSubsPage();
+  }
+  function closeSubsModal(){
+    subsModal.classList.remove('show');
+    _subsUserId = null;
+    subsTbody.innerHTML = `<tr><td colspan="7" class="text-center text-sm text-gray-500 py-6">{% trans "Loading…" %}</td></tr>`;
+  }
+  function closeOnBackdrop(e){
+    if(e.target === subsModal) closeSubsModal();
+  }
+  subsModal.addEventListener('click', closeOnBackdrop);
+
+  function statusChip(paymentStatus, subscriptionStatus) {
+    const s = (paymentStatus || '').toLowerCase();
+    let dot = 'dot-unpaid', label = paymentStatus || '—';
+    if (s === 'paid') { dot = 'dot-paid'; }
+    else if (s === 'awaiting_confirmation' || s === 'pending') { dot = 'dot-await'; }
+    else if (s === 'cancelled') { dot = 'dot-cancelled'; }
+    return `
+      <div class="flex items-center gap-2">
+        <span class="chip">
+          <span class="chip-dot ${dot}" aria-hidden="true"></span>
+          <span>${label}</span>
+        </span>
+        ${subscriptionStatus ? `<span class="chip" title="Subscription lifecycle"><span>{{ _('Sub:') }}</span> ${subscriptionStatus}</span>` : ''}
+      </div>
+    `;
+  }
+
+  async function loadSubsPage() {
+    if (!_subsUserId) return;
+    subsTbody.innerHTML = `<tr><td colspan="7" class="text-center text-sm text-gray-500 py-6">{% trans "Loading…" %}</td></tr>`;
+    const url = new URL('{% url "user_subscriptions_list" user_id=0 %}'.replace(/0\/$/, _subsUserId + '/'), window.location.origin);
+    url.searchParams.set('page', String(_subsPage));
+    url.searchParams.set('per_page', String(_subsPerPage));
+
+    try {
+      const res = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+      if (!res.ok) throw new Error(res.status);
+      const data = await res.json();
+
+      const rows = (data.subscriptions || []).map(sub => {
+        const price = (sub.price_usd ?? 0).toFixed(2);
+        const statusHtml = statusChip(sub.status, sub.subscription_status); // <-- exact order.payment_status used
+        return `
+          <tr>
+            <td>${sub.order_reference || ''}</td>
+            <td>${sub.plan_name || ''}</td>
+            <td>${sub.billing_cycle || ''}</td>
+            <td>$${price}</td>
+            <td>${sub.start_date || ''}</td>
+            <td>${sub.next_billing_date || ''}</td>
+            <td>${statusHtml}</td>
+          </tr>
+        `;
+      });
+
+      subsTbody.innerHTML = rows.length ? rows.join('') :
+        `<tr><td colspan="7" class="text-center text-sm text-gray-500 py-6">{% trans "No subscriptions." %}</td></tr>`;
+
+      // pagination
+      _subsTotalPages = data.total_pages || 1;
+      subsPageMeta.textContent = `${data.page || 1} / ${_subsTotalPages} — ${data.total_count || 0} {% trans "total" %}`;
+      subsPrev.disabled = !(data.has_prev);
+      subsNext.disabled = !(data.has_next);
+    } catch (e) {
+      console.error(e);
+      subsTbody.innerHTML = `<tr><td colspan="7" class="text-center text-sm text-red-600 py-6">{% trans "Failed to load subscriptions." %}</td></tr>`;
+      subsPrev.disabled = true; subsNext.disabled = true;
+      subsPageMeta.textContent = '';
+    }
+  }
+
+  subsPrev?.addEventListener('click', () => { if (_subsPage > 1) { _subsPage -= 1; loadSubsPage(); } });
+  subsNext?.addEventListener('click', () => { if (_subsPage < _subsTotalPages) { _subsPage += 1; loadSubsPage(); } });
+
+  // Global delegate: any button/link with data-action="view-subs" opens the modal
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest?.('[data-action="view-subs"]');
+    if (!t) return;
+    e.preventDefault();
+    const userId = t.getAttribute('data-user-id');
+    const label = t.getAttribute('data-user-label') || '';
+    if (userId) openSubsModalForUser(userId, label);
+  });
+</script>
+
+{% endblock %}

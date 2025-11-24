@@ -1,0 +1,1182 @@
+{% extends 'orders/order_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<style>
+  /* ===== Modern table visuals ===== */
+  .tbl-wrap {
+    --ring: rgba(99,102,241,.15);
+    --shadow: 0 10px 25px rgba(2,6,23,.08), 0 2px 6px rgba(2,6,23,.04);
+  }
+  .tbl-card {
+    background: linear-gradient(180deg, rgba(255,255,255,.92), rgba(255,255,255,.88));
+    backdrop-filter: blur(8px);
+    box-shadow: var(--shadow);
+  }
+  .tbl-head th { letter-spacing: .04em; }
+  .tbl-row { transition: background-color .18s ease, transform .12s ease, box-shadow .18s ease; }
+  .tbl-row:hover { background-color: rgba(99,102,241,.06); }
+
+  /* Optional skeleton shimmer */
+  .skeleton:before {
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,.04), transparent);
+    animation: shimmer 1.25s infinite;
+  }
+  @keyframes shimmer { 0% {transform: translateX(-100%)} 100% {transform: translateX(100%)} }
+
+  /* Fancy pagination */
+  .pg { display:flex; flex-direction:column; gap:.75rem; }
+  @media (min-width:640px){ .pg{ flex-direction:row; align-items:center; justify-content:space-between; } }
+  .pg-group { display:flex; flex-wrap:wrap; align-items:center; gap:.375rem; }
+  .pg-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:.375rem .75rem; font-size:.875rem; font-weight:500;
+    background:#fff; color:#374151; border:1px solid #e5e7eb; border-radius:.75rem;
+    transition:transform .05s ease, background-color .15s ease, border-color .15s ease; box-shadow:0 1px 2px rgba(0,0,0,.04);
+  }
+  .pg-btn:hover { background:#eef2ff; border-color:#c7d2fe; }
+  .pg-btn:active { transform:scale(.96); }
+  .pg-btn[disabled] { opacity:.5; cursor:not-allowed; background:#fff; border-color:#e5e7eb; }
+  .pg-btn--active { background:#4f46e5; border-color:#4f46e5; color:#fff; box-shadow:0 1px 6px rgba(79,70,229,.25); }
+  .pg-ellipsis { padding:0 .5rem; color:#9ca3af; user-select:none; }
+  .pg-chip {
+    display:inline-flex; align-items:center; gap:.5rem;
+    padding:.375rem .625rem; font-size:.75rem; border-radius:.625rem;
+    background:#f3f4f6; color:#374151;
+  }
+  .pg-input { width:4.5rem; border:1px solid #e5e7eb; border-radius:.5rem; padding:.375rem .5rem; font-size:.875rem; }
+  .pg-select { border:1px solid #e5e7eb; border-radius:.5rem; padding:.375rem .5rem; font-size:.875rem; background:#fff; }
+
+  /* Header & micro-interactions */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .5s ease-out both; }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.12) }
+  }
+  #ordersTable tbody tr {
+    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease;
+  }
+  #ordersTable tbody tr:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(99,102,241,.10);
+    background-image:
+      radial-gradient(120% 120% at 0% 0%, rgba(99,102,241,.04) 0%, transparent 40%),
+      radial-gradient(120% 120% at 100% 0%, rgba(59,130,246,.04) 0%, transparent 40%);
+  }
+
+  /* Tailwind @apply hints (no-op if Tailwind not enabled) */
+  .status-paid   { @apply bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-semibold; }
+  .status-unpaid { @apply bg-amber-100 text-amber-800 px-2 py-1 rounded-full text-xs font-semibold; }
+  .status-failed { @apply bg-rose-100  text-rose-800  px-2 py-1 rounded-full text-xs font-semibold; }
+</style>
+
+<div class="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+  <!-- Header -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+    <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+      <i class="fas fa-box-open text-3xl opacity-90"></i>
+      {% trans "Order Management" %}
+    </h1>
+    <p class="mt-2 text-sm text-indigo-100">
+      {% trans "Monitor order health, search quickly, and process payments." %}
+    </p>
+  </header>
+
+  <!-- KPI Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+    <div class="bg-amber-100 text-amber-800 rounded-xl p-5 shadow card-hover">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-semibold uppercase">{% trans "Unpaid Orders" %}</h2>
+          <p class="text-3xl font-bold mt-1">{{ unpaid_count }}</p>
+        </div>
+        <i class="fas fa-credit-card text-2xl opacity-70"></i>
+      </div>
+    </div>
+    <div class="bg-emerald-100 text-emerald-800 rounded-xl p-5 shadow card-hover">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-semibold uppercase">{% trans "Paid Orders" %}</h2>
+          <p class="text-3xl font-bold mt-1">{{ paid_count }}</p>
+        </div>
+        <i class="fas fa-money-bill-wave text-2xl opacity-70"></i>
+      </div>
+    </div>
+    <div class="bg-rose-100 text-rose-800 rounded-xl p-5 shadow card-hover">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-semibold uppercase">{% trans "Failed Orders" %}</h2>
+          <p class="text-3xl font-bold mt-1">{{ failed_count }}</p>
+        </div>
+        <i class="fas fa-times-circle text-2xl opacity-70"></i>
+      </div>
+    </div>
+    <div class="bg-sky-100 text-sky-800 rounded-xl p-5 shadow card-hover">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-semibold uppercase">{% trans "Today's Sales" %}</h2>
+          <p class="text-3xl font-bold mt-1">${{ sales_today_usd|default:0|floatformat:2 }}</p>
+        </div>
+        <i class="fas fa-calendar-day text-2xl opacity-70"></i>
+      </div>
+    </div>
+    <div class="bg-purple-100 text-purple-800 rounded-xl p-5 shadow card-hover">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-xs font-semibold uppercase">{% trans "This Month's Sales" %}</h2>
+          <p class="text-3xl font-bold mt-1">${{ sales_month_usd|default:0|floatformat:2 }}</p>
+        </div>
+        <i class="fas fa-calendar-alt text-2xl opacity-70"></i>
+      </div>
+    </div>
+  </div>
+
+  <div class="mt-6"></div>
+
+  <!-- ===== Search / Filters + Table + Pagination ===== -->
+  <section class="bg-gradient-to-br from-white to-gray-50 border border-gray-200 shadow-xl rounded-2xl p-4 sm:p-6 mb-8 animate-fade-in tbl-wrap">
+
+    <!-- Top toolbar -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 mb-5">
+      <div class="w-full md:w-1/2">
+        <label for="searchInput" class="sr-only">{% trans "Search by Order ID or Customer" %}</label>
+        <div class="relative">
+          <input
+            type="text"
+            id="searchInput"
+            placeholder="🔍 {% trans 'Search by Order ID or Customer' %}"
+            class="w-full border border-gray-300 pl-10 pr-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition"
+            inputmode="search"
+            autocomplete="off"
+          />
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <i class="fas fa-search"></i>
+          </span>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-44">
+          <label for="statusFilter" class="sr-only">{% trans "Filter by Status" %}</label>
+          <select
+            id="statusFilter"
+            class="w-full border border-gray-300 px-4 py-2.5 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition bg-white"
+          >
+            <option value="">{% trans "Filter by Status" %}</option>
+            <option value="paid">{% trans "Paid" %}</option>
+            <option value="unpaid">{% trans "Unpaid" %}</option>
+            <option value="awaiting_confirmation">{% trans "Awaiting confirmation" %}</option>
+            <option value="cancelled">{% trans "Cancelled" %}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile list -->
+    <div id="ordersMobileList" class="space-y-3 md:hidden">
+      <div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 text-center text-gray-500">
+        {% trans "Loading..." %}
+      </div>
+    </div>
+
+    <!-- Desktop table -->
+    <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-2xl tbl-card hidden md:block">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm text-left" id="ordersTable">
+          <thead class="tbl-head bg-gradient-to-r from-indigo-500 to-blue-600 text-white uppercase text-xs sticky top-0 z-10">
+            <tr>
+              <th class="py-2 px-3">{% trans "Customer" %}</th>
+              <th class="py-2 px-3">{% trans "Order Designation" %}</th>
+              <th class="py-2 px-3">{% trans "Order Status" %}</th>
+              <th class="py-2 px-3">{% trans "Date" %}</th>
+              <th class="py-2 px-3">{% trans "Invoice ID" %}</th>
+              <th class="py-2 px-3 text-right">{% trans "Subtotal" %}</th>
+              <th class="py-2 px-3 text-right">{% trans "Tax Total" %}</th>
+              <th class="py-2 px-3 text-right">{% trans "Total (incl. tax)" %}</th>
+              <th class="py-2 px-3">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+
+          <tbody id="adminOrdersTableBody" class="divide-y divide-gray-100 bg-white">
+            <tr class="transition tbl-row">
+              <td colspan="11" class="relative text-center py-8 text-gray-500">
+                {% trans "Loading..." %}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination bar -->
+      <div id="paginationControls" class="px-4 py-3 border-t border-gray-100 bg-gradient-to-r from-white to-gray-50"></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- Order Detail Modal -->
+{% include 'partials/order_details.html' %}
+
+{% include 'partials/payment_modal.html' %}
+
+<!-- Helpers for pagination + main script -->
+<script>
+/* ========= Pagination helper ========= */
+function goToPage(p) {
+  p = Math.max(1, Math.min(p, (window.__totalPages || 1)));
+  if (typeof loadOrders === "function") {
+    loadOrders(p, (window.currentQuery || ""), (window.currentStatus || ""));
+  }
+}
+
+/* ========= Small utils ========= */
+const pickDesignation = (obj) => (obj?.invoice_line || obj?.description || "—");
+
+// Build a professional, human-friendly full designation
+const fullDesignation = (obj) => {
+  const base = String(obj?.invoice_line || obj?.description || "—");
+  const invoice = (
+    obj?.invoice_number ?? obj?.invoice_no ?? obj?.invoiceNo ?? obj?.invoiceNumber ?? null
+  );
+  const isConsolidated = Boolean(obj?.is_consolidated);
+  const refsCount = Array.isArray(obj?.order_refs) ? obj.order_refs.length : null;
+
+  if (isConsolidated) {
+    const consLabel = "{% trans "Consolidated" %}";
+    const countPart = refsCount ? ` — ${refsCount} {% trans "orders" %}` : "";
+    if (invoice) return `${consLabel} ${invoice}${countPart}: ${base}`;
+    return `${consLabel}${countPart}: ${base}`;
+  }
+
+  if (invoice) return `${invoice} — ${base}`;
+  return base;
+};
+
+// Truncate text to maxLen with a single ellipsis, prefer cutting at a word boundary
+const truncateWithEllipsis = (text, maxLen = 30) => {
+  const str = String(text ?? "");
+  if (str.length <= maxLen) return str;
+  const ell = "…"; // Unicode ellipsis
+  const cut = Math.max(0, maxLen - ell.length);
+  if (cut === 0) return ell;
+  const soft = str.slice(0, cut + 1);
+  const lastSpace = soft.lastIndexOf(" ");
+  if (lastSpace > 12) {
+    return soft.slice(0, lastSpace) + ell;
+  }
+  return str.slice(0, cut) + ell;
+};
+
+// Return HTML span with title tooltip and truncated content
+const designationWithTooltip = (obj, maxLen = 30) => {
+  const full = fullDesignation(obj);
+  const short = truncateWithEllipsis(full, maxLen);
+  const esc = (s) => String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
+  return `<span class="inline-flex items-center gap-1 max-w-[28ch] align-middle" title="${esc(full)}">${esc(short)}</span>`;
+};
+
+const getTaxTotal = (obj) => {
+  const direct = (obj && (obj.tax_total ?? obj.sum_tax_total));
+  if (direct !== undefined && direct !== null && direct !== "") return Number(direct || 0);
+  const vat = Number(obj?.vat || obj?.sum_vat || 0);
+  const exc = Number(obj?.exc || obj?.sum_exc || 0);
+  return vat + exc;
+};
+
+const fmt = (n) => Number(n || 0).toFixed(2);
+
+// Prefer invoice id keys, fallback to number if that’s what you return
+const pickInvoiceId = (obj) => {
+  if (!obj) return null;
+  return (
+    obj.invoice_id ??
+    obj.invoice_pk ??
+    obj.invoice ??
+    obj.invoiceNumber ??
+    obj.invoice_number ??
+    obj.invoiceNo ??
+    obj.invoice_no ??
+    null
+  );
+};
+
+// Extract a reference we can always use for viewing consolidated
+const pickOrderRef = (obj) => {
+  if (!obj) return null;
+  return (
+    obj.reference ??
+    obj.order_reference ??
+    obj.consolidated_number ??   // for consolidated rows
+    obj.ref ??
+    null
+  );
+};
+
+const statusBadge = (status) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "pending_payment")
+    return `<span class="inline-flex items-center rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-xs font-medium">{% trans "Pending payment" %}</span>`;
+  if (s === "fulfilled")
+    return `<span class="inline-flex items-center rounded-full bg-green-100 text-green-800 px-2 py-0.5 text-xs font-medium">{% trans "Fulfilled" %}</span>`;
+  if (s === "cancelled")
+    return `<span class="inline-flex items-center rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs font-medium">{% trans "Cancelled" %}</span>`;
+  if (s === "awaiting_confirmation")
+    return `<span class="inline-flex items-center rounded-full bg-blue-100 text-blue-800 px-2 py-0.5 text-xs font-medium">{% trans "Awaiting confirmation" %}</span>`;
+  return `<span class="inline-flex items-center rounded-full bg-gray-200 text-gray-700 px-2 py-0.5 text-xs font-medium">${status || "—"}</span>`;
+};
+
+const payBadge = (payment_status) => {
+  const s = String(payment_status || "").trim().toLowerCase();
+  const PAID_STATUSES       = new Set(["paid", "settled", "completed", "succeeded", "paid_in_full"]);
+  const PARTIAL_PAID        = new Set(["partially_paid", "partial", "part-paid"]);
+  const PENDING_STATUSES    = new Set(["pending", "awaiting_confirmation", "in_progress"]);
+  const CANCELLED_STATUSES  = new Set(["cancelled", "canceled"]);
+  const FAILED_STATUSES     = new Set(["failed", "declined", "error"]);
+
+  if (CANCELLED_STATUSES.has(s)) return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-100 text-rose-700">{% trans "Cancelled" %}</span>`;
+  if (PAID_STATUSES.has(s))     return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-emerald-100 text-emerald-700">{% trans "Paid" %}</span>`;
+  if (PARTIAL_PAID.has(s))      return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-sky-100 text-sky-800">{% trans "Partially Paid" %}</span>`;
+  if (s === "unpaid")           return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-200 text-amber-900">{% trans "Unpaid" %}</span>`;
+  if (PENDING_STATUSES.has(s))  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-yellow-100 text-yellow-800">{% trans "Pending" %}</span>`;
+  if (FAILED_STATUSES.has(s))   return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-100 text-rose-700">{% trans "Failed" %}</span>`;
+  return `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-700">${payment_status || "—"}</span>`;
+};
+
+const rowHoverClass = (status) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "cancelled") return "hover:bg-rose-50";
+  if (s === "fulfilled") return "hover:bg-green-50";
+  if (s === "pending_payment") return "hover:bg-amber-50";
+  return "hover:bg-indigo-50";
+};
+const accentColor = (status) => {
+  const s = String(status || "").toLowerCase();
+  if (s === "cancelled") return "#f43f5e";
+  if (s === "fulfilled") return "#22c55e";
+  if (s === "pending_payment") return "#f59e0b";
+  return "#6366f1";
+};
+
+const parseISO = (s) => { try { return s ? new Date(s) : null; } catch { return null; } };
+const isExpired = (order) => {
+  const exAt = parseISO(order?.expires_at);
+  const currentStat = String(order?.status || "").toLowerCase();
+  if (!exAt) return false;
+  if (["paid","fulfilled","cancelled"].includes(currentStat)) return false;
+  return Date.now() > exAt.getTime();
+};
+const effectiveStatus        = (order) => (isExpired(order) ? "cancelled" : (order.status || "unknown"));
+const effectivePaymentStatus = (order) => (String(effectiveStatus(order)).toLowerCase()==="cancelled" ? "cancelled" : (order.payment_status || "unknown"));
+
+/* ========= Payment/Status helpers ========= */
+const PAID_SET = new Set(["paid","settled","completed","succeeded","paid_in_full"]);
+const PARTIAL_SET = new Set(["partially_paid","partial","part-paid"]);
+
+const isPaid = (row) => PAID_SET.has(String(row?.payment_status||"").toLowerCase());
+const isFulfilled = (row) => String(row?.status||"").toLowerCase() === "fulfilled";
+
+const getDownloadHref = (row) => {
+  // Single
+  if (!row?.is_consolidated) {
+    const inv = pickInvoiceId(row);
+    if (inv) return `/billing/invoice/${encodeURIComponent(String(inv))}/pdf/`;
+    if (row?.id != null) return `/orders/invoices/${row.id}/pdf/`;
+    return "#";
+  }
+  // Consolidated
+  const cons = row?.consolidated_number || row?.reference || "";
+  return cons ? `/billing/consolidated/${encodeURIComponent(cons)}/pdf/` : "#";
+};
+
+/* === UPDATED: pass invoiceId AND total to the modal === */
+const processBtnSingle = (row) => {
+  const inv   = pickInvoiceId(row);
+  const total = Number(row?.total || 0);
+  if (!inv) return "";
+  return `
+    <button onclick="openPaymentModalByInvoice('${String(inv)}', ${total})"
+      class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold
+             bg-gradient-to-r from-emerald-500 to-green-600 text-white
+             hover:from-emerald-600 hover:to-green-700 shadow-md
+             focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+      <i class="fas fa-credit-card"></i> {% trans "Process Payment" %}
+    </button>`;
+};
+
+const processBtnConsolidated = (g) => {
+  const cons  = g.consolidated_number || g.reference || "";
+  const total = Number(g.total || g.sum_total || 0);
+  if (!cons) return "";
+  return `
+    <button onclick="openConsolidatedPaymentModal('${cons}', ${total})"
+      class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold
+             bg-gradient-to-r from-emerald-500 to-green-600 text-white
+             hover:from-emerald-600 hover:to-green-700 shadow-md
+             focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+      <i class="fas fa-credit-card"></i> {% trans "Process Payment" %}
+    </button>`;
+};
+
+const viewBtnSingle = (row) => `
+  <button onclick="viewOrderDetails(${row.id})"
+    class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold
+           border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50
+           shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+    <i class="fas fa-eye text-[12px]"></i> {% trans "View" %}
+  </button>`;
+
+const viewBtnConsolidated = (g) => {
+  const cons = g.consolidated_number || g.reference || "";
+  return `
+    <button onclick="viewConsolidatedDetails('${cons}')"
+      class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold
+             border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50
+             shadow-sm hover:shadow focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+      <i class="fas fa-eye text-[12px]"></i> {% trans "View" %}
+    </button>`;
+};
+
+const downloadBtn = (href) => `
+  <a href="${href}" target="_blank" rel="noopener"
+     class="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold
+            bg-gradient-to-r from-blue-500 to-indigo-600 text-white
+            hover:from-blue-600 hover:to-indigo-700 shadow-md
+            focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500">
+    <i class="fas fa-file-invoice"></i> {% trans "Download Invoice" %}
+  </a>`;
+
+/* ========= Action buttons (desktop rows) ========= */
+const actionButtons = (row) => {
+  if (isFulfilled(row)) {
+    return downloadBtn(getDownloadHref(row));
+  }
+  const parts = [viewBtnSingle(row)];
+  if (!isPaid(row)) parts.push(processBtnSingle(row));
+  return parts.join("");
+};
+
+const actionButtonsConsolidated = (g) => {
+  if (isFulfilled(g)) {
+    return downloadBtn(getDownloadHref(g));
+  }
+  const parts = [viewBtnConsolidated(g)];
+  if (!isPaid(g)) parts.push(processBtnConsolidated(g));
+  return parts.join("");
+};
+
+/* ========= Renderers ========= */
+const renderRow = (order) => {
+  const st         = String(order.status || "unknown");
+  const taxes      = getTaxTotal(order);
+  const total      = Number(order.total || 0);
+  const subtotal   = total - taxes;
+  const designationHtml = designationWithTooltip(order, 30);
+  const invoiceId   = pickInvoiceId(order) || "—";
+
+  return `
+    <tr class="border-t transition even:bg-gray-50">
+      <td class="py-2 px-3">${order.customer || "—"}</td>
+      <td class="py-2 px-3">${designationHtml}</td>
+      <td class="py-2 px-3">${statusBadge(st)}</td>
+      <td class="py-2 px-3">${order.date || "—"}</td>
+      <td class="py-2 px-3">${invoiceId}</td>
+      <td class="py-2 px-3 text-right">$${fmt(subtotal)}</td>
+      <td class="py-2 px-3 text-right">$${fmt(taxes)}</td>
+      <td class="py-2 px-3 text-right font-semibold text-gray-900">$${fmt(total)}</td>
+      <td class="py-2 px-3">${order.is_consolidated ? actionButtonsConsolidated(order) : actionButtons(order)}</td>
+    </tr>`;
+};
+
+const renderMobileCard = (order) => {
+  const st         = String(effectiveStatus(order)).toLowerCase();
+  const taxes      = getTaxTotal(order);
+  const subtotal   = Number(order.total || 0) - taxes;
+  const badgeHtml  = isExpired(order)
+    ? `<span class="inline-flex items-center rounded-full bg-rose-100 text-rose-800 px-2 py-0.5 text-xs font-medium" title="Expired">{% trans "Cancelled" %}</span>`
+    : statusBadge(st);
+  const designation = truncateWithEllipsis(fullDesignation(order), 30);
+
+  let actions = "";
+  if (isFulfilled(order)) {
+    actions = downloadBtn(getDownloadHref(order));
+  } else {
+    const btns = [viewBtnSingle(order)];
+    if (!isPaid(order)) btns.push(processBtnSingle(order));
+    actions = btns.join("");
+  }
+
+  return `
+    <article class="rounded-xl border border-gray-200 bg-white shadow-sm p-4"
+             style="border-left:6px solid ${accentColor(st)}">
+      <div class="flex items-start justify-between">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-gray-900 truncate">${order.reference_label ? order.reference_label : ('#' + (order.reference || '—'))}</h3>
+          <p class="text-xs text-gray-500 mt-0.5 truncate">${order.customer || "—"} • ${order.date || "—"}</p>
+        </div>
+        <div class="text-right space-y-1">
+          ${badgeHtml}
+          <div>${payBadge(effectivePaymentStatus(order))}</div>
+        </div>
+      </div>
+      <dl class="grid grid-cols-2 gap-3 text-xs mt-3">
+        <div><dt class="text-gray-500">{% trans "Designation" %}</dt><dd class="font-medium text-gray-900 truncate">${designation}</dd></div>
+        <div class="text-right"><dt class="text-gray-500">{% trans "Total (USD)" %}</dt><dd class="font-semibold text-gray-900">$${fmt(order.total)}</dd></div>
+        <div><dt class="text-gray-500">{% trans "Subtotal" %}</dt><dd class="font-medium text-gray-900">$${fmt(subtotal)}</dd></div>
+        <div class="text-right"><dt class="text-gray-500">{% trans "Taxes" %}</dt><dd class="font-medium text-gray-900">$${fmt(taxes)}</dd></div>
+      </dl>
+      <div class="mt-3 flex flex-wrap gap-2">${actions}</div>
+    </article>`;
+};
+
+const renderRowConsolidated = (g) => {
+  const taxes      = getTaxTotal(g);
+  const total      = Number(g.total || g.sum_total || 0);
+  const subtotal   = total - taxes;
+  const designation = pickDesignation(g);
+  const invoiceId   = (g.consolidated_number || g.reference || "—");
+
+  return `
+    <tr class="border-t transition even:bg-gray-50">
+      <td class="py-2 px-3">${g.customer || "—"}</td>
+      <td class="py-2 px-3">${designation}</td>
+      <td class="py-2 px-3">${statusBadge(g.status)}</td>
+      <td class="py-2 px-3">${g.date || "—"}</td>
+      <td class="py-2 px-3">${invoiceId}</td>
+      <td class="py-2 px-3 text-right">$${fmt(subtotal)}</td>
+      <td class="py-2 px-3 text-right">$${fmt(taxes)}</td>
+      <td class="py-2 px-3 text-right font-semibold text-gray-900">$${fmt(total)}</td>
+      <td class="py-2 px-3">${actionButtonsConsolidated(g)}</td>
+    </tr>`;
+};
+
+const renderMobileCardConsolidated = (g) => {
+  const st         = String(g.status || "issued").toLowerCase();
+  const taxes      = getTaxTotal(g);
+  const total      = Number(g.total || g.sum_total || 0);
+  const subtotal   = total - taxes;
+  const designation = pickDesignation(g);
+  const badgeHtml = statusBadge(g.status);
+
+  let actions = "";
+  if (isFulfilled(g)) {
+    actions = downloadBtn(getDownloadHref(g));
+  } else {
+    const btns = [viewBtnConsolidated(g)];
+    if (!isPaid(g)) btns.push(processBtnConsolidated(g));
+    actions = btns.join("");
+  }
+
+  return `
+    <article class="rounded-xl border border-gray-200 bg-white shadow-sm p-4"
+             style="border-left:6px solid ${accentColor(st)}">
+      <div class="flex items-start justify-between">
+        <div class="min-w-0">
+          <h3 class="text-sm font-semibold text-gray-900 truncate">#${g.reference || g.consolidated_number}</h3>
+          <p class="text-xs text-gray-500 mt-0.5 truncate">${g.customer || "—"} • ${g.date || "—"}</p>
+        </div>
+        <div class="text-right space-y-1">
+          ${badgeHtml}
+          <div>${payBadge(g.payment_status || "unpaid")}</div>
+        </div>
+      </div>
+      <p class="text-xs text-gray-600 mt-2">${designation}</p>
+      <dl class="grid grid-cols-2 gap-3 text-xs mt-3">
+        <div><dt class="text-gray-500">{% trans "Subtotal" %}</dt><dd class="font-medium text-gray-900">$${fmt(subtotal)}</dd></div>
+        <div class="text-right"><dt class="text-gray-500">{% trans "Taxes" %}</dt><dd class="font-medium text-gray-900">$${fmt(taxes)}</dd></div>
+        <div class="col-span-2 text-right">
+          <dt class="text-gray-500 inline-block mr-1">{% trans "Total (USD)" %}</dt>
+          <dd class="inline-block font-semibold text-gray-900">$${fmt(total)}</dd>
+        </div>
+      </dl>
+      <div class="mt-3 flex flex-wrap gap-2">${actions}</div>
+    </article>`;
+};
+
+/* ========= Page boot ========= */
+document.addEventListener("DOMContentLoaded", () => {
+  const tableBody           = document.getElementById("adminOrdersTableBody");
+  const mobileList          = document.getElementById("ordersMobileList");
+  const paginationContainer = document.getElementById("paginationControls");
+  const searchInput         = document.getElementById("searchInput");
+  const statusFilter        = document.getElementById("statusFilter");
+
+  // globals used across helpers
+  window.currentPage    = 1;
+  window.currentQuery   = "";
+  window.currentStatus  = "";
+  window.currentPerPage = 20;
+  window.__totalPages   = 1;
+  window.__totalCount   = null;
+  window.__lastOrders   = [];
+
+  function setLoading() {
+    if (tableBody)  tableBody.innerHTML  = `<tr><td colspan="11" class="text-center py-6 text-gray-500">{% trans "Loading..." %}</td></tr>`;
+    if (mobileList) mobileList.innerHTML = `<div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 text-center text-gray-500">{% trans "Loading..." %}</div>`;
+  }
+  function setEmpty() {
+    if (tableBody)  tableBody.innerHTML  = `<tr><td colspan="11" class="text-center py-6 text-gray-500">{% trans "No orders found." %}</td></tr>`;
+    if (mobileList) mobileList.innerHTML = `<div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 text-center text-gray-500">{% trans "No orders found." %}</div>`;
+  }
+  function setError() {
+    if (tableBody)  tableBody.innerHTML  = `<tr><td colspan="11" class="text-center py-6 text-rose-500">{% trans "Failed to load orders." %}</td></tr>`;
+    if (mobileList) mobileList.innerHTML = `<div class="rounded-xl border border-gray-200 bg-white shadow-sm p-4 text-center text-rose-500">{% trans "Failed to load orders." %}</div>`;
+  }
+
+  function debounce(fn, ms) { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); }; }
+  const triggerLoad = debounce(() => {
+    const q  = (searchInput?.value || "").trim();
+    const st = (statusFilter?.value || "").trim();
+    loadOrders(1, q, st);
+  }, 300);
+
+  if (searchInput)  searchInput.addEventListener("input", triggerLoad);
+  if (statusFilter) statusFilter.addEventListener("change", triggerLoad);
+
+  const makeBtn = (label, page, {active=false, disabled=false}={}) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "pg-btn" + (active ? " pg-btn--active" : "");
+    if (disabled) b.setAttribute("disabled", "disabled");
+    b.textContent = label;
+    b.onclick = () => !disabled && goToPage(page);
+    return b;
+  };
+
+  function buildPaginationToolbar(totalPages) {
+    window.__totalPages = Number(totalPages || 1);
+    const cp  = Number(window.currentPage || 1);
+    const pp  = Number(window.currentPerPage || 20);
+    const tot = window.__totalCount;
+
+    if (!paginationContainer) return;
+    paginationContainer.innerHTML = "";
+
+    const bar = document.createElement("div");
+    bar.className = "pg";
+
+    const left = document.createElement("div");
+    left.className = "pg-group";
+
+    const startIdx = ((cp - 1) * pp) + 1;
+    const endIdx   = Math.min(cp * pp, (tot || (cp * pp)));
+    const rangeText = (typeof tot === "number")
+      ? `{% trans "Showing" %} ${startIdx}–${endIdx} {% trans "of" %} ${tot}`
+      : `{% trans "Page" %} ${cp} {% trans "of" %} ${totalPages}`;
+
+    const rangeChip = document.createElement("span");
+    rangeChip.className = "pg-chip";
+    rangeChip.textContent = rangeText;
+    left.appendChild(rangeChip);
+
+    const sizeWrap = document.createElement("label");
+    sizeWrap.className = "pg-chip";
+    sizeWrap.innerHTML = `
+      <span class="hidden sm:inline">{% trans "Rows per page" %}</span>
+      <select class="pg-select" id="perPageSelect" aria-label="{% trans 'Rows per page' %}">
+        <option value="10">10</option>
+        <option value="20" selected>20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>`;
+    left.appendChild(sizeWrap);
+
+    const right = document.createElement("div");
+    right.className = "pg-group";
+
+    right.appendChild(makeBtn("« {% trans 'First' %}", 1, { disabled: cp === 1 }));
+    right.appendChild(makeBtn("‹ {% trans 'Prev'  %}", cp - 1, { disabled: cp === 1 }));
+
+    const around = 2;
+    const startWin = Math.max(1, cp - around);
+    const endWin   = Math.min(totalPages, cp + around);
+
+    if (startWin > 1) {
+      right.appendChild(makeBtn("1", 1, { active: cp === 1 }));
+      if (startWin > 2) right.appendChild(Object.assign(document.createElement("span"), { className:"pg-ellipsis", textContent:"…" }));
+    }
+    for (let i = startWin; i <= endWin; i++) right.appendChild(makeBtn(String(i), i, { active: i === cp }));
+    if (endWin < totalPages) {
+      if (endWin < totalPages - 1) right.appendChild(Object.assign(document.createElement("span"), { className:"pg-ellipsis", textContent:"…" }));
+      right.appendChild(makeBtn(String(totalPages), totalPages, { active: cp === totalPages }));
+    }
+
+    right.appendChild(makeBtn("{% trans 'Next' %} ›", cp + 1, { disabled: cp >= totalPages }));
+    right.appendChild(makeBtn("{% trans 'Last' %} »", totalPages, { disabled: cp >= totalPages }));
+
+    const jumpWrap = document.createElement("label");
+    jumpWrap.className = "pg-chip";
+    jumpWrap.innerHTML = `
+      <span class="hidden sm:inline">{% trans "Jump to" %}</span>
+      <input id="jumpToInput" class="pg-input" type="number" min="1" max="${totalPages}" value="${cp}" aria-label="{% trans 'Jump to page' %}">
+    `;
+    right.appendChild(jumpWrap);
+
+    bar.appendChild(left);
+    bar.appendChild(right);
+    paginationContainer.appendChild(bar);
+
+    const sizeSelect = document.getElementById("perPageSelect");
+    if (sizeSelect) {
+      sizeSelect.value = String(pp);
+      sizeSelect.addEventListener("change", () => {
+        window.currentPerPage = Number(sizeSelect.value || 20);
+        loadOrders(1, window.currentQuery || "", window.currentStatus || "");
+      });
+    }
+
+    const jumpInput = document.getElementById("jumpToInput");
+    if (jumpInput) {
+      jumpInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          const want = Math.max(1, Math.min(Number(jumpInput.value || 1), window.__totalPages || 1));
+          goToPage(want);
+        }
+      });
+    }
+  }
+
+  function loadOrders(page = 1, q = "", status = "") {
+    setLoading();
+    const url = new URL(`{% url 'admin_view_orders' %}`, window.location.origin);
+    url.searchParams.set("page", page);
+    url.searchParams.set("per_page", window.currentPerPage || 20);
+    if (q)      url.searchParams.set("q", q);
+    if (status) url.searchParams.set("status", status);
+
+    fetch(url.toString(), { headers: { "Accept": "application/json" }, credentials: "same-origin" })
+      .then(res => res.json())
+      .then(data => {
+        window.currentPage   = Number(data?.page || page);
+        window.currentQuery  = q;
+        window.currentStatus = status;
+        window.__totalPages  = Number(data?.total_pages || 1);
+        window.__totalCount  = Number(data?.total_count || data?.total || 0) || null;
+        window.__lastOrders  = Array.isArray(data?.orders) ? data.orders : [];
+
+        if (tableBody)  tableBody.innerHTML  = "";
+        if (mobileList) mobileList.innerHTML = "";
+        if (paginationContainer) paginationContainer.innerHTML = "";
+
+        if (data?.success && Array.isArray(window.__lastOrders) && window.__lastOrders.length) {
+          // filter out singles that belong to a consolidated row
+          const consIds  = new Set();
+          const consRefs = new Set();
+
+          window.__lastOrders.forEach(it => {
+            if (it && it.is_consolidated) {
+              (Array.isArray(it.order_ids)  ? it.order_ids  : []).forEach(id  => { if (id != null) consIds.add(String(id)); });
+              (Array.isArray(it.order_refs) ? it.order_refs : []).forEach(ref => { if (ref)      consRefs.add(String(ref).trim()); });
+            }
+          });
+
+          const getOrderIdStr  = (o) => (o?.id != null ? String(o.id) : null);
+          const getOrderRefStr = (o) => {
+            const r = o?.reference ?? o?.order_reference ?? null;
+            return r ? String(r).trim() : null;
+          };
+
+          const filtered = window.__lastOrders.filter(it => {
+            if (it?.is_consolidated) return true;
+            const idStr  = getOrderIdStr(it);
+            const refStr = getOrderRefStr(it);
+            const inById  = idStr  ? consIds.has(idStr)   : false;
+            const inByRef = refStr ? consRefs.has(refStr) : false;
+            return !(inById || inByRef);
+          });
+
+          filtered.forEach(item => {
+            if (item.is_consolidated) {
+              if (tableBody)  tableBody.insertAdjacentHTML("beforeend", renderRowConsolidated(item));
+              if (mobileList) mobileList.insertAdjacentHTML("beforeend", renderMobileCardConsolidated(item));
+            } else {
+              if (tableBody)  tableBody.insertAdjacentHTML("beforeend", renderRow(item));
+              if (mobileList) mobileList.insertAdjacentHTML("beforeend", renderMobileCard(item));
+            }
+          });
+
+          buildPaginationToolbar(window.__totalPages);
+        } else {
+          setEmpty();
+        }
+      })
+      .catch(err => {
+        console.error("Error loading admin orders:", err);
+        setError();
+      });
+  }
+
+  // expose globally
+  window.loadOrders = loadOrders;
+
+  // initial load
+  loadOrders(1, "", "");
+
+  // Keyboard pagination (ignore when focus in inputs)
+  document.addEventListener("keydown", (e) => {
+    const tag = (e.target?.tagName || "").toUpperCase();
+    if (tag === "INPUT" || tag === "TEXTAREA" || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "ArrowLeft")  goToPage((window.currentPage || 1) - 1);
+    if (e.key === "ArrowRight") goToPage((window.currentPage || 1) + 1);
+  });
+});
+
+/* ===== Detail View (single order) ===== */
+async function viewOrderDetails(order_id) {
+  try {
+    const res  = await fetch(`/orders/details/${order_id}`, { headers: { "Accept": "application/json" }, credentials: "same-origin" });
+    const data = await res.json();
+    if (!data?.success) {
+      alert("{% trans 'Could not load order details.' %}");
+      return;
+    }
+
+    const order   = data.order;
+    const content = document.getElementById("orderDetailContent");
+    if (!content) return;
+
+    let itemsHTML = "";
+    (order.items || []).forEach(item => {
+      itemsHTML += `
+        <tr class="border-b">
+          <td class="py-2 px-3">${item.name}</td>
+          <td class="py-2 px-3">${item.type}</td>
+          <td class="py-2 px-3 text-right">$${parseFloat(item.price).toFixed(2)}</td>
+        </tr>`;
+    });
+
+    const taxes    = Number(order.tax_total ?? (Number(order.vat || 0) + Number(order.exc || 0)));
+    const subtotal = Number(order.total || 0) - taxes;
+
+    content.innerHTML = `
+      <div class="mb-4 space-y-1 text-sm">
+        <p><strong>{% trans "Order Reference" %}:</strong> #${order.reference}</p>
+        <p><strong>{% trans "Customer" %}:</strong> ${order.customer}</p>
+        <p><strong>{% trans "Status" %}:</strong> ${order.status}</p>
+        <p><strong>{% trans "Date" %}:</strong> ${order.date}</p>
+      </div>
+
+      <div class="my-4">
+        <table class="w-full text-sm border rounded">
+          <thead class="bg-gray-100 text-left">
+            <tr>
+              <th class="py-2 px-3">{% trans "Item" %}</th>
+              <th class="py-2 px-3">{% trans "Type" %}</th>
+              <th class="py-2 px-3 text-right">{% trans "Price (USD)" %}</th>
+            </tr>
+          </thead>
+          <tbody>${itemsHTML}</tbody>
+        </table>
+      </div>
+
+      <div class="mt-4 space-y-1 text-sm">
+        <p><strong>{% trans "Subtotal" %}:</strong> $${subtotal.toFixed(2)}</p>
+        <p><strong>{% trans "Taxes" %}:</strong> $${taxes.toFixed(2)}</p>
+        <p class="font-bold"><strong>{% trans "Total" %}:</strong> $${Number(order.total || 0).toFixed(2)}</p>
+      </div>
+    `;
+
+    // Prefer invoice-based PDF when available
+    const invoiceId = pickInvoiceId(order);
+    const dlBtn = document.getElementById("downloadInvoiceBtn");
+    if (dlBtn) {
+      dlBtn.href = invoiceId
+        ? `/billing/invoice/${encodeURIComponent(String(invoiceId))}/pdf/`
+        : `/orders/invoices/${order.id}/pdf/`;
+    }
+
+    // Show unified Process Payment button for SINGLE using invoice_id + total
+    const processBtn = document.getElementById("processFromModalBtn");
+    if (processBtn) {
+      if (invoiceId) {
+        processBtn.classList.remove("hidden");
+        processBtn.onclick = () => openPaymentModalByInvoice(String(invoiceId), Number(order.total || 0));
+      } else {
+        processBtn.classList.add("hidden");
+        processBtn.onclick = null;
+      }
+    }
+
+    openOrderModal();
+  } catch (err) {
+    console.error("Order details error:", err);
+    alert("{% trans 'Failed to load order details.' %}");
+  }
+}
+
+function closeOrderModal() { document.getElementById("orderDetailModal")?.classList.add("hidden"); }
+function openOrderModal()  { document.getElementById("orderDetailModal")?.classList.remove("hidden"); }
+
+/* ===== Consolidated detail (cached rows) ===== */
+function viewConsolidatedDetails(consNumber){
+  try {
+    const rows = Array.isArray(window.__lastOrders) ? window.__lastOrders : [];
+    const g = rows.find(x => x && x.is_consolidated && (x.consolidated_number === consNumber || x.reference === consNumber));
+    if (!g) throw new Error("Not found");
+
+    const content = document.getElementById("orderDetailContent");
+    if (!content) return;
+
+    const taxes    = Number(g.sum_tax_total ?? (Number(g.vat || g.sum_vat || 0) + Number(g.sum_exc || 0)));
+    const total    = Number(g.total || g.sum_total || 0);
+    const subtotal = total - taxes;
+    const refs     = Array.isArray(g.order_refs) ? g.order_refs : [];
+    const count    = Array.isArray(g.order_ids) ? g.order_ids.length : (refs.length || 0);
+
+    const ordersList = refs.map(r => `<li class="py-0.5">${r}</li>`).join("");
+
+    content.innerHTML = `
+      <div class="mb-4 space-y-1 text-sm">
+        <p><strong>{% trans "Consolidated Number" %}:</strong> #${g.consolidated_number || g.reference}</p>
+        <p><strong>{% trans "Customer" %}:</strong> ${g.customer || "—"}</p>
+        <p><strong>{% trans "Status" %}:</strong> ${g.status || "issued"}</p>
+        <p><strong>{% trans "Payment Status" %}:</strong> ${g.payment_status || "unpaid"}</p>
+        <p><strong>{% trans "Date" %}:</strong> ${g.date || "—"}</p>
+        <p><strong>{% trans "Orders included" %}:</strong> ${count}</p>
+      </div>
+
+      <div class="my-4">
+        <div class="border rounded p-3 bg-gray-50">
+          <h4 class="font-semibold text-sm mb-2">{% trans "Order References" %}</h4>
+          <ul class="list-disc pl-5 text-sm">${ordersList}</ul>
+        </div>
+      </div>
+
+      <div class="mt-4 space-y-1 text-sm">
+        <p><strong>{% trans "Subtotal" %}:</strong> $${subtotal.toFixed(2)}</p>
+        <p><strong>{% trans "Taxes" %}:</strong> $${taxes.toFixed(2)}</p>
+        <p class="font-bold"><strong>{% trans "Total" %}:</strong> $${total.toFixed(2)}</p>
+      </div>
+    `;
+
+    const dlBtn = document.getElementById("downloadInvoiceBtn");
+    if (dlBtn) dlBtn.href = `/billing/consolidated/${g.consolidated_number || g.reference}/pdf/`;
+
+    // Show unified Process Payment button for CONSOLIDATED
+    const processBtn = document.getElementById("processFromModalBtn");
+    if (processBtn) {
+      processBtn.classList.remove("hidden");
+      processBtn.onclick = () => openConsolidatedPaymentModal(g.consolidated_number || g.reference, total);
+    }
+
+    openOrderModal();
+  } catch (e) {
+    console.error(e);
+    alert("{% trans 'Could not load consolidated details.' %}");
+  }
+}
+
+/* ===== Payment Modal & Submit ===== */
+(function(){
+  // --- Robust DOM helpers to avoid null issues ---
+  const _byId    = (id) => document.getElementById(id);
+  const _setVal  = (id, v) => { const el = _byId(id); if (el) el.value = v; else console.warn(`[payment] Missing #${id}`); };
+  const _setText = (id, v) => { const el = _byId(id); if (el) el.textContent = v; else console.warn(`[payment] Missing #${id}`); };
+  const _show    = (id) => { const el = _byId(id); if (el) el.classList.remove("hidden"); };
+  const _hide    = (id) => { const el = _byId(id); if (el) el.classList.add("hidden"); };
+
+  function withLocale(path) {
+    const seg = location.pathname.split("/")[1] || "";
+    return /^[a-z]{2}(-[A-Z]{2})?$/.test(seg) ? `/${seg}${path}` : path;
+  }
+  function getCsrf() {
+    const n = document.querySelector('[name=csrfmiddlewaretoken]');
+    return n ? n.value : "";
+  }
+  function btnBusy(btn, busy=true, textWhenBusy="Processing…") {
+    if (!btn) return;
+    if (busy) {
+      btn._origText = btn.textContent;
+      btn.disabled  = true;
+      btn.textContent = textWhenBusy;
+    } else {
+      btn.disabled = false;
+      if (btn._origText) btn.textContent = btn._origText;
+    }
+  }
+
+  /* === helper: ensure a visible Invoice ID field exists in the form === */
+  function ensureInvoiceIdField() {
+    const form = _byId("paymentForm");
+    if (!form) return;
+    if (_byId("invoiceIdFieldWrap")) return; // already present
+
+    const totalWrap = form.querySelector(".bg-gray-50.border.rounded-xl.p-3");
+    const wrap = document.createElement("div");
+    wrap.id = "invoiceIdFieldWrap";
+    wrap.className = "space-y-2";
+
+    wrap.innerHTML = `
+      <label class="block font-medium" for="visibleInvoiceId">{% trans "Invoice ID" %}</label>
+      <input
+        type="text"
+        id="visibleInvoiceId"
+        class="w-full border rounded-xl px-3 py-2 bg-gray-50 text-gray-700"
+        readonly
+      />
+    `;
+
+    // Insert just AFTER the Total to Pay box for nice grouping
+    if (totalWrap && totalWrap.parentNode) {
+      totalWrap.parentNode.insertBefore(wrap, totalWrap.nextSibling);
+    } else {
+      form.insertBefore(wrap, form.firstChild);
+    }
+  }
+
+  // === OPENERS ===
+  // Single-invoice payment (by invoice_id) — UPDATED to accept total
+  window.openPaymentModalByInvoice = function(invoiceId, total=null){
+    _setVal("selectedMode", "invoice");
+    _setVal("selectedInvoiceId", invoiceId || "");
+    _setVal("selectedConsolidatedNumber", "");
+
+    // show the visible invoice field (create if missing)
+    ensureInvoiceIdField();
+    const vis = _byId("visibleInvoiceId");
+    if (vis) vis.value = invoiceId || "";
+
+    const methodCash = document.querySelector('input[name="paymentMethod"][value="cash"]');
+    if (methodCash) methodCash.checked = true;
+
+    _show("cashFields"); _hide("terminalFields");
+
+    const totalLabel = _byId("orderTotalDisplay");
+    const amountInput = _byId("cashAmount");
+    if (total != null) {
+      const t = Number(total || 0);
+      if (totalLabel) totalLabel.textContent = t.toFixed(2);
+      if (amountInput) { amountInput.value = t.toFixed(2); amountInput.readOnly = true; }
+    } else {
+      if (totalLabel) totalLabel.textContent = "0.00";
+      if (amountInput) { amountInput.value = ""; amountInput.readOnly = true; }
+
+      // Fallback: fetch invoice totals if total wasn't passed
+      fetch(withLocale(`/billing/invoice/${encodeURIComponent(String(invoiceId))}/json/`), { headers: { "Accept":"application/json" }, credentials: "same-origin" })
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => {
+          const t = Number(d?.total || d?.grand_total || 0);
+          _setText("orderTotalDisplay", t.toFixed(2));
+          _setVal("cashAmount", t.toFixed(2));
+        })
+        .catch(()=>{ /* keep 0.00 */ });
+    }
+
+    _byId("paymentModal")?.classList.remove("hidden");
+  };
+
+  // Consolidated opener (uses consolidated reference/number)
+  window.openConsolidatedPaymentModal = function(consNumber, total){
+    _setVal("selectedMode", "consolidated");
+    _setVal("selectedInvoiceId", "");
+    _setVal("selectedConsolidatedNumber", consNumber || "");
+
+    // If Invoice ID field exists, clear it (not used for consolidated)
+    const vis = _byId("visibleInvoiceId");
+    if (vis) vis.value = "";
+
+    const methodCash = document.querySelector('input[name="paymentMethod"][value="cash"]');
+    if (methodCash) methodCash.checked = true;
+
+    _show("cashFields"); _hide("terminalFields");
+
+    const t = Number(total || 0).toFixed(2);
+    _setText("orderTotalDisplay", t);
+    _setVal("cashAmount", t);
+
+    _byId("paymentModal")?.classList.remove("hidden");
+  };
+
+  window.closePaymentModal = function(){
+    _byId("paymentModal")?.classList.add("hidden");
+  };
+
+  document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
+    radio.addEventListener("change", () => {
+      const method = (document.querySelector('input[name="paymentMethod"]:checked')||{}).value;
+      _byId("cashFields")?.classList.toggle("hidden", method !== "cash");
+      _byId("terminalFields")?.classList.toggle("hidden", method !== "terminal");
+    });
+  });
+
+  // === SUBMIT ===
+  _byId("paymentForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const submitBtn = e.submitter || document.querySelector("#paymentForm button[type=submit]");
+    btnBusy(submitBtn, true);
+
+    try {
+      const mode   = (_byId("selectedMode")?.value || "invoice").toLowerCase();
+      const method = (document.querySelector('input[name="paymentMethod"]:checked')||{}).value || "cash";
+
+      // NOTE: keep your existing processUrl logic here – unchanged
+      let processUrl;
+      if (mode === "consolidated") {
+        const consNum = (_byId("selectedConsolidatedNumber")?.value || "").trim();
+        processUrl = withLocale(`/orders/pay/${encodeURIComponent(consNum)}/process_payment/`);
+      } else {
+        const invoiceId = (_byId("selectedInvoiceId")?.value || "").trim();
+        // Use unified endpoint for invoice number as well; no pre-submit validation
+        processUrl = withLocale(`/orders/pay/${encodeURIComponent(invoiceId)}/process_payment/`);
+      }
+
+      const fd = new FormData();
+      fd.append("paymentMethod", method);
+
+      if (mode === "consolidated") {
+        fd.append("consolidated_number", (_byId("selectedConsolidatedNumber")?.value || "").trim());
+        // For consolidated we still pass amount/currency if cash
+        if (method === "cash") {
+          const amountInput    = _byId("cashAmount");
+          const cashCurrencyEl = _byId("cashCurrency");
+          fd.append("currency", (cashCurrencyEl && cashCurrencyEl.value) ? cashCurrencyEl.value : "USD");
+          fd.append("amount", amountInput && amountInput.value ? amountInput.value : "");
+        }
+      } else {
+        // Invoice mode: only send invoice id and, if terminal, the reference
+        fd.append("invoice_id", (_byId("selectedInvoiceId")?.value || "").trim());
+      }
+
+      if (method === "terminal") {
+        const enteredRef = (_byId("terminalReference")?.value || "").trim();
+        if (enteredRef) fd.append("terminal_reference", enteredRef);
+      }
+
+      const res  = await fetch(processUrl, {
+        method: "POST",
+        headers: { "X-CSRFToken": getCsrf(), "X-Requested-With": "XMLHttpRequest" },
+        body: fd,
+        credentials: "same-origin",
+      });
+
+      const data = await res.json();
+      if (!data?.success) throw new Error(data?.message || "Payment failed.");
+
+      alert("{% trans 'Payment processed successfully.' %}");
+      window.closePaymentModal();
+      if (typeof loadOrders === "function") {
+        const q  = (document.getElementById("searchInput")?.value || "").trim();
+        const st = (document.getElementById("statusFilter")?.value || "").trim();
+        loadOrders(1, q, st);
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message || "{% trans 'Something went wrong.' %}");
+    } finally {
+      btnBusy(submitBtn, false);
+    }
+  });
+})();
+</script>
+
+{% endblock %}

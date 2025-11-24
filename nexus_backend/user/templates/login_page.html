@@ -1,0 +1,52 @@
+{% extends 'user/base_login_page.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<div id="login-alert" class="hidden px-4 py-2 mb-4 rounded text-sm"></div>
+
+<!-- Login Form -->
+<form method="post" action="{% url 'login_request' %}" id="login-form" class="space-y-4">
+  {% csrf_token %}
+  {% include 'partials/_auth_form.html' %}
+</form>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  const loginForm = document.getElementById('login-form');
+  const alertBox = document.getElementById('login-alert');
+  const csrfToken = document.querySelector('[name="csrfmiddlewaretoken"]').value;
+
+  loginForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+
+    const formData = new FormData(loginForm);
+
+  fetch(`{% url 'login_request' %}`, {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        window.location.href = data.redirect_url;
+      } else {
+        alertBox.innerText = data.message || '{% trans "Invalid credentials." %}';
+        alertBox.className = 'bg-red-100 text-red-700 px-4 py-2 mb-4 rounded text-sm';
+        alertBox.classList.remove('hidden');
+      }
+    })
+    .catch(() => {
+      alertBox.innerText = "{% trans 'Server error. Please try again.' %}";
+      alertBox.className = 'bg-red-100 text-red-700 px-4 py-2 mb-4 rounded text-sm';
+      alertBox.classList.remove('hidden');
+    });
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Additional Equipment Required</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .email-container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 10px;
+        }
+        .title {
+            color: #1f2937;
+            font-size: 22px;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        .content-section {
+            margin-bottom: 25px;
+        }
+        .info-box {
+            background-color: #f3f4f6;
+            border-left: 4px solid #4f46e5;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 0 5px 5px 0;
+        }
+        .billing-details {
+            background-color: #fef3c7;
+            border: 1px solid #f59e0b;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .billing-header {
+            color: #92400e;
+            font-weight: bold;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #fde68a;
+        }
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        .detail-label {
+            font-weight: 500;
+            color: #92400e;
+        }
+        .detail-value {
+            color: #1f2937;
+        }
+        .amount-highlight {
+            font-size: 18px;
+            font-weight: bold;
+            color: #dc2626;
+        }
+        .action-button {
+            display: inline-block;
+            background-color: #4f46e5;
+            color: white;
+            padding: 15px 30px;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            transition: background-color 0.3s;
+        }
+        .action-button:hover {
+            background-color: #3730a3;
+            color: white;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-align: center;
+        }
+        .support-info {
+            background-color: #eff6ff;
+            border: 1px solid #3b82f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .support-title {
+            color: #1e40af;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .equipment-list {
+            list-style: none;
+            padding: 0;
+        }
+        .equipment-item {
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .equipment-name {
+            font-weight: 500;
+            color: #374151;
+        }
+        .equipment-price {
+            color: #059669;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="email-container">
+        <!-- Header -->
+        <div class="header">
+            <div class="logo">📡 NEXUS TELECOM</div>
+            <div class="title">Additional Equipment Required</div>
+            <div class="subtitle">Site Survey Completion Notice</div>
+        </div>
+
+        <!-- Greeting -->
+        <div class="content-section">
+            <p>Dear {{ customer_name }},</p>
+
+            <p>We hope this email finds you well. We're writing to inform you that our technical team has completed the site survey for your Starlink installation.</p>
+        </div>
+
+        <!-- Order Information -->
+        <div class="info-box">
+            <strong>📋 Order Reference:</strong> {{ order_reference }}<br>
+            <strong>📅 Survey Date:</strong> {{ survey.completed_at|date:"M d, Y" }}<br>
+            <strong>📍 Installation Location:</strong> {{ survey.location_address }}
+        </div>
+
+        <!-- Survey Results -->
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">📊 Survey Results</h3>
+            <p>Based on our comprehensive site assessment, we've identified that additional equipment is required to ensure optimal Starlink connectivity at your location. This additional equipment will guarantee:</p>
+
+            <ul style="color: #374151; margin-left: 20px;">
+                <li>✅ Optimal signal strength and connectivity</li>
+                <li>✅ Weather-resistant installation</li>
+                <li>✅ Compliance with safety standards</li>
+                <li>✅ Long-term reliability and performance</li>
+            </ul>
+        </div>
+
+        <!-- Billing Details -->
+        <div class="billing-details">
+            <div class="billing-header">💰 Additional Equipment Billing</div>
+
+            <div class="detail-row">
+                <span class="detail-label">Billing Reference:</span>
+                <span class="detail-value">{{ billing.billing_reference }}</span>
+            </div>
+
+            {% for cost in billing.survey.additional_costs %}
+            <div class="detail-row">
+                <span class="detail-label">Additional Cost ID:</span>
+                <span class="detail-value">#{{ cost.id }}</span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Extra Charge:</span>
+                <span class="detail-value">${{ cost.extra_charge|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+
+            <div class="detail-row">
+                <span class="detail-label">Total Amount:</span>
+                <span class="detail-value amount-highlight">${{ billing.total_amount|floatformat:2 }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Status:</span>
+                <span class="detail-value">
+                    <span style="background-color: #fef3c7; color: #92400e; padding: 4px 8px; border-radius: 4px; font-size: 12px;">
+                        Pending Your Approval
+                    </span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Equipment List -->
+        {% if billing.survey.additional_costs %}
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">🔧 Required Equipment</h3>
+            <ul class="equipment-list">
+                {% for cost in billing.survey.additional_costs %}
+                <li class="equipment-item">
+                    <span class="equipment-name">{{ cost.extra_charge.name }}</span>
+                    <span class="equipment-price">${{ cost.extra_charge.price|floatformat:2 }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+
+        <!-- Call to Action -->
+        <div class="content-section" style="text-align: center;">
+            <p style="margin-bottom: 20px; font-weight: 500;">Please review and approve the additional billing to proceed with your installation:</p>
+
+            <a href="{{ approval_url }}" class="action-button">
+                👀 Review & Approve Billing
+            </a>
+
+            <p style="margin-top: 15px; font-size: 14px; color: #6b7280;">
+                Click the button above to review the detailed breakdown and approve the additional costs.
+            </p>
+        </div>
+
+        <!-- Next Steps -->
+        <div class="content-section">
+            <h3 style="color: #1f2937; margin-bottom: 15px;">📝 Next Steps</h3>
+            <ol style="color: #374151; margin-left: 20px;">
+                <li><strong>Review:</strong> Click the link above to review the additional equipment requirements</li>
+                <li><strong>Approve:</strong> Approve the billing if you agree with the additional costs</li>
+                <li><strong>Payment:</strong> Complete payment to proceed with installation</li>
+                <li><strong>Installation:</strong> Our team will schedule your installation once payment is confirmed</li>
+            </ol>
+        </div>
+
+        <!-- Support Information -->
+        <div class="support-info">
+            <div class="support-title">🆘 Need Help?</div>
+            <p style="margin: 5px 0; font-size: 14px;">
+                If you have any questions about this billing or need assistance, please don't hesitate to contact our support team:
+            </p>
+            <p style="margin: 5px 0; font-size: 14px;">
+                📧 Email: <a href="mailto:{{ support_email }}" style="color: #1e40af;">{{ support_email }}</a><br>
+                📞 Phone: {{ support_phone }}
+            </p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>This email was sent on {{ current_date }} regarding your Starlink installation order.</p>
+            <p>© 2025 Nexus Telecom. All rights reserved.</p>
+            <p style="margin-top: 10px;">
+                This is an automated notification. Please do not reply to this email.
+            </p>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,10 @@
+Hello {{ order.user.full_name|default:order.user.email }},
+
+Your installation {{ order.order_reference|default:installation.id }} was completed a few days ago. We would really appreciate it if you could share your experience.
+
+Share your feedback: {{ feedback_url }}
+
+Thank you for helping us improve.
+
+--
+Nexus Telecoms Support

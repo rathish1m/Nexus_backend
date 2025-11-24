@@ -1,0 +1,320 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+  <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+    <div>
+      <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Billing Anchors & Automation" %}</h2>
+      <p class="text-sm text-gray-500">
+        {% trans "Configure Starlink anchor day, prebill lead days, and automation flags for recurring billing." %}
+      </p>
+    </div>
+    <div class="flex gap-2">
+      <button type="button" id="billingConfigReset"
+              class="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200">
+        <i class="fas fa-undo text-xs"></i> {% trans "Reset Defaults" %}
+      </button>
+      <button type="button" id="billingConfigSave"
+              class="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+        <i class="fas fa-save text-xs"></i> {% trans "Save Settings" %}
+      </button>
+    </div>
+  </div>
+
+  <form id="billingConfigForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- Anchor day -->
+    <div>
+      <label for="cfg_anchor_day" class="block text-sm font-medium text-gray-700">
+        {% trans "Starlink Anchor Day" %}
+      </label>
+      <input type="number" id="cfg_anchor_day" name="anchor_day" min="1" max="28" required
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+             placeholder="20" />
+      <p class="text-xs text-gray-500 mt-1">{% trans "A day that exists in every month (1–28). Typical: 20." %}</p>
+    </div>
+
+    <!-- Lead -->
+    <div>
+      <label for="cfg_prebill_lead" class="block text-sm font-medium text-gray-700">
+        {% trans "Prebill Lead Days" %}
+      </label>
+      <input type="number" id="cfg_prebill_lead" name="prebill_lead_days" min="0" max="30" required
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+             placeholder="15" />
+      <p class="text-xs text-gray-500 mt-1">
+        {% trans "Create renewal invoices this many days before the anchor day." %}
+      </p>
+    </div>
+
+    <!-- Default invoice start -->
+    <div>
+      <label for="cfg_invoice_start" class="block text-sm font-medium text-gray-700">
+        {% trans "Default Customer Invoice Start Date" %}
+      </label>
+      <input type="date" id="cfg_invoice_start" name="invoice_start_date"
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500" />
+      <p class="text-xs text-gray-500 mt-1">
+        {% trans "Global start date used by automation for new/ported subscriptions." %}
+      </p>
+    </div>
+
+    <!-- Cutoff (D-1) -->
+    <div>
+      <label for="cfg_cutoff_days" class="block text-sm font-medium text-gray-700">
+        {% trans "Cutoff Days Before Anchor" %}
+      </label>
+      <input type="number" id="cfg_cutoff_days" name="cutoff_days_before_anchor" min="0" max="30" required
+             class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+             placeholder="1" />
+      <p class="text-xs text-gray-500 mt-1">
+        {% trans "Service will be suspended this many days before the anchor if unpaid (e.g. 1 = D-1)." %}
+      </p>
+    </div>
+
+    <!-- Auto suspend -->
+    <div class="flex items-center gap-3">
+      <input id="cfg_auto_suspend" type="checkbox"
+             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+      <label for="cfg_auto_suspend" class="text-sm font-medium text-gray-700">
+        {% trans "Auto-suspend at cutoff if unpaid" %}
+      </label>
+    </div>
+
+    <!-- Auto apply wallet -->
+    <div class="flex items-center gap-3">
+      <input id="cfg_auto_wallet" type="checkbox"
+             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+      <label for="cfg_auto_wallet" class="text-sm font-medium text-gray-700">
+        {% trans "Auto-apply wallet to renewal invoices" %}
+      </label>
+    </div>
+
+    <!-- Align first cycle -->
+    <div class="flex items-center gap-3">
+      <input id="cfg_align_first" type="checkbox"
+             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+      <label for="cfg_align_first" class="text-sm font-medium text-gray-700">
+        {% trans "Align new subscriptions to the global anchor" %}
+      </label>
+    </div>
+
+    <!-- First cycle already billed -->
+    <div class="flex items-center gap-3">
+      <input id="cfg_first_included" type="checkbox"
+             class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500">
+      <label for="cfg_first_included" class="text-sm font-medium text-gray-700">
+        {% trans "First cycle is already included in initial order" %}
+      </label>
+    </div>
+  </form>
+
+  <div id="billingConfigStatus" class="mt-4 hidden">
+    <div class="rounded-lg border p-3 text-sm" id="billingConfigStatusInner"></div>
+  </div>
+
+  <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+    <div class="rounded-lg border p-4 bg-gray-50">
+      <div class="text-xs uppercase text-gray-500">{% trans "Next Anchor" %}</div>
+      <div class="text-lg font-semibold text-gray-900" id="preview_anchor">—</div>
+    </div>
+    <div class="rounded-lg border p-4 bg-gray-50">
+      <div class="text-xs uppercase text-gray-500">{% trans "Lead Window Opens" %}</div>
+      <div class="text-lg font-semibold text-gray-900" id="preview_lead">—</div>
+    </div>
+    <div class="rounded-lg border p-4 bg-gray-50">
+      <div class="text-xs uppercase text-gray-500">{% trans "Cutoff (Suspend If Unpaid)" %}</div>
+      <div class="text-lg font-semibold text-gray-900" id="preview_cutoff">—</div>
+    </div>
+    <div class="rounded-lg border p-4 bg-gray-50">
+      <div class="text-xs uppercase text-gray-500">{% trans "Invoice Start" %}</div>
+      <div class="text-lg font-semibold text-gray-900" id="preview_start">—</div>
+    </div>
+  </div>
+</section>
+
+<script>
+  // Wire endpoints
+  const BILLING_CFG_GET_URL  = "{% url 'billing_config_get' %}";
+  const BILLING_CFG_SAVE_URL = "{% url 'billing_config_save' %}";
+
+  function setBillingStatus(msg, ok=true){
+    const box = document.getElementById('billingConfigStatus');
+    const inner = document.getElementById('billingConfigStatusInner');
+    inner.textContent = msg;
+    inner.className = `rounded-lg border p-3 text-sm ${ok ? 'border-green-200 bg-green-50 text-green-800' : 'border-rose-200 bg-rose-50 text-rose-700'}`;
+    box.classList.remove('hidden');
+    setTimeout(() => box.classList.add('hidden'), 5000);
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      for (const c of document.cookie.split(';')) {
+        const cookie = c.trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function clamp(n, min, max){ return Math.max(min, Math.min(max, n)); }
+
+  function computePreview(anchorDay, leadDays, cutoffDays){
+    const now = new Date();
+    const curDay = now.getDate();
+    let anchor = new Date(now.getFullYear(), now.getMonth(), clamp(anchorDay,1,28));
+    if (curDay > anchorDay) {
+      anchor = new Date(now.getFullYear(), now.getMonth()+1, clamp(anchorDay,1,28));
+    }
+    const leadOpen = new Date(anchor); leadOpen.setDate(anchor.getDate() - clamp(leadDays,0,30));
+    const cutoff   = new Date(anchor); cutoff.setDate(anchor.getDate() - clamp(cutoffDays,0,30));
+    document.getElementById('preview_anchor').textContent = anchor.toLocaleDateString();
+    document.getElementById('preview_lead').textContent   = leadOpen.toLocaleDateString();
+    document.getElementById('preview_cutoff').textContent = cutoff.toLocaleDateString();
+  }
+
+  async function loadBillingConfig(){
+    try{
+      const res = await fetch(BILLING_CFG_GET_URL, { headers:{'X-Requested-With':'XMLHttpRequest'} });
+      const json = await res.json();
+      if(!res.ok || !json){ throw new Error('HTTP '+res.status); }
+
+      const anchor = Number(json.anchor_day ?? 20);
+      const lead   = Number(json.prebill_lead_days ?? 15);
+      const start  = json.invoice_start_date || '';
+      const cutoff = Number(json.cutoff_days_before_anchor ?? 1);
+
+      document.getElementById('cfg_anchor_day').value      = anchor;
+      document.getElementById('cfg_prebill_lead').value    = lead;
+      document.getElementById('cfg_invoice_start').value   = start;
+      document.getElementById('cfg_cutoff_days').value     = cutoff;
+
+      document.getElementById('cfg_auto_suspend').checked  = !!json.auto_suspend_on_cutoff;
+      document.getElementById('cfg_auto_wallet').checked   = !!json.auto_apply_wallet;
+      document.getElementById('cfg_align_first').checked   = !!json.align_first_cycle_to_anchor;
+      document.getElementById('cfg_first_included').checked= !!json.first_cycle_included_in_order;
+
+      computePreview(anchor, lead, cutoff);
+      document.getElementById('preview_start').textContent = start || '—';
+    }catch(e){
+      setBillingStatus("{% trans 'Failed to load billing configuration.' %}", false);
+      console.error(e);
+    }
+  }
+
+  async function saveBillingConfig(){
+    const saveBtn = document.getElementById('billingConfigSave');
+    saveBtn.disabled = true;
+
+    try{
+      let anchor = parseInt(document.getElementById('cfg_anchor_day').value,10);
+      let lead   = parseInt(document.getElementById('cfg_prebill_lead').value,10);
+      const start= document.getElementById('cfg_invoice_start').value || null;
+      let cutoff = parseInt(document.getElementById('cfg_cutoff_days').value,10);
+
+      const autoSuspend = document.getElementById('cfg_auto_suspend').checked;
+      const autoWallet  = document.getElementById('cfg_auto_wallet').checked;
+      const alignFirst  = document.getElementById('cfg_align_first').checked;
+      const firstIncl   = document.getElementById('cfg_first_included').checked;
+
+      if (isNaN(anchor) || anchor < 1 || anchor > 28){
+        setBillingStatus("{% trans 'Anchor day must be between 1 and 28.' %}", false);
+        saveBtn.disabled = false; return;
+      }
+      if (isNaN(lead) || lead < 0 || lead > 30){
+        setBillingStatus("{% trans 'Prebill lead days must be between 0 and 30.' %}", false);
+        saveBtn.disabled = false; return;
+      }
+      if (isNaN(cutoff) || cutoff < 0 || cutoff > 30){
+        setBillingStatus("{% trans 'Cutoff days must be between 0 and 30.' %}", false);
+        saveBtn.disabled = false; return;
+      }
+      if (start && !/^\d{4}-\d{2}-\d{2}$/.test(start)){
+        setBillingStatus("{% trans 'Invoice start date must be a valid date (YYYY-MM-DD).' %}", false);
+        saveBtn.disabled = false; return;
+      }
+
+      const payload = {
+        anchor_day: anchor,
+        prebill_lead_days: lead,
+        invoice_start_date: start,
+        cutoff_days_before_anchor: cutoff,
+        auto_suspend_on_cutoff: autoSuspend,
+        auto_apply_wallet: autoWallet,
+        align_first_cycle_to_anchor: alignFirst,
+        first_cycle_included_in_order: firstIncl,
+      };
+
+      const res = await fetch(BILLING_CFG_SAVE_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type':'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With':'XMLHttpRequest'
+        },
+        body: JSON.stringify(payload)
+      });
+      const json = await res.json();
+      if(!res.ok || !json || json.success === false){
+        throw new Error((json && (json.error || json.message)) || 'HTTP '+res.status);
+      }
+
+      setBillingStatus("{% trans 'Billing configuration saved.' %}", true);
+      computePreview(anchor, lead, cutoff);
+      document.getElementById('preview_start').textContent = start || '—';
+    }catch(e){
+      console.error(e);
+      setBillingStatus(e.message || "{% trans 'Failed to save billing configuration.' %}", false);
+    }finally{
+      saveBtn.disabled = false;
+    }
+  }
+
+  function resetBillingDefaults(){
+    document.getElementById('cfg_anchor_day').value = 20;
+    document.getElementById('cfg_prebill_lead').value = 15;
+    document.getElementById('cfg_invoice_start').value = "";
+    document.getElementById('cfg_cutoff_days').value = 1;
+
+    document.getElementById('cfg_auto_suspend').checked = true;
+    document.getElementById('cfg_auto_wallet').checked  = true;
+    document.getElementById('cfg_align_first').checked  = true;
+    document.getElementById('cfg_first_included').checked = true;
+
+    computePreview(20, 15, 1);
+    document.getElementById('preview_start').textContent = '—';
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const anchorEl = document.getElementById('cfg_anchor_day');
+    const leadEl   = document.getElementById('cfg_prebill_lead');
+    const cutEl    = document.getElementById('cfg_cutoff_days');
+
+    anchorEl?.addEventListener('input', () => {
+      const a = parseInt(anchorEl.value || '20',10);
+      const l = parseInt(leadEl.value   || '15',10);
+      const c = parseInt(cutEl.value    || '1',10);
+      computePreview(a, l, c);
+    });
+    leadEl?.addEventListener('input', () => {
+      const a = parseInt(anchorEl.value || '20',10);
+      const l = parseInt(leadEl.value   || '15',10);
+      const c = parseInt(cutEl.value    || '1',10);
+      computePreview(a, l, c);
+    });
+    cutEl?.addEventListener('input', () => {
+      const a = parseInt(anchorEl.value || '20',10);
+      const l = parseInt(leadEl.value   || '15',10);
+      const c = parseInt(cutEl.value    || '1',10);
+      computePreview(a, l, c);
+    });
+
+    document.getElementById('billingConfigSave')?.addEventListener('click', saveBillingConfig);
+    document.getElementById('billingConfigReset')?.addEventListener('click', resetBillingDefaults);
+
+    loadBillingConfig();
+  });
+</script>

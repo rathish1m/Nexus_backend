@@ -1,0 +1,501 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% trans "Region Management" %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+    <style>
+        :root {
+  --sidebar-bg: #ffffff;
+  --sidebar-hover: #f0f4ff;
+  --sidebar-text: #374151;
+  --sidebar-active: #2563eb;
+}
+
+  .dashboard-container { display: flex; height: 100%; margin: 0; flex-direction: column; }
+  #sidebar { width: 100%; padding: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow-y: auto; display: flex; flex-direction: column; background: white; border-radius: 12px; margin: 16px 0; }
+  #map-container { flex-grow: 1; padding: 16px; }
+  #map { height: 400px; cursor: crosshair; border-radius: 12px; }
+  .region-list { list-style-type: none; padding: 0; }
+  .region-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #f3f4f6; transition: background-color 0.2s ease; }
+  .region-item:hover { background-color: #f9fafb; cursor: pointer;}
+  .region-item:last-child { border-bottom: none; }
+  #search-bar { width: 100%; padding: 10px 14px; margin-bottom: 16px; box-sizing: border-box; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; transition: border-color 0.2s ease; }
+  #search-bar:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  .buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+  #check-point-form { padding: 16px; border-top: 1px solid #f3f4f6; margin-top: auto; background: #f9fafb; border-radius: 0 0 12px 12px; }
+  #check-point-form h3 { margin-top: 0; margin-bottom: 8px; font-size: 16px; font-weight: 600; color: #1f2937; }
+  #check-point-form p { font-size: 14px; color: #6b7280; margin: 0 0 16px; line-height: 1.5; }
+  #check-point-form input { width: 100%; padding: 8px 12px; margin-bottom: 8px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px; transition: border-color 0.2s ease; }
+  #check-point-form input:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+  #check-point-result { margin-top: 12px; font-weight: 500; padding: 8px 12px; border-radius: 6px; font-size: 14px; }
+  .region-name { font-weight: 500; color: #1f2937; }
+
+  /* Responsive Design */
+  @media (min-width: 768px) {
+    .dashboard-container { flex-direction: row; }
+    #sidebar { width: 350px; margin: 20px 0; }
+    #map-container { padding: 20px; }
+    #map { height: 100%; }
+    #check-point-form { padding: 20px; }
+    #check-point-form input { width: calc(50% - 4px); }
+  }
+
+  @media (min-width: 1024px) {
+    #sidebar { width: 380px; }
+  }
+
+  /* Mobile optimizations */
+  @media (max-width: 640px) {
+    #sidebar { padding: 12px; margin: 12px 0; }
+    #map-container { padding: 12px; }
+    #map { height: 300px; }
+    .region-item { padding: 10px 12px; }
+    .region-item span { font-size: 14px; }
+    .buttons button { padding: 6px 8px; font-size: 12px; }
+    #check-point-form { padding: 12px; }
+    #check-point-form h3 { font-size: 14px; }
+    #check-point-form p { font-size: 13px; }
+    #check-point-form input { padding: 6px 10px; font-size: 13px; }
+    #check-point-result { font-size: 13px; padding: 6px 10px; }
+  }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+<!-- Mobile Topbar -->
+<div class="md:hidden bg-white shadow px-4 py-3 flex justify-between items-center">
+  <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="h-8">
+  <button onclick="toggleMobileSidebar()" class="text-gray-600">
+    <i class="fas fa-bars fa-lg"></i>
+  </button>
+</div>
+
+<div class="flex w-full min-h-screen">
+  <!-- Sidebar -->
+  <aside class="bg-white shadow-lg w-64 hidden md:flex flex-col">
+  <div class="p-6 border-b border-gray-200">
+    <img src="{% static 'images/logo/logo.png' %}" alt="Nexus Logo" class="w-36">
+  </div>
+  <nav class="flex-1 px-4 py-6 space-y-2 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-gauge w-5 mr-3 text-blue-500"></i> {% trans "Dashboard" %}
+    </a>
+    <a href="{% url 'settings' %}" class="flex items-center px-4 py-2 rounded-lg hover:bg-blue-50 hover:text-blue-700 transition">
+      <i class="fas fa-cogs w-5 mr-3 text-blue-500"></i> {% trans "Settings" %}
+    </a>
+    <a href="{% url 'logout_request' %}" class="flex items-center px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 hover:text-red-700 transition">
+      <i class="fas fa-sign-out-alt w-5 mr-3"></i> {% trans "Logout" %}
+    </a>
+  </nav>
+</aside>
+
+  <!-- Mobile Sidebar -->
+  <div class="fixed inset-0 z-40 bg-black bg-opacity-50 hidden md:hidden" id="mobile-overlay" onclick="toggleMobileSidebar()"></div>
+  <aside id="mobileSidebar" class="sidebar-slide fixed right-0 top-0 w-64 h-full z-50 bg-white shadow-lg p-6 md:hidden">
+  <div class="flex justify-end mb-4">
+    <button onclick="toggleMobileSidebar()" class="text-gray-500 hover:text-gray-700">
+      <i class="fas fa-times fa-lg"></i>
+    </button>
+  </div>
+  <nav class="space-y-3 text-sm font-medium text-gray-700">
+    <a href="{% url 'dashboard' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Dashboard" %}</a>
+    <a href="{% url 'settings' %}" class="block px-3 py-2 rounded hover:bg-blue-50 hover:text-blue-700 transition">{% trans "Settings" %}</a>
+    <a href="{% url 'logout_request' %}" class="block px-3 py-2 rounded text-red-600 hover:bg-red-50 hover:text-red-700 transition">{% trans "Logout" %}</a>
+  </nav>
+</aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 px-4 sm:px-6 py-8">
+    <h1 class="text-2xl font-bold mb-6">{% trans "Region Management" %}</h1>
+
+    <div class="dashboard-container" style="height: calc(100vh - 200px); min-height: 500px;">
+      <div id="sidebar">
+          <div>
+              <h2>{% trans "Search a region here" %}</h2>
+              <br/>
+
+              <input type="text" id="search-bar" placeholder="{% trans 'Search regions...' %}">
+              <ul id="region-list" class="region-list"></ul>
+          </div>
+
+          <div id="check-point-form">
+              <h3>{% trans "Check Point" %}</h3>
+              <p>{% trans "Click on the map to select a point or enter coordinates manually." %}</p>
+              <input type="text" id="lat-input" placeholder="{% trans 'Latitude' %}">
+              <input type="text" id="lon-input" placeholder="{% trans 'Longitude' %}">
+              <button id="check-point-btn"
+                      class="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                <i class="fas fa-search text-xs"></i> {% trans "Check" %}
+              </button>
+              <div id="check-point-result"></div>
+              <pre id="debug-info" style="background-color: #eee; padding: 5px; margin-top: 10px; font-size: 0.8em;"></pre>
+          </div>
+      </div>
+
+      <div id="map-container">
+          <div id="map"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Footer -->
+<footer class="bg-white border-t text-sm text-gray-500 text-center py-4 mt-auto">
+  <div class="max-w-7xl mx-auto px-4">
+    <p>&copy; 2025 Nexus Telecom – {% trans "All rights reserved." %}</p>
+  </div>
+</footer>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+    <script>
+        // --- Setup and Helpers ---
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        const csrftoken = getCookie('csrftoken');
+        const map = L.map('map').setView([-4.0383, 21.7587], 5);
+        const regionLayers = {};
+        let pointMarker = null;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const drawnItems = new L.FeatureGroup();
+        map.addLayer(drawnItems);
+
+        const drawControl = new L.Control.Draw({
+            edit: { featureGroup: drawnItems },
+            draw: {
+                polygon: { shapeOptions: { color: 'blue' } },
+                polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false
+            }
+        });
+        map.addControl(drawControl);
+
+        let isDrawing = false;
+
+        // Track drawing state
+        map.on(L.Draw.Event.DRAWSTART, function (e) {
+            isDrawing = true;
+        });
+
+        map.on(L.Draw.Event.DRAWSTOP, function (e) {
+            isDrawing = false;
+        });
+
+        map.on(L.Draw.Event.CREATED, function (e) {
+            isDrawing = false;
+        });
+
+        async function handleResponse(response) {
+            if (response.ok) {
+                if (response.status === 204) return null;
+                return response.json();
+            }
+
+            try {
+                const errorData = await response.json();
+                const errorMessage = Object.values(errorData).flat().join('\n');
+                throw new Error(errorMessage);
+            } catch (parseError) {
+                // If we can't parse the error response, use the status text
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+        }
+
+        // --- NEW: Map Click to Get Coordinates ---
+        map.on('click', function(e) {
+            // Only show marker when not drawing polygons
+            if (!isDrawing) {
+                const latInput = document.getElementById('lat-input');
+                const lonInput = document.getElementById('lon-input');
+                // Round for cleaner display
+                latInput.value = e.latlng.lat.toFixed(6);
+                lonInput.value = e.latlng.lng.toFixed(6);
+
+                if (pointMarker) {
+                    map.removeLayer(pointMarker);
+                }
+                pointMarker = L.marker(e.latlng).addTo(map);
+            }
+        });
+
+        // --- Event Handlers ---
+        document.getElementById('check-point-btn').addEventListener('click', () => {
+            const lat = document.getElementById('lat-input').value;
+            const lon = document.getElementById('lon-input').value;
+            const resultDiv = document.getElementById('check-point-result');
+
+            if (!lat || !lon) {
+                resultDiv.textContent = 'Please enter both coordinates.';
+                resultDiv.style.color = 'red';
+                return;
+            }
+
+            fetch(`/geo_regions/check-point/?lon=${lon}&lat=${lat}`)
+                .then(handleResponse)
+                .then(data => {
+                    if (!pointMarker) {
+                       pointMarker = L.marker([lat, lon]).addTo(map);
+                    } else {
+                       pointMarker.setLatLng([lat, lon]);
+                    }
+
+                    // Clear debug info since we removed it from backend
+                    document.getElementById('debug-info').textContent = '';
+
+                    if (data && data.length > 0) {
+                        const regionNames = data.map(r => r.name).join(', ');
+                        resultDiv.textContent = `Point is in: ${regionNames}`;
+                        resultDiv.style.color = 'green';
+                        const regionId = data[0].id;
+                        if(regionLayers[regionId]) {
+                            map.fitBounds(regionLayers[regionId].getBounds());
+                        }
+                    } else {
+                        resultDiv.textContent = 'Point is not in any region.';
+                        resultDiv.style.color = 'blue';
+                    }
+                })
+                .catch(error => {
+                    resultDiv.textContent = `Error: ${error.message}`;
+                    resultDiv.style.color = 'red';
+                });
+        });
+
+        map.on(L.Draw.Event.CREATED, function (e) { /* ... existing code ... */ });
+        map.on(L.Draw.Event.EDITED, function (e) { /* ... existing code ... */ });
+        map.on(L.Draw.Event.DELETED, function (e) { /* ... existing code ... */ });
+        function handleRename(regionId) { /* ... existing code ... */ }
+        function handleDeleteFromList(regionId) { /* ... existing code ... */ }
+        function loadRegions(query = '') { /* ... existing code ... */ }
+
+        // --- Full implementations of existing functions ---
+        map.on(L.Draw.Event.CREATED, function (e) {
+            const layer = e.layer;
+            const geoJSON = layer.toGeoJSON().geometry;
+            const name = prompt("Enter region name:");
+            if (name) {
+                fetch('/geo_regions/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({ name: name, fence: geoJSON })
+                })
+                .then(handleResponse)
+                .then(data => {
+                    // Add the new region to the map and list immediately
+                    const newFeature = data;
+                    const newLayer = L.geoJSON(newFeature).getLayers()[0];
+                    newLayer.feature = newFeature;
+                    drawnItems.addLayer(newLayer);
+                    regionLayers[newFeature.id] = newLayer;
+
+                    // Add to the region list
+                    const regionList = document.getElementById('region-list');
+                    const listItem = document.createElement('li');
+                    listItem.className = 'region-item';
+                    listItem.id = `region-${newFeature.id}`;
+                        listItem.innerHTML = `
+                            <span id="name-${newFeature.id}" class="region-name">${newFeature.properties.name}</span>
+                            <div class="buttons">
+                                <button onclick="event.stopPropagation(); handleRename(${newFeature.id})"
+                                        class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 sm:px-3 rounded hover:bg-blue-50 transition-colors text-xs sm:text-sm font-medium">
+                                    <i class="fas fa-edit text-xs"></i> <span class="hidden xs:inline">Rename</span>
+                                </button>
+                                <button onclick="event.stopPropagation(); handleDeleteFromList(${newFeature.id})"
+                                        class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 sm:px-3 rounded hover:bg-red-50 transition-colors text-xs sm:text-sm font-medium">
+                                    <i class="fas fa-trash-alt text-xs"></i> <span class="hidden xs:inline">Delete</span>
+                                </button>
+                            </div>
+                        `;
+                    listItem.addEventListener('click', () => {
+                        map.fitBounds(newLayer.getBounds());
+                    });
+                    regionList.appendChild(listItem);
+                })
+                .catch(error => alert(`Could not create region:\n${error.message}`));
+            }
+        });
+
+        map.on(L.Draw.Event.EDITED, function (e) {
+            e.layers.eachLayer(function (layer) {
+                const regionId = layer.feature.id;
+                const newGeoJSON = layer.toGeoJSON().geometry;
+                fetch(`/geo_regions/${regionId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify({ fence: newGeoJSON })
+                }).catch(error => alert(`Could not save changes:\n${error.message}`));
+            });
+        });
+
+        map.on(L.Draw.Event.DELETED, function (e) {
+            e.layers.eachLayer(function (layer) {
+                const regionId = layer.feature.id;
+                fetch(`/geo_regions/${regionId}/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': csrftoken }
+                })
+                .then(handleResponse)
+                .then(() => {
+                    document.getElementById(`region-${regionId}`).remove();
+                })
+                .catch(error => alert(`Could not delete region:\n${error.message}`));
+            });
+        });
+
+        function handleRename(regionId) {
+            const currentName = regionLayers[regionId].feature.properties.name;
+            const newName = prompt("Enter new name:", currentName);
+            if (newName && newName !== currentName) {
+                fetch(`/geo_regions/${regionId}/`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+                    body: JSON.stringify({ name: newName })
+                })
+                .then(handleResponse)
+                .then(updatedFeature => {
+                    document.getElementById(`name-${regionId}`).textContent = updatedFeature.properties.name;
+                    regionLayers[regionId].feature.properties.name = updatedFeature.properties.name;
+                })
+                .catch(error => alert(`Could not rename region:\n${error.message}`));
+            }
+        }
+
+        function handleDeleteFromList(regionId) {
+            if (confirm('Are you sure you want to delete this region?')) {
+                fetch(`/geo_regions/${regionId}/`, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRFToken': csrftoken }
+                })
+                .then(handleResponse)
+                .then(() => {
+                    drawnItems.removeLayer(regionLayers[regionId]);
+                    document.getElementById(`region-${regionId}`).remove();
+                })
+                .catch(error => alert(`Could not delete region:\n${error.message}`));
+            }
+        }
+
+        function loadRegions(query = '') {
+            let url = '/geo_regions/';
+            if (query) {
+                url += `?q=${encodeURIComponent(query)}`;
+            }
+
+            console.log('Loading regions from URL:', url);
+
+            fetch(url)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    return handleResponse(response);
+                })
+                .then(data => {
+                    console.log('Received data:', data);
+                    console.log('Data type:', typeof data);
+                    console.log('Is data an array?', Array.isArray(data));
+
+                    drawnItems.clearLayers();
+                    const regionList = document.getElementById('region-list');
+                    regionList.innerHTML = '';
+                    Object.keys(regionLayers).forEach(key => delete regionLayers[key]);
+
+                    // Handle different data formats
+                    let features = [];
+                    if (Array.isArray(data)) {
+                        features = data;
+                    } else if (data && typeof data === 'object') {
+                        // Try to extract features from object
+                        if (data.results && Array.isArray(data.results)) {
+                            features = data.results;
+                        } else if (data.features && Array.isArray(data.features)) {
+                            features = data.features;
+                        } else {
+                            console.error('Unexpected data structure:', data);
+                            return;
+                        }
+                    } else {
+                        console.error('Data is not an array or object:', data);
+                        return;
+                    }
+
+                    console.log('Features to process:', features.length);
+
+                    features.forEach(feature => {
+                        const layer = L.geoJSON(feature).getLayers()[0];
+                        layer.feature = feature;
+                        drawnItems.addLayer(layer);
+                        regionLayers[feature.id] = layer;
+
+                        const listItem = document.createElement('li');
+                        listItem.className = 'region-item';
+                        listItem.id = `region-${feature.id}`;
+                        listItem.innerHTML = `
+                            <span id="name-${feature.id}" class="region-name">${feature.properties.name}</span>
+                            <div class="buttons">
+                                <button onclick="event.stopPropagation(); handleRename(${feature.id})"
+                                        class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 sm:px-3 rounded hover:bg-blue-50 transition-colors text-xs sm:text-sm font-medium">
+                                    <i class="fas fa-edit text-xs"></i> <span class="hidden xs:inline">Rename</span>
+                                </button>
+                                <button onclick="event.stopPropagation(); handleDeleteFromList(${feature.id})"
+                                        class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 sm:px-3 rounded hover:bg-blue-50 transition-colors text-xs sm:text-sm font-medium">
+                                    <i class="fas fa-trash-alt text-xs"></i> <span class="hidden xs:inline">Delete</span>
+                                </button>
+                            </div>
+                        `;
+                        listItem.addEventListener('click', () => {
+                            map.fitBounds(layer.getBounds());
+                        });
+                        regionList.appendChild(listItem);
+                    });
+
+                    console.log('Successfully loaded', features.length, 'regions');
+                })
+                .catch(error => {
+                    console.error('Error loading regions:', error);
+                });
+        }
+
+        document.getElementById('search-bar').addEventListener('input', (e) => {
+            loadRegions(e.target.value);
+        });
+
+        loadRegions();
+    </script>
+
+<script>
+  function toggleMobileSidebar() {
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobile-overlay');
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('open');
+    overlay.classList.toggle('hidden');
+  }
+</script>
+
+</body>
+</html>

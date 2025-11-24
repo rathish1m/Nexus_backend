@@ -1,0 +1,755 @@
+{% extends 'backoffice/dispatch_console_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<!-- Leaflet CSS/JS -->
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+
+<style>
+  /* Motion + card hovers */
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .5s ease-out both; }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+    .card-hover:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,.12) }
+  }
+
+  /* Table polish */
+  .tbl-wrap { --ring: rgba(99,102,241,.15); --shadow: 0 10px 25px rgba(2,6,23,.08), 0 2px 6px rgba(2,6,23,.04); }
+  .tbl-card { background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.94)); backdrop-filter: blur(8px); box-shadow: var(--shadow); }
+  #ordersTable thead th { letter-spacing:.04em; }
+  #ordersTable tbody tr { transition: background-color .18s ease, transform .12s ease, box-shadow .18s ease; }
+  #ordersTable tbody tr:hover { background-color: rgba(99,102,241,.06); }
+
+  /* Skeleton shimmer for loading */
+  .skeleton { position: relative; overflow: hidden; }
+  .skeleton::after {
+    content:""; position:absolute; inset:0;
+    background: linear-gradient(90deg, transparent, rgba(0,0,0,.04), transparent);
+    animation: shimmer 1.25s infinite;
+  }
+  @keyframes shimmer { 0% {transform: translateX(-100%)} 100% {transform: translateX(100%)} }
+
+  /* Pagination toolbar */
+  .pg-toolbar { display:flex; flex-direction:column; gap:.75rem; }
+  @media (min-width:640px){ .pg-toolbar{ flex-direction:row; align-items:center; justify-content:space-between; } }
+  .pg-left, .pg-right { display:flex; align-items:center; gap:.5rem; flex-wrap:wrap; }
+  .pg-chip { display:inline-flex; align-items:center; gap:.5rem; padding:.4rem .6rem; border-radius:.65rem; background:#f3f4f6; color:#374151; font-size:.8rem; }
+  .pg-btn {
+    display:inline-flex; align-items:center; justify-content:center;
+    padding:.45rem .7rem; border-radius:.65rem; border:1px solid #e5e7eb; background:#fff;
+    color:#374151; font-size:.9rem; transition:.15s; box-shadow: 0 1px 0 rgba(0,0,0,.03);
+  }
+  .pg-btn:hover { background:#eef2ff; border-color:#c7d2fe; }
+  .pg-btn--active { background:#4f46e5; color:#fff; border-color:#4f46e5; box-shadow:0 2px 8px rgba(79,70,229,.25); }
+  .pg-btn[disabled]{ opacity:.5; cursor:not-allowed; }
+  .pg-ellipsis { padding:0 .35rem; color:#9ca3af; user-select:none; }
+  .pg-input { width:5.5rem; border:1px solid #e5e7eb; border-radius:.6rem; padding:.35rem .5rem; font-size:.9rem; }
+  .pg-select { border:1px solid #e5e7eb; border-radius:.6rem; padding:.35rem .5rem; font-size:.9rem; background:#fff; }
+
+  /* Pretty header cards */
+  :root{ --glow: 0 10px 30px rgba(0,0,0,.15), inset 0 1px 0 rgba(255,255,255,.2); --ring: rgba(255,255,255,.35); }
+
+  /* Print-friendly inside the delivery note modal */
+  @media print {
+    #deliveryNoteModal .modal-actions,
+    #deliveryNoteModal .modal-header .close-btn { display:none !important; }
+    #deliveryNoteModal > .modal-panel { box-shadow:none !important; }
+    body { background:#fff !important; }
+  }
+</style>
+
+<div class="w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+
+  <!-- Colored Page Header -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 shadow-lg text-white mb-8">
+    <h2 class="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+      <i class="fas fa-truck-fast text-3xl opacity-90"></i>
+      {% trans "Dispatch Console" %}
+    </h2>
+    <p class="mt-2 text-sm text-indigo-100">
+      {% trans "Track assignments, filter orders, and confirm deliveries." %}
+    </p>
+  </header>
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-2 animate-fade-in">
+    <article class="card-hover bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl shadow-lg p-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-white/90">{% trans "Waiting for Dispatch" %}</h3>
+          <p class="text-4xl font-extrabold mt-2">{{ assigned_order_count }}</p>
+        </div>
+        <div class="bg-white/20 text-white p-4 rounded-full shadow-md"><i class="fas fa-box text-2xl"></i></div>
+      </div>
+    </article>
+
+    <article class="card-hover bg-gradient-to-br from-emerald-400 to-green-600 rounded-2xl shadow-lg p-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-white/90">{% trans "Dispatched Today" %}</h3>
+          <p class="text-4xl font-extrabold mt-2">{{ dispatched_order }}</p>
+        </div>
+        <div class="bg-white/20 text-white p-4 rounded-full shadow-md"><i class="fas fa-truck text-2xl"></i></div>
+      </div>
+    </article>
+
+    <article class="card-hover bg-gradient-to-br from-rose-500 to-red-600 rounded-2xl shadow-lg p-6 text-white">
+      <div class="flex items-center justify-between">
+        <div>
+          <h3 class="text-xs font-semibold uppercase tracking-wide text-white/90">{% trans "Total Dispatched" %}</h3>
+          <p class="text-4xl font-extrabold mt-2">{{ total_dispatched }}</p>
+        </div>
+        <div class="bg-white/20 text-white p-4 rounded-full shadow-md"><i class="fas fa-box-open text-2xl"></i></div>
+      </div>
+    </article>
+  </div>
+
+  <!-- Filter & Table Card -->
+  <section class="tbl-wrap bg-gradient-to-br from-white to-gray-50 border border-gray-200 shadow-xl rounded-2xl p-6 mt-10 animate-fade-in">
+    <!-- Card Header -->
+    <div class="mb-6 border-b pb-4">
+      <div class="flex items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <i class="fas fa-clipboard-list text-indigo-600"></i> {% trans "Order Dispatch Summary" %}
+          </h2>
+          <p class="text-sm text-gray-500 mt-1">{% trans "Use filters below to refine your search." %}</p>
+        </div>
+        <label class="pg-chip">
+          <span class="hidden sm:inline">{% trans "Rows per page" %}</span>
+          <select id="perPageSelect" class="pg-select">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="50">50</option>
+            <option value="100">100</option>
+          </select>
+        </label>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="flex flex-wrap items-center gap-3 sm:gap-4 mb-6">
+      <div class="relative flex-1 min-w-[220px]">
+        <input
+          type="text" id="searchInput"
+          placeholder="🔍 {% trans 'Search by customer or order ID...' %}"
+          class="w-full border border-gray-300 pl-10 pr-3 py-2.5 rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i class="fas fa-search"></i></span>
+      </div>
+
+      <select id="regionFilter"
+        class="border border-gray-300 px-3 py-2.5 rounded-xl shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <option value="">{% trans "All Regions" %}</option>
+      </select>
+
+      <input type="date" id="startDate"
+        class="border border-gray-300 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+      <input type="date" id="endDate"
+        class="border border-gray-300 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+
+      <button id="clearFilters"
+        class="ml-auto bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-xl text-sm transition">
+        <i class="fas fa-eraser mr-1"></i>{% trans "Clear" %}
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="overflow-hidden rounded-2xl border border-gray-200 shadow-2xl tbl-card">
+      <div class="overflow-x-auto">
+        <table id="ordersTable" class="min-w-full text-sm bg-white">
+          <thead class="bg-gradient-to-r from-indigo-500 to-blue-600 text-white uppercase text-xs sticky top-0 z-10">
+            <tr>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Order Date" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Order ID" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Customer" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Phone" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Kit Type" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Region" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Installation Location" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Assigned Tech" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Serial Number" %}</th>
+              <th class="px-4 py-3 text-left font-semibold">{% trans "Action" %}</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 text-gray-700">
+            <tr>
+              <td colspan="10" class="py-8">
+                <div class="h-3 w-1/3 bg-gray-100 rounded skeleton mb-2"></div>
+                <div class="h-3 w-2/3 bg-gray-100 rounded skeleton"></div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="paginationControls" class="px-4 py-3 border-t border-gray-100 bg-gradient-to-r from-white to-gray-50"></div>
+    </div>
+  </section>
+</div>
+
+<!-- Add User Modal -->
+<div id="userModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+  <div class="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-xl animate-fade-in">
+    <h2 class="text-xl font-semibold mb-4 text-gray-800">{% trans "Create New User" %}</h2>
+    <form id="userForm">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <input type="text" name="full_name" placeholder="{% trans 'Full Name' %}" required class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="email" name="email" placeholder="{% trans 'Email' %}" required class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <input type="text" name="phone" placeholder="{% trans 'Phone' %}" class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <select name="region_id" required class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <option value="">{% trans "Select Region" %}</option>
+          {% for region in regions %}
+            <option value="{{ region.id }}">{{ region.name }}</option>
+          {% endfor %}
+        </select>
+        <select name="roles" multiple class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          {% for group in roles %}
+            <option value="{{ group.id }}">{{ group.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="password" name="password" placeholder="{% trans 'Password' %}" required class="border px-3 py-2 rounded-xl w-full focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div class="flex justify-end mt-6 gap-2">
+        <button type="button" onclick="closeUserModal()" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-xl transition">{% trans "Cancel" %}</button>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition">{% trans "Create" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Dispatch Modal -->
+<div id="dispatchModal" class="hidden fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+  <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in">
+    <div class="rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 -mx-6 -mt-6 mb-6 p-6 text-white">
+      <h2 class="text-lg font-semibold">{% trans "Assign To FE" %}</h2>
+    </div>
+    <form id="dispatchForm">
+      <input type="hidden" name="order_id" id="modalOrderId" />
+      <select name="technician_id" required class="w-full border px-3 py-2 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        {% for tech in technicians %}
+          <option value="{{ tech.id }}">{{ tech.full_name }}</option>
+        {% endfor %}
+      </select>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal()" class="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-xl transition">{% trans "Cancel" %}</button>
+        <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl transition">{% trans "Assign" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Location Modal -->
+<div id="locationModal" class="hidden fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-fade-in">
+    <div class="flex items-center justify-between px-6 py-4 border-b">
+      <h3 class="text-lg font-semibold text-gray-800">{% trans "Installation Location" %}</h3>
+      <button onclick="closeLocationModal()" class="text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+    <div class="p-0">
+      <div id="leafletMap" style="height: 460px; width: 100%;"></div>
+    </div>
+    <div class="px-6 py-4 border-t flex items-center justify-between text-sm text-gray-600">
+      <div class="flex items-center gap-3">
+        <span id="locMeta" class="font-medium"></span>
+      </div>
+      <button onclick="closeLocationModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
+        {% trans "Close" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delivery Note Modal -->
+<div id="deliveryNoteModal" class="hidden fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-4">
+  <div class="modal-panel bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden animate-fade-in">
+    <div class="modal-header flex items-center justify-between px-6 py-4 border-b">
+      <h3 class="text-lg font-semibold text-gray-800">{% trans "Delivery Note" %}</h3>
+      <button onclick="closeDeliveryNoteModal()" class="close-btn text-gray-500 hover:text-gray-700">
+        <i class="fas fa-times text-xl"></i>
+      </button>
+    </div>
+    <div id="deliveryNoteContent" class="p-6 text-sm text-gray-800">
+      <p class="text-gray-400">{% trans "Preparing delivery note..." %}</p>
+    </div>
+    <div class="modal-actions px-6 py-4 border-t bg-gray-50 flex items-center justify-end gap-3">
+      <button onclick="window.print()" class="bg-white hover:bg-gray-100 border border-gray-300 text-gray-800 px-4 py-2 rounded-lg">
+        🖨️ {% trans "Print" %}
+      </button>
+      <button id="markDeliveredBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg">
+        {% trans "Mark as Delivered" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ------------ Simple helpers ------------ */
+  function closeModal() { document.getElementById("dispatchModal").classList.add("hidden"); }
+  function openDispatchModal(orderId) {
+    document.getElementById("modalOrderId").value = orderId;
+    document.getElementById("dispatchModal").classList.remove("hidden");
+  }
+  const debounce = (fn, ms=300) => { let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); }; };
+  function getCSRFToken() {
+    const name = "csrftoken";
+    const cookies = document.cookie.split(";");
+    for (let i = 0; i < cookies.length; i++) {
+      let cookie = cookies[i].trim();
+      if (cookie.startsWith(name + "=")) return decodeURIComponent(cookie.substring(name.length + 1));
+    }
+    return "";
+  }
+
+  /* ------------ State ------------ */
+  let currentPage = 1, totalPages = 1, totalCount = 0, perPage = 20;
+  const currentOrders = new Map(); // order_id -> order object (for printing)
+
+  /* ------------ Regions ------------ */
+  async function loadRegions() {
+    try {
+      const response = await fetch("{% url 'get_regions' %}");
+      const data = await response.json();
+      const regionSelect = document.getElementById("regionFilter");
+      (data.regions || []).forEach(region => {
+        const option = document.createElement("option");
+        option.value = region.name;
+        option.textContent = region.name;
+        regionSelect.appendChild(option);
+      });
+    } catch (err) { console.error("Failed to load regions:", err); }
+  }
+
+  /* ------------ Build cells ------------ */
+  function buildLocationBtnHTML(order){
+    let lat = order.lat ?? order.latitude ?? null;
+    let lng = order.lng ?? order.longitude ?? null;
+
+    if ((lat == null || lng == null) && typeof order.address === "string") {
+      const m = order.address.match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+      if (m) { lat = Number(m[1]); lng = Number(m[2]); }
+    }
+    if (lat == null || lng == null) return "—";
+
+    const safeOrderId = String(order.order_id).replace(/"/g, "&quot;");
+    return `
+      <button
+        class="inline-flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-full text-xs transition"
+        data-lat="${lat}" data-lng="${lng}" data-order="${safeOrderId}"
+        onclick="openLocationModal(this)">
+        <i class="fas fa-location-dot"></i> {% trans "Show location" %}
+      </button>
+    `;
+  }
+
+  /* ------------ Delivery Note builder (modal) ------------ */
+  function buildDeliveryNoteHTML(order) {
+    const safe = (s) => (s == null ? "" : String(s));
+    const coords = (() => {
+      let lat = order.lat ?? order.latitude ?? null;
+      let lng = order.lng ?? order.longitude ?? null;
+      if ((lat == null || lng == null) && typeof order.address === "string") {
+        const m = order.address.match(/^\\s*(-?\\d+(?:\\.\\d+)?)\\s*,\\s*(-?\\d+(?:\\.\\d+)?)\\s*$/);
+        if (m) { lat = Number(m[1]); lng = Number(m[2]); }
+      }
+      return (lat != null && lng != null) ? `${lat}, ${lng}` : (order.address || "—");
+    })();
+
+    const today = new Date();
+    const dateStr = today.toLocaleDateString();
+    const timeStr = today.toLocaleTimeString();
+
+    return `
+      <style>
+        .kv { display:flex; justify-content:space-between; gap:8px; }
+        .kv .k { color:#4b5563; }
+        .kv .v { font-weight:600; }
+        .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:10px; }
+        .box { border:1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+        .box h4 { margin:0 0 6px 0; font-size: 12px; color:#374151; text-transform:uppercase; letter-spacing:.06em; }
+        table { width:100%; border-collapse: collapse; margin-top: 8px; }
+        thead th { text-align:left; font-size:12px; text-transform:uppercase; letter-spacing:.06em; background:#f9fafb; padding:8px; border-bottom:1px solid #e5e7eb; }
+        tbody td { padding:8px; border-bottom:1px solid #f3f4f6; }
+        .sign { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+        .sign .line { margin-top: 34px; border-top:1px solid #9ca3af; padding-top:4px; color:#374151; font-size:12px; text-align:center; }
+        .hdr { display:flex; align-items:center; gap:16px; border-bottom: 2px solid #111827; padding-bottom: 10px; margin-bottom:12px; }
+        .hdr img { height: 40px; }
+        .title { font-size: 20px; font-weight: 800; letter-spacing: .02em; }
+        .badge { display:inline-block; padding:2px 8px; border-radius:9999px; background:#ecfeff; color:#155e75; border:1px solid #a5f3fc; font-size:11px; }
+      </style>
+
+      <div class="hdr">
+        <img src="YOUR_LOGO_URL_HERE" alt="Logo" onerror="this.style.display='none'">
+        <div>
+          <div class="title">{% trans "Delivery Note" %}</div>
+          <div style="color:#374151;font-size:12px;">{% trans "Reference" %}: #${safe(order.order_id)} · ${dateStr} ${timeStr}</div>
+        </div>
+        <div style="margin-left:auto;">
+          <span class="badge">{% trans "Dispatch Console" %}</span>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="box">
+          <h4>{% trans "Customer" %}</h4>
+          <div class="grid-2">
+            <div class="kv"><span class="k">{% trans "Name" %}</span><span class="v">${safe(order.customer)}</span></div>
+            <div class="kv"><span class="k">{% trans "Phone" %}</span><span class="v">${safe(order.phone) || "—"}</span></div>
+            <div class="kv"><span class="k">{% trans "Region" %}</span><span class="v">${safe(order.region) || "—"}</span></div>
+            <div class="kv"><span class="k">{% trans "Location" %}</span><span class="v">${safe(coords)}</span></div>
+          </div>
+        </div>
+
+        <div class="box">
+          <h4>{% trans "Order Details" %}</h4>
+          <div class="grid-2">
+            <div class="kv"><span class="k">{% trans "Order ID" %}</span><span class="v">#${safe(order.order_id)}</span></div>
+            <div class="kv"><span class="k">{% trans "Order Date" %}</span><span class="v">${safe(order.order_date) || "—"}</span></div>
+            <div class="kv"><span class="k">{% trans "Technician" %}</span><span class="v">${safe(order.technician) || "—"}</span></div>
+            <div class="kv"><span class="k">{% trans "Kit Type" %}</span><span class="v">${safe(order.kit_type) || "—"}</span></div>
+            <div class="kv"><span class="k">{% trans "Serial Number" %}</span><span class="v">${safe(order.serial_number) || "—"}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>{% trans "Item" %}</th>
+            <th>{% trans "Description" %}</th>
+            <th>{% trans "Quantity" %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>${safe(order.kit_type) || "{% trans 'Kit' %}"}</td>
+            <td>{% trans "Installed equipment with accessories (where applicable)" %}</td>
+            <td>1</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="sign">
+        <div><div class="line">{% trans "Customer Signature" %}</div></div>
+        <div><div class="line">{% trans "Technician Signature" %}</div></div>
+      </div>
+    `;
+  }
+
+  function openDeliveryNoteModal(orderId) {
+    const ord = currentOrders.get(String(orderId));
+    if (!ord) {
+      alert("⚠️ {% trans 'Order data not available in this page.' %}");
+      return;
+    }
+    const assigned = !!ord.technician && String(ord.technician).trim().toLowerCase() !== "not assigned";
+    if (!assigned) {
+      alert("⚠️ {% trans 'Assign a technician before delivering.' %}");
+      return;
+    }
+
+    // If user typed a serial but didn't save yet, include it
+    const serialInput = document.querySelector(`.serial-input[data-order-id="${orderId}"]`);
+    const serialVal = (serialInput && serialInput.value.trim()) || ord.serial_number || "";
+    const orderForNote = { ...ord, serial_number: serialVal };
+
+    const modal = document.getElementById("deliveryNoteModal");
+    const content = document.getElementById("deliveryNoteContent");
+    const btn = document.getElementById("markDeliveredBtn");
+
+    content.innerHTML = buildDeliveryNoteHTML(orderForNote);
+    btn.onclick = () => markOrderDeliveredFromModal(orderId);
+    modal.classList.remove("hidden");
+  }
+
+  function closeDeliveryNoteModal(){
+    document.getElementById("deliveryNoteModal").classList.add("hidden");
+  }
+
+  function markOrderDeliveredFromModal(orderId) {
+    fetch(`{% url 'deliver_order_dispatch' %}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+      body: JSON.stringify({ order_id: orderId })
+    })
+    .then(res => { if (!res.ok) throw new Error("Network error"); return res.json(); })
+    .then(data => {
+      if (data.success) {
+        closeDeliveryNoteModal();
+        alert("✅ {% trans 'Order marked as delivered.' %}");
+        loadAssignedOrders(currentPage);
+      } else {
+        alert("❌ {% trans 'Failed to mark order as delivered:' %} " + (data.message || ""));
+      }
+    })
+    .catch(err => { console.error("Delivery error:", err); alert("🚨 {% trans 'An unexpected error occurred.' %}"); });
+  }
+
+  /* ------------ Render table ------------ */
+  function renderRows(orders) {
+    const tbody = document.querySelector("#ordersTable tbody");
+    tbody.innerHTML = "";
+    currentOrders.clear();
+
+    if (!orders.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-gray-500 py-6">{% trans "No orders found." %}</td></tr>`;
+      return;
+    }
+
+    orders.forEach(order => {
+      currentOrders.set(String(order.order_id), order);
+
+      const row = document.createElement("tr");
+      row.className = "hover:bg-indigo-50 transition";
+
+      const assigned =
+        !!order.technician &&
+        String(order.technician).trim().toLowerCase() !== "not assigned";
+
+      const serialInputHTML = `
+        <input type="text"
+               ${assigned ? "" : "disabled"}
+               class="border border-gray-300 px-2 py-1 rounded-lg w-full serial-input focus:outline-none ${assigned ? "focus:ring-2 focus:ring-indigo-500" : "bg-gray-100 cursor-not-allowed opacity-70"}"
+               data-order-id="${order.order_id}"
+               value="${order.serial_number || ''}"
+               title="${assigned ? "" : "{% trans 'Assign a technician to enable this field' %}"}"
+               placeholder="{% trans 'Enter serial & press Enter' %}" />
+      `;
+
+      const deliverBtnHTML = assigned
+        ? `<button class="bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-1 rounded-full text-xs shadow"
+                   onclick="openDeliveryNoteModal('${order.order_id}')">
+             {% trans "Deliver" %}
+           </button>`
+        : `<span class="text-gray-400 text-xs" title="{% trans 'Assign a technician to deliver' %}">—</span>`;
+
+      row.innerHTML = `
+        <td class="px-4 py-2 font-medium text-gray-800">${order.order_date}</td>
+        <td class="px-4 py-2 font-medium text-indigo-600">#${order.order_id}</td>
+        <td class="px-4 py-2">${order.customer}</td>
+        <td class="px-4 py-2">${order.phone || ""}</td>
+        <td class="px-4 py-2">${order.kit_type || ""}</td>
+        <td class="px-4 py-2">${order.region || ""}</td>
+        <td class="px-4 py-2">${buildLocationBtnHTML(order)}</td>
+        <td class="px-4 py-2">${order.technician || ""}</td>
+        <td class="px-4 py-2">${serialInputHTML}</td>
+        <td class="px-4 py-2">${deliverBtnHTML}</td>
+      `;
+      tbody.appendChild(row);
+    });
+  }
+
+  function buildPagination({ page, total_pages, total_count }) {
+    currentPage = page; totalPages = total_pages; totalCount = total_count || 0;
+
+    const el = document.getElementById("paginationControls");
+    el.innerHTML = "";
+
+    const bar = document.createElement("div");
+    bar.className = "pg-toolbar";
+
+    const left = document.createElement("div");
+    left.className = "pg-left";
+    const start = (page - 1) * perPage + 1;
+    const end   = Math.min(page * perPage, totalCount || page * perPage);
+    const info  = document.createElement("span");
+    info.className = "pg-chip";
+    info.textContent = totalCount
+      ? `{% trans "Showing" %} ${start}–${end} {% trans "of" %} ${totalCount}`
+      : `{% trans "Page" %} ${page} {% trans "of" %} ${total_pages}`;
+    left.appendChild(info);
+
+    const right = document.createElement("div");
+    right.className = "pg-right";
+
+    const mkBtn = (label, p, {active=false, disabled=false, title=""}={})=>{
+      const b = document.createElement("button");
+      b.type="button"; b.textContent = label; b.title = title || "";
+      b.className = "pg-btn" + (active ? " pg-btn--active" : "");
+      if (disabled) b.disabled = true;
+      b.onclick = ()=> !disabled && loadAssignedOrders(p);
+      return b;
+    };
+
+    right.appendChild(mkBtn("« {% trans 'First' %}", 1, {disabled: page===1, title:"{% trans 'First page' %}"}));
+    right.appendChild(mkBtn("‹ {% trans 'Prev' %}", page-1, {disabled: page===1, title:"{% trans 'Previous page' %}"}));
+
+    const around = 2;
+    const startN = Math.max(1, page - around);
+    const endN   = Math.min(total_pages, page + around);
+    const dots = ()=>{ const s=document.createElement("span"); s.className="pg-ellipsis"; s.textContent="…"; return s; };
+
+    if (startN > 1) {
+      right.appendChild(mkBtn("1", 1, {active: page===1}));
+      if (startN > 2) right.appendChild(dots());
+    }
+    for (let i=startN; i<=endN; i++) right.appendChild(mkBtn(String(i), i, {active: i===page}));
+    if (endN < total_pages) {
+      if (endN < total_pages - 1) right.appendChild(dots());
+      right.appendChild(mkBtn(String(total_pages), total_pages, {active: page===total_pages}));
+    }
+
+    right.appendChild(mkBtn("{% trans 'Next' %} ›", page+1, {disabled: page>=total_pages, title:"{% trans 'Next page' %}"}));
+    right.appendChild(mkBtn("{% trans 'Last' %} »", total_pages, {disabled: page>=total_pages, title:"{% trans 'Last page' %}"}));
+
+    const jump = document.createElement("label");
+    jump.className = "pg-chip";
+    jump.innerHTML = `<span class="hidden sm:inline">{% trans "Jump to" %}</span>`;
+    const input = document.createElement("input");
+    input.type="number"; input.min="1"; input.max=String(total_pages);
+    input.value=String(page); input.className="pg-input"; input.ariaLabel="{% trans 'Jump to page' %}";
+    input.addEventListener("keydown", e=>{
+      if(e.key==="Enter") {
+        const v = Math.max(1, Math.min(total_pages, Number(input.value||page)));
+        loadAssignedOrders(v);
+      }
+    });
+    jump.appendChild(input);
+
+    bar.appendChild(left);
+    const mid = document.createElement("div"); mid.className="pg-right"; mid.append(...right.childNodes);
+    bar.appendChild(mid);
+    bar.appendChild(jump);
+
+    el.appendChild(bar);
+  }
+
+  /* ------------ Fetch data ------------ */
+  async function loadAssignedOrders(page = 1) {
+    const tbody = document.querySelector("#ordersTable tbody");
+    const params = new URLSearchParams({
+      page,
+      per_page: perPage,
+      search: document.getElementById("searchInput").value.trim(),
+      region: document.getElementById("regionFilter").value,
+      startDate: document.getElementById("startDate").value,
+      endDate: document.getElementById("endDate").value
+    });
+
+    tbody.innerHTML = `<tr><td colspan="10" class="py-8"><div class="h-3 w-1/3 bg-gray-100 rounded skeleton mb-2"></div><div class="h-3 w-2/3 bg-gray-100 rounded skeleton"></div></td></tr>`;
+
+    try {
+      const response = await fetch(`{% url 'items_list' %}?${params.toString()}`);
+      const data = await response.json();
+
+      renderRows(data.orders || []);
+      buildPagination({
+        page: Number(data.page || page),
+        total_pages: Number(data.total_pages || 1),
+        total_count: Number(data.total_count || 0)
+      });
+    } catch (err) {
+      console.error("Error loading orders:", err);
+      tbody.innerHTML = `<tr><td colspan="10" class="text-center text-rose-500 py-6">{% trans "Failed to load orders." %}</td></tr>`;
+      buildPagination({page:1,total_pages:1,total_count:0});
+    }
+  }
+
+  /* ------------ Serial save on Enter ------------ */
+  document.addEventListener("keydown", async function (e) {
+    if (e.target.classList.contains("serial-input") && e.key === "Enter") {
+      e.preventDefault();
+      const input = e.target;
+      const orderId = input.dataset.orderId;
+      const serial = input.value.trim();
+      if (!serial) return;
+
+      const response = await fetch("{% url 'save_serial_number' %}", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-CSRFToken": getCSRFToken() },
+        body: JSON.stringify({ order_id: orderId, serial_number: serial })
+      });
+
+      if (response.ok) {
+        input.setAttribute("readonly", true);
+        input.classList.add("bg-gray-100", "cursor-not-allowed");
+        input.style.pointerEvents = "none";
+        input.title = "{% trans 'Serial number saved' %}";
+      } else {
+        alert("{% trans 'Failed to save serial number.' %}");
+      }
+    }
+  });
+
+  /* ------------ Leaflet modal ------------ */
+  let __leafletMap = null;
+  let __leafletMarker = null;
+
+  function openLocationModal(btnEl){
+    try {
+      const lat = Number(btnEl.getAttribute("data-lat"));
+      const lng = Number(btnEl.getAttribute("data-lng"));
+      const ord = btnEl.getAttribute("data-order") || "";
+
+      if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+      const modal = document.getElementById("locationModal");
+      modal.classList.remove("hidden");
+
+      const mapDiv = document.getElementById("leafletMap");
+
+      if (!__leafletMap) {
+        __leafletMap = L.map(mapDiv);
+        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+          maxZoom: 19,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>'
+        }).addTo(__leafletMap);
+      }
+
+      setTimeout(()=>{ __leafletMap.invalidateSize(); }, 50);
+
+      __leafletMap.setView([lat, lng], 16);
+      if (!__leafletMarker) {
+        __leafletMarker = L.marker([lat, lng]).addTo(__leafletMap);
+      } else {
+        __leafletMarker.setLatLng([lat, lng]);
+      }
+
+      const meta = document.getElementById("locMeta");
+      meta.textContent = `#${ord} — ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+    } catch(e) {
+      console.error("Open map error:", e);
+    }
+  }
+
+  function closeLocationModal(){
+    document.getElementById("locationModal").classList.add("hidden");
+  }
+
+  /* ------------ Filters & init ------------ */
+  const debouncedReload = debounce(()=>loadAssignedOrders(1), 300);
+  document.getElementById("searchInput").addEventListener("input", debouncedReload);
+  document.getElementById("regionFilter").addEventListener("change", ()=>loadAssignedOrders(1));
+  document.getElementById("startDate").addEventListener("change", ()=>loadAssignedOrders(1));
+  document.getElementById("endDate").addEventListener("change", ()=>loadAssignedOrders(1));
+  document.getElementById("clearFilters").addEventListener("click", ()=>{
+    document.getElementById("searchInput").value="";
+    document.getElementById("regionFilter").value="";
+    document.getElementById("startDate").value="";
+    document.getElementById("endDate").value="";
+    loadAssignedOrders(1);
+  });
+  document.getElementById("perPageSelect").addEventListener("change", (e)=>{
+    perPage = Number(e.target.value || 20);
+    loadAssignedOrders(1);
+  });
+
+  document.addEventListener("DOMContentLoaded", () => { loadRegions(); loadAssignedOrders(); });
+</script>
+
+{% endblock %}

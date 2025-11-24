@@ -1,0 +1,2382 @@
+{% extends 'app_settings/settings_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+{% include 'partials/subscriptions_modal.html' %}
+{% include 'partials/tax_add_modal.html' %}
+{% include 'partials/payment_method_modal.html' %}
+{% include 'partials/installation_fee_modal.html' %}
+{% include 'partials/starlink_kit_modal.html' %}
+{% include 'partials/subscription_plan_modal.html' %}
+
+
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    @keyframes fade-in { from {opacity:0; transform: translateY(6px)} to {opacity:1; transform: translateY(0)} }
+    .animate-fade-in { animation: fade-in .45s ease-out both; }
+    .card-hover { transition: transform .2s ease, box-shadow .2s ease }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0,0,0,.12) }
+  }
+</style>
+
+<main class="w-full px-4 sm:px-6 lg:px-10 py-6 space-y-8">
+
+  <!-- Page Header -->
+  <header class="rounded-2xl bg-gradient-to-r from-indigo-500 via-blue-500 to-sky-400 p-6 sm:p-7 shadow-lg text-white animate-fade-in">
+    <div class="flex items-start sm:items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <i class="fas fa-sliders-h text-3xl sm:text-4xl opacity-90"></i>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">{% trans "Settings" %}</h1>
+          <p class="text-indigo-100 text-sm mt-1">{% trans "Manage plans, kits, payments, tax rates, installation fees and regions." %}</p>
+        </div>
+      </div>
+      <div class="hidden sm:flex items-center gap-2">
+        <span class="text-xs bg-white/20 px-3 py-1 rounded-full">{% trans "Admin" %}</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Settings Sections Grid -->
+  <div class="grid grid-cols-1 gap-8">
+
+    {% comment %} <!-- Subscription Management -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      {% include 'partials/subscription_management_main.html' %}
+    </section> {% endcomment %}
+
+    {% comment %} <!-- Kit Details -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      {% include 'partials/starlink_kit_details_main.html' %}
+    </section> {% endcomment %}
+
+      <!-- System Settings -->
+      {% include 'partials/system_settings.html' %}
+
+    <!-- Subscription Plans Management -->
+    {% include 'partials/billing_settings.html' %}
+
+      <!-- Coupons & Promotions Plans Management -->
+    {% include 'partials/coupons_promotions.html' %}
+
+    <!-- Subscription Plans Management -->
+    {% include 'partials/subscription_plan_management.html' %}
+
+    <!-- Site Survey Checklist Management -->
+    {% include 'partials/site_survey_checklist_management.html' %}
+
+    <!-- Extra Charges Management -->
+    {% include 'partials/extra_charge_management.html' %}
+
+    <!-- Additional Billings Management -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Additional Billings" %}</h2>
+          <p class="text-sm text-gray-500">{% trans "Manage additional equipment billings from site surveys." %}</p>
+        </div>
+        <a href="{# url 'app_settings:additional_billings' #}"
+           class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700">
+          <i class="fas fa-file-invoice text-xs"></i> {% trans "Manage Billings" %}
+        </a>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="p-2 bg-blue-100 rounded-lg">
+              <i class="fas fa-file-invoice text-blue-600"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-600">{% trans "Total Billings" %}</p>
+              <p class="text-lg font-bold text-gray-900" id="totalBillingsCount">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="p-2 bg-yellow-100 rounded-lg">
+              <i class="fas fa-clock text-yellow-600"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-600">{% trans "Pending Approval" %}</p>
+              <p class="text-lg font-bold text-gray-900" id="pendingBillingsCount">-</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center">
+            <div class="p-2 bg-green-100 rounded-lg">
+              <i class="fas fa-check-circle text-green-600"></i>
+            </div>
+            <div class="ml-3">
+              <p class="text-sm font-medium text-gray-600">{% trans "Paid" %}</p>
+              <p class="text-lg font-bold text-gray-900" id="paidBillingsCount">-</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Starlink Kits Management -->
+    {% include 'partials/starlink_kit_management.html' %}
+
+    <!-- Taxes -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Taxes" %}</h2>
+          <p class="text-sm text-gray-500">{% trans "Set your tax rates used in invoices." %}</p>
+        </div>
+        <button onclick="openTaxModal()"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+          <i class="fas fa-plus text-xs"></i> {% trans "Add Tax" %}
+        </button>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="taxCards" class="md:hidden grid grid-cols-1 gap-3">
+        <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <th class="py-3 px-4">{% trans "Tax Name" %}</th>
+              <th class="py-3 px-4">{% trans "Rate (%)" %}</th>
+              <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="taxTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Payment Methods -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Payment Methods" %}</h2>
+          <p class="text-sm text-gray-500">{% trans "Configure how customers can pay." %}</p>
+        </div>
+        <button onclick="openPaymentModal()"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-green-600 hover:bg-green-700">
+          <i class="fas fa-plus text-xs"></i> {% trans "New Payment Method" %}
+        </button>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="paymentMethodsCards" class="md:hidden grid grid-cols-1 gap-3">
+        <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <th class="py-3 px-4">{% trans "Payment Method" %}</th>
+              <th class="py-3 px-4">{% trans "Description" %}</th>
+              <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="paymentMethodsBody" class="divide-y divide-gray-100 text-gray-800">
+            <tr><td colspan="3" class="py-4 px-4 text-gray-500 text-center">{% trans "Loading..." %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Installation Fees -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Installation Fees" %}</h2>
+          <p class="text-sm text-gray-500">{% trans "Set installation fees by region." %}</p>
+        </div>
+        <button onclick="openInstallationFeeModal()"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700">
+          <i class="fas fa-plus text-xs"></i> {% trans "Add Installation Fee" %}
+        </button>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="installationFeeCards" class="md:hidden grid grid-cols-1 gap-3">
+        <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <th class="py-3 px-4">{% trans "Region" %}</th>
+              <th class="py-3 px-4">{% trans "Amount (USD)" %}</th>
+              <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="installationFeeTableBody" class="divide-y divide-gray-100 text-gray-800"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Regions -->
+    <section class="rounded-2xl bg-white border border-gray-200 shadow-sm p-5 sm:p-6 card-hover animate-fade-in">
+      <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-lg sm:text-xl font-semibold text-gray-900">{% trans "Regions" %}</h2>
+          <p class="text-sm text-gray-500">{% trans "Manage service regions used across dispatching and assignments." %}</p>
+        </div>
+        <button onclick="openRegionModal()"
+                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">
+          <i class="fas fa-plus text-xs"></i> {% trans "Add Region" %}
+        </button>
+      </div>
+
+      <!-- Mobile cards -->
+      <div id="regionsCards" class="md:hidden grid grid-cols-1 gap-3">
+        <div class="border rounded-lg p-4 text-gray-500 text-center">{% trans "Loading..." %}</div>
+      </div>
+
+      <!-- Desktop table -->
+      <div class="overflow-x-auto rounded-xl border border-gray-200 hidden md:block">
+        <table class="w-full text-sm text-left">
+          <thead class="bg-gray-50 text-gray-600 uppercase text-xs font-semibold tracking-wider">
+            <tr>
+              <th class="py-3 px-4 w-16">#</th>
+              <th class="py-3 px-4">{% trans "Region / Town" %}</th>
+              <th class="py-3 px-4 text-right">{% trans "Actions" %}</th>
+            </tr>
+          </thead>
+          <tbody id="regionsTableBody" class="divide-y divide-gray-100 text-gray-800">
+            <tr><td colspan="3" class="py-4 px-4 text-gray-500 text-center">{% trans "Loading..." %}</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- Region Modal -->
+<div id="regionModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50">
+  <div class="flex items-center justify-center min-h-screen p-4">
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between p-6 border-b border-gray-200">
+        <h3 class="text-lg font-semibold text-gray-900">{% trans "Add New Region" %}</h3>
+        <button onclick="closeRegionModal()" class="text-gray-400 hover:text-gray-600">
+          <i class="fas fa-times fa-lg"></i>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6">
+        <form id="regionForm" class="space-y-4">
+          <div>
+            <label for="regionName" class="block text-sm font-medium text-gray-700">{% trans "Region Name" %}</label>
+            <input type="text" id="regionName" name="name" required
+                   class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+          </div>
+
+          <input type="hidden" id="regionPolygon" name="fence">
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{% trans "Draw Region on Map" %}</label>
+            <p class="text-sm text-gray-500 mb-4">{% trans "Use the polygon tool to draw the region boundaries on the map." %}</p>
+            <div id="regionMap" class="w-full h-96 border border-gray-300 rounded-md"></div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
+        <button onclick="closeRegionModal()"
+                class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md">
+          {% trans "Cancel" %}
+        </button>
+        <button onclick="submitRegionForm()"
+                class="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md">
+          {% trans "Save Region" %}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Include Leaflet CSS and JS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+<script>
+  // Make Django LANGUAGE_CODE available to JavaScript
+  const LANGUAGE_CODE = '{{ LANGUAGE_CODE|escapejs }}';
+
+  // Utilities
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      for (const c of document.cookie.split(';')) {
+        const cookie = c.trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+  function escapeHTML(str){return (str??'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+
+  // ===== Taxes =====
+  document.getElementById('taxRateForm')?.addEventListener('submit', function (e) {
+    e.preventDefault();
+    const form = e.target;
+    const description = form.description.value;
+    const percentage = form.percentage.value;
+
+    // Determine if we're editing or creating
+    const isEditing = window.editingTaxId;
+      const url = isEditing ? `/settings/taxes/${window.editingTaxId}/` : `{% url 'taxes_add' %}`;
+    const method = isEditing ? 'PUT' : 'POST';
+    const successMessage = isEditing ?
+      '{% trans "Tax rate updated successfully!" %}' :
+      '{% trans "Tax rate added successfully!" %}';
+
+    fetch(url, {
+      method: method,
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+      body: JSON.stringify({ description, percentage })
+    })
+    .then(res => res.json())
+    .then(data => {
+      alert(data.message || successMessage);
+      if (data.success) {
+        form.reset();
+        closeTaxModal();
+        loadTaxRates();
+        // Reset editing mode
+        window.editingTaxId = null;
+      }
+    })
+    .catch(() => alert('{% trans "Error saving tax rate" %}'));
+  });
+
+  async function loadTaxRates() {
+    try {
+  const response = await fetch(`{% url 'taxes_list' %}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }});
+      const data = await response.json();
+      const tbody = document.getElementById('taxTableBody');
+      const cards = document.getElementById('taxCards');
+      tbody.innerHTML = ''; cards.innerHTML = '';
+  fetch(`{% url 'get_kits' %}`, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+  fetch(`{% url 'region_list' %}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+
+      if (data.success && data.taxes?.length) {
+        data.taxes.forEach((tax, idx) => {
+          // desktop row
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-gray-50">
+              <td class="py-3 px-4 font-medium">${escapeHTML(tax.description)}</td>
+              <td class="py-3 px-4">${tax.percentage}%</td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center gap-2 justify-end">
+                  <button onclick="editTax('${tax.id}', '${escapeHTML(tax.description)}', '${tax.percentage}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+                  </button>
+                  <button onclick="deleteTax('${tax.id}', '${escapeHTML(tax.description)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                    <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </td>
+            </tr>`);
+
+          // mobile card
+          cards.insertAdjacentHTML('beforeend', `
+            <div class="border rounded-lg p-4 bg-white">
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-medium">${escapeHTML(tax.description)}</div>
+                <div class="flex gap-2">
+                  <button onclick="editTax('${tax.id}', '${escapeHTML(tax.description)}', '${tax.percentage}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                    <i class="fas fa-edit text-xs"></i>
+                  </button>
+                  <button onclick="deleteTax('${tax.id}', '${escapeHTML(tax.description)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="text-sm text-gray-600">
+                <i class="fas fa-percentage mr-1"></i>
+                ${tax.percentage}% {% trans "tax rate" %}
+              </div>
+            </div>`);
+        });
+      } else {
+        tbody.innerHTML = `<tr><td colspan="2" class="py-4 px-4 text-gray-500 text-center">{% trans "No taxes configured." %}</td></tr>`;
+        cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No taxes configured." %}</div>`;
+      }
+    } catch (e) {
+      document.getElementById('taxTableBody').innerHTML =
+        `<tr><td colspan="2" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load tax rates." %}</td></tr>`;
+      document.getElementById('taxCards').innerHTML =
+        `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load tax rates." %}</div>`;
+    }
+  }
+  document.addEventListener('DOMContentLoaded', loadTaxRates);
+
+  // ===== Tax Edit and Delete Functions =====
+
+  // Edit Tax - Open modal in edit mode
+  function editTax(id, description, percentage) {
+    // Update modal title
+    const modalTitle = document.querySelector('#taxModal h3');
+    if (modalTitle) {
+      modalTitle.textContent = '{% trans "Edit Tax Rate" %}';
+    }
+
+    // Pre-fill the form with existing data
+    const form = document.getElementById('taxRateForm');
+    if (form) {
+      form.description.value = description;
+      form.percentage.value = percentage;
+    }
+
+    // Store the tax ID for editing
+    window.editingTaxId = id;
+
+    // Open the modal
+    openTaxModal();
+  }
+
+  // Delete Tax with confirmation
+  function deleteTax(id, description) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the tax rate" %} "${description}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+      fetch(`/settings/taxes/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text(); // DELETE usually returns empty body
+      })
+      .then(() => {
+        alert('{% trans "Tax rate deleted successfully!" %}');
+        loadTaxRates(); // Refresh the tax rates list
+      })
+      .catch(error => {
+        console.error('Error deleting tax rate:', error);
+        alert(`{% trans "Error deleting tax rate:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // ===== Payment Methods =====
+  function loadPaymentMethods() {
+  fetch(`{% url 'payments_method_list' %}`, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById("paymentMethodsBody");
+        const cards = document.getElementById("paymentMethodsCards");
+        tbody.innerHTML = ""; cards.innerHTML = "";
+
+        if (!data.success || !data.methods?.length) {
+          tbody.innerHTML = `<tr><td colspan="3" class="py-4 px-4 text-gray-500 text-center">{% trans "No payment methods found." %}</td></tr>`;
+          cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No payment methods found." %}</div>`;
+          return;
+        }
+
+        data.methods.forEach(m => {
+          // desktop row
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-gray-50">
+              <td class="py-3 px-4 font-medium">${escapeHTML(m.name)}</td>
+              <td class="py-3 px-4">${escapeHTML(m.description || '')}</td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center gap-2 justify-end">
+                  <button onclick="editPaymentMethod('${m.id}', '${escapeHTML(m.name)}', '${escapeHTML(m.description || '')}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+                  </button>
+                  <button onclick="deletePaymentMethod('${m.id}', '${escapeHTML(m.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                    <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </td>
+            </tr>`);
+
+          // mobile card
+          cards.insertAdjacentHTML('beforeend', `
+            <div class="border rounded-lg p-4 bg-white">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-semibold">${escapeHTML(m.name)}</div>
+                  <p class="text-sm text-gray-600 mt-1">${escapeHTML(m.description || '')}</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="editPaymentMethod('${m.id}', '${escapeHTML(m.name)}', '${escapeHTML(m.description || '')}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                    <i class="fas fa-edit text-xs"></i>
+                  </button>
+                  <button onclick="deletePaymentMethod('${m.id}', '${escapeHTML(m.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>`);
+        });
+      })
+      .catch(() => {
+        document.getElementById("paymentMethodsBody").innerHTML =
+          `<tr><td colspan="3" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load payment methods." %}</td></tr>`;
+        document.getElementById("paymentMethodsCards").innerHTML =
+          `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load payment methods." %}</div>`;
+      });
+  }
+  document.addEventListener("DOMContentLoaded", loadPaymentMethods);
+
+  // ===== Installation Fees =====
+  function loadInstallationFees() {
+  fetch(`{% url 'installation_fee_list' %}`, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById("installationFeeTableBody");
+        const cards = document.getElementById("installationFeeCards");
+        tbody.innerHTML = ""; cards.innerHTML = "";
+
+        if (!data.success || !data.fees?.length) {
+          tbody.innerHTML = `<tr><td colspan="3" class="py-4 px-4 text-gray-500 text-center">{% trans "No installation fees configured." %}</td></tr>`;
+          cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No installation fees configured." %}</div>`;
+          return;
+        }
+
+        data.fees.forEach(fee => {
+          // desktop row
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-gray-50">
+              <td class="py-3 px-4 font-medium">${escapeHTML(fee.region)}</td>
+              <td class="py-3 px-4">${fee.amount_usd ?? '—'}</td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center gap-2 justify-end">
+                  <button onclick="openEditInstallationFeeModal('${fee.id}', '${escapeHTML(fee.region)}', '${fee.amount_usd ?? ''}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+                  </button>
+                  <button onclick="deleteInstallationFee('${fee.id}', '${escapeHTML(fee.region)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                    <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </td>
+            </tr>`);
+
+          // mobile card
+          cards.insertAdjacentHTML('beforeend', `
+            <div class="border rounded-lg p-4 bg-white">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-semibold">${escapeHTML(fee.region)}</div>
+                  <p class="text-sm text-gray-600 mt-1">{% trans "Amount" %}: ${fee.amount_usd ?? '—'} USD</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="openEditInstallationFeeModal('${fee.id}', '${escapeHTML(fee.region)}', '${fee.amount_usd ?? ''}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                    <i class="fas fa-edit text-xs"></i>
+                  </button>
+                  <button onclick="deleteInstallationFee('${fee.id}', '${escapeHTML(fee.region)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            </div>`);
+        });
+      })
+      .catch(() => {
+        document.getElementById("installationFeeTableBody").innerHTML =
+          `<tr><td colspan="3" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load installation fees." %}</td></tr>`;
+        document.getElementById("installationFeeCards").innerHTML =
+          `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load installation fees." %}</div>`;
+      });
+  }
+  document.addEventListener("DOMContentLoaded", loadInstallationFees);
+
+  // ===== Payment Method Edit and Delete Functions =====
+
+  // Edit Payment Method - Open modal in edit mode (only description can be edited)
+  function editPaymentMethod(id, name, description) {
+    // Create a simple prompt for editing description only
+    const newDescription = prompt('{% trans "Edit description for" %} ' + name + ':', description || '');
+    if (newDescription === null) return; // User cancelled
+
+    // Send update request
+    fetch(`/settings/payments_method/${id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        name: name, // Keep the same name
+        description: newDescription
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        alert('{% trans "Payment method updated successfully!" %}');
+        loadPaymentMethods(); // Refresh the list
+      } else {
+        alert('{% trans "Failed to update payment method:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating payment method:', error);
+      alert('{% trans "Error updating payment method:" %} ' + error.message);
+    });
+  }
+
+  // Delete Payment Method with confirmation
+  function deletePaymentMethod(id, name) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the payment method" %} "${name}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+      fetch(`/settings/payments_method/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text(); // DELETE usually returns empty body
+      })
+      .then(() => {
+        alert('{% trans "Payment method deleted successfully!" %}');
+        loadPaymentMethods(); // Refresh the payment methods list
+      })
+      .catch(error => {
+        console.error('Error deleting payment method:', error);
+        alert(`{% trans "Error deleting payment method:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // ===== Installation Fee Edit and Delete Functions =====
+
+  // Edit Installation Fee - Open modal in edit mode (both region and amount can be edited)
+  function editInstallationFee(id, region, amount) {
+    // Create prompts for editing both region and amount
+    const newRegion = prompt('{% trans "Edit region for installation fee" %}:', region || '');
+    if (newRegion === null) return; // User cancelled
+
+    const newAmount = prompt('{% trans "Edit amount (USD) for" %} ' + newRegion + ':', amount || '');
+    if (newAmount === null) return; // User cancelled
+
+    // Validate amount
+    const amountValue = parseFloat(newAmount);
+    if (isNaN(amountValue) || amountValue < 0) {
+      alert('{% trans "Please enter a valid positive amount." %}');
+      return;
+    }
+
+    // Send update request
+    fetch(`/settings/installation_fee/${id}/`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        region: newRegion,
+        amount_usd: amountValue
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        alert('{% trans "Installation fee updated successfully!" %}');
+        loadInstallationFees(); // Refresh the list
+      } else {
+        alert('{% trans "Failed to update installation fee:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error updating installation fee:', error);
+      alert('{% trans "Error updating installation fee:" %} ' + error.message);
+    });
+  }
+
+  // Delete Installation Fee with confirmation
+  function deleteInstallationFee(id, region) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the installation fee for" %} "${region}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+      fetch(`/settings/installation_fee/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text(); // DELETE usually returns empty body
+      })
+      .then(() => {
+        alert('{% trans "Installation fee deleted successfully!" %}');
+        loadInstallationFees(); // Refresh the installation fees list
+      })
+      .catch(error => {
+        console.error('Error deleting installation fee:', error);
+        alert(`{% trans "Error deleting installation fee:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // ===== Subscription Plans Management =====
+  let currentSubscriptionPage = 1;
+  const subscriptionItemsPerPage = 10;
+
+  function loadSubscriptionPlans(page = 1) {
+    currentSubscriptionPage = page;
+
+  fetch(`{% url 'get_subscription_plans_paginated' %}?page=${page}&per_page=${subscriptionItemsPerPage}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => {
+      // Afficher les plans
+      displaySubscriptionPlans(data.plans);
+
+      // Mettre à jour la pagination
+      updateSubscriptionPagination(data.pagination);
+    })
+    .catch(() => {
+      document.getElementById("subscriptionPlanTableBody").innerHTML =
+        `<tr><td colspan="7" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load subscription plans." %}</td></tr>`;
+      document.getElementById("subscriptionPlanCards").innerHTML =
+        `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load subscription plans." %}</div>`;
+    });
+  }
+
+  function displaySubscriptionPlans(plans) {
+    const tbody = document.getElementById("subscriptionPlanTableBody");
+    const cards = document.getElementById("subscriptionPlanCards");
+    tbody.innerHTML = ""; cards.innerHTML = "";
+
+    if (!plans || plans.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-gray-500 text-center">{% trans "No subscription plans configured." %}</td></tr>`;
+      cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No subscription plans configured." %}</div>`;
+      return;
+    }
+
+    plans.forEach(plan => {
+      const statusBadge = plan.is_active ?
+        '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">{% trans "Active" %}</span>' :
+        '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">{% trans "Inactive" %}</span>';
+
+      // desktop row
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="hover:bg-gray-50">
+          <td class="py-3 px-4 font-medium">${escapeHTML(plan.name)}</td>
+          <td class="py-3 px-4">${escapeHTML(plan.kit_type)}</td>
+          <td class="py-3 px-4">${escapeHTML(plan.plan_type || '—')}</td>
+          <td class="py-3 px-4">${plan.standard_data_gb ?? '{% trans "Unlimited" %}'}</td>
+          <td class="py-3 px-4">$${plan.monthly_price_usd ?? '—'}</td>
+          <td class="py-3 px-4">${statusBadge}</td>
+          <td class="py-3 px-4">${plan.site_type_display}</td>
+          <td class="py-3 px-4 text-right">
+            <div class="flex items-center gap-2 justify-end">
+              <button onclick="editSubscriptionPlan('${plan.id}')"
+                      class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+              </button>
+              <button onclick="toggleSubscriptionPlanStatus('${plan.id}', ${plan.is_active})"
+                      class="inline-flex items-center gap-1 ${plan.is_active ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} px-3 py-1 rounded ${plan.is_active ? 'hover:bg-yellow-50' : 'hover:bg-green-50'}">
+                <i class="fas ${plan.is_active ? 'fa-pause' : 'fa-play'} text-xs"></i> ${plan.is_active ? '{% trans "Deactivate" %}' : '{% trans "Activate" %}'}
+              </button>
+              <button onclick="deleteSubscriptionPlan('${plan.id}', '${escapeHTML(plan.name)}')"
+                      class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+              </button>
+            </div>
+          </td>
+        </tr>`);
+
+      // mobile card
+      cards.insertAdjacentHTML('beforeend', `
+        <div class="border rounded-lg p-4 bg-white">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="font-semibold">${escapeHTML(plan.name)}</div>
+              <p class="text-sm text-gray-600 mt-1">{% trans "Kit Type" %}: ${escapeHTML(plan.kit_type)}</p>
+              <p class="text-sm text-gray-600 mt-1">{% trans "Plan Type" %}: ${escapeHTML(plan.plan_type || '—')}</p>
+              <p class="text-sm text-gray-600 mt-1">{% trans "Data" %}: ${plan.standard_data_gb ?? '{% trans "Unlimited" %}'}</p>
+              <p class="text-sm text-gray-600 mt-1">{% trans "Site Type" %}: ${escapeHTML(plan.site_type_display)}</p>
+            </div>
+            <div class="flex gap-2">
+              <button onclick="editSubscriptionPlan('${plan.id}')"
+                      class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                <i class="fas fa-edit text-xs"></i>
+              </button>
+              <button onclick="toggleSubscriptionPlanStatus('${plan.id}', ${plan.is_active})"
+                      class="inline-flex items-center gap-1 ${plan.is_active ? 'text-yellow-600 hover:text-yellow-700' : 'text-green-600 hover:text-green-700'} px-2 py-1 rounded ${plan.is_active ? 'hover:bg-yellow-50' : 'hover:bg-green-50'} text-sm">
+                <i class="fas ${plan.is_active ? 'fa-pause' : 'fa-play'} text-xs"></i>
+              </button>
+              <button onclick="deleteSubscriptionPlan('${plan.id}', '${escapeHTML(plan.name)}')"
+                      class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                <i class="fas fa-trash-alt text-xs"></i>
+              </button>
+            </div>
+          </div>
+          <div class="text-sm font-medium text-gray-900 mt-2">${plan.monthly_price_usd ?? '—'} USD</div>
+          <div class="mt-2">${statusBadge}</div>
+        </div>`);
+    });
+  }
+
+  function updateSubscriptionPagination(pagination) {
+    const { current_page, total_pages, total_items, has_next, has_previous } = pagination;
+
+    // Mettre à jour le compteur d'éléments
+    const start = (current_page - 1) * subscriptionItemsPerPage + 1;
+    const end = Math.min(current_page * subscriptionItemsPerPage, total_items);
+
+    document.getElementById('showing-start').textContent = start;
+    document.getElementById('showing-end').textContent = end;
+    document.getElementById('total-items').textContent = total_items;
+
+    // Activer/désactiver les boutons
+    document.getElementById('prev-page').disabled = !has_previous;
+    document.getElementById('next-page').disabled = !has_next;
+
+    // Générer les numéros de page
+    generateSubscriptionPageNumbers(current_page, total_pages);
+  }
+
+  function generateSubscriptionPageNumbers(current, total) {
+    const container = document.getElementById('page-numbers');
+    container.innerHTML = '';
+
+    if (total <= 1) return;
+
+    // Logique pour afficher les numéros de page (max 5 pages visibles)
+    const maxVisible = 5;
+    let start = Math.max(1, current - Math.floor(maxVisible / 2));
+    let end = Math.min(total, start + maxVisible - 1);
+
+    // Ajuster si on est près de la fin
+    if (end - start + 1 < maxVisible) {
+      start = Math.max(1, end - maxVisible + 1);
+    }
+
+    // Ajouter les numéros de page
+    for (let i = start; i <= end; i++) {
+      const button = document.createElement('button');
+      button.textContent = i;
+      button.className = `px-3 py-2 text-sm border rounded-md transition-colors ${
+        i === current
+          ? 'bg-blue-600 text-white border-blue-600'
+          : 'border-gray-300 hover:bg-gray-50'
+      }`;
+      button.onclick = () => loadSubscriptionPlans(i);
+      container.appendChild(button);
+    }
+  }
+
+  // Gestionnaires d'événements pour la pagination
+  document.addEventListener("DOMContentLoaded", function() {
+    // Charger les plans au démarrage
+    loadSubscriptionPlans(1);
+
+    // Gestionnaires pour les boutons de pagination
+    const prevButton = document.getElementById('prev-page');
+    const nextButton = document.getElementById('next-page');
+
+    if (prevButton) {
+      prevButton.onclick = () => {
+        if (currentSubscriptionPage > 1) {
+          loadSubscriptionPlans(currentSubscriptionPage - 1);
+        }
+      };
+    }
+
+    if (nextButton) {
+      nextButton.onclick = () => {
+        loadSubscriptionPlans(currentSubscriptionPage + 1);
+      };
+    }
+
+      // Fix: Bind subscription plan form submit to JS handler
+      const subscriptionPlanForm = document.getElementById('subscriptionPlanForm');
+      if (subscriptionPlanForm) {
+        subscriptionPlanForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          submitSubscriptionPlanForm();
+        });
+      }
+  });
+
+  // ===== Subscription Plan Modal Functions =====
+  window.openSubscriptionPlanModal = function() {
+    document.getElementById('subscriptionPlanModal').classList.remove('hidden');
+    document.getElementById('subscriptionPlanModalTitle').textContent = '{% trans "Add Subscription Plan" %}';
+    document.getElementById('subscriptionPlanForm').reset();
+    document.getElementById('subscription_plan_id').value = '';
+    // Populate kit types dynamically from Starlink kits
+    populateKitTypes();
+  }
+
+  function closeSubscriptionPlanModal() {
+    document.getElementById('subscriptionPlanModal').classList.add('hidden');
+    document.getElementById('subscriptionPlanForm').reset();
+    document.getElementById('subscription_plan_id').value = '';
+  }
+
+  // Handle Subscription Plan form submission
+  function submitSubscriptionPlanForm() {
+    const form = document.getElementById('subscriptionPlanForm');
+    const formData = new FormData(form);
+    const planId = formData.get('plan_id');
+    const name = formData.get('name') ? formData.get('name').toString().trim() : '';
+    const kitType = formData.get('kit_type') ? formData.get('kit_type').toString() : '';
+    const planType = formData.get('plan_type') ? formData.get('plan_type').toString() : '';
+    const dataGb = formData.get('data_gb') ? formData.get('data_gb').toString().trim() : '';
+    const price = formData.get('price_usd') ? formData.get('price_usd').toString() : '';
+    const description = formData.get('description') ? formData.get('description').toString().trim() : '';
+
+    // Validation
+    const siteType = formData.get('site_type') ? formData.get('site_type').toString() : '';
+    const unlimitedTypes = ['unlimited_standard', 'unlimited_with_priority'];
+    const isUnlimited = unlimitedTypes.includes(planType);
+    if (!name || !kitType || !planType || !price || !siteType || !description) {
+      alert('{% trans "All fields are required except Data (GB) for Unlimited plans." %}');
+      return;
+    }
+    if (!isUnlimited && (!dataGb || dataGb === '')) {
+      alert('{% trans "Data (GB) is required for non-unlimited plans." %}');
+      return;
+    }
+
+     // Determine if editing or creating
+    const isEditing = planId && planId !== '';
+    // Use Django URL template for proper language handling
+    const url = isEditing
+      ? `/${LANGUAGE_CODE}/settings/subscription_plan/edit_subscription_plan/${planId}/`
+      : `{% url 'create_subscription_plan' %}`;
+    const method = isEditing ? 'POST' : 'POST'; // Both use POST for JSON
+
+    // Convert data_gb to number or null for unlimited plans
+    let dataGbValue = null;
+    if (dataGb !== '' && dataGb !== null && dataGb !== undefined) {
+      dataGbValue = parseInt(dataGb, 10);
+      if (isNaN(dataGbValue) || dataGbValue < 0) {
+        dataGbValue = null;
+      }
+    }
+
+    const data = {
+      name: name,
+      kit_type: kitType,
+      plan_type: planType,
+      standard_data_gb: dataGbValue,
+      price_usd: price,
+      site_type: siteType,
+      description: description
+    };
+
+    // Debug log
+    console.log('Submitting data:', data);
+    console.log('URL:', url);
+    console.log('Is editing:', isEditing);
+
+    // Submit form
+    fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify(data)
+    })
+    .then(response => {
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Response data:', data);
+      if (data.success) {
+        const message = isEditing ? '{% trans "Subscription plan updated successfully!" %}' : '{% trans "Subscription plan added successfully!" %}';
+        alert(message);
+        closeSubscriptionPlanModal();
+        loadSubscriptionPlans(); // Refresh the list
+      } else {
+        alert('{% trans "Failed to save subscription plan:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error saving subscription plan:', error);
+      alert('{% trans "Error saving subscription plan:" %} ' + error.message);
+    });
+  }
+
+  // Populate Kit Type select from available Starlink kits
+  function populateKitTypes(selectedValue) {
+    const select = document.getElementById('subscription_plan_kit_type');
+    if (!select) return;
+    // Reset options to placeholder
+    select.innerHTML = '<option value="">{% trans "Select kit" %}</option>';
+    fetch(`{% url 'get_kits' %}`, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+      .then(res => res.ok ? res.json() : Promise.reject(res))
+      .then(data => {
+        const kits = Array.isArray(data.kit) ? data.kit : [];
+
+        // Sort kits by name for better UX
+        kits.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+
+        // Add each kit as an option (value = kit.name, display = kit.name)
+        kits.forEach(kit => {
+          const opt = document.createElement('option');
+          opt.value = kit.name;  // Use kit name as value
+          opt.textContent = kit.name;  // Display kit name
+          opt.dataset.kitId = kit.id;  // Store kit ID for future reference
+          opt.dataset.kitType = kit.kit_type;  // Store kit type for future reference
+          select.appendChild(opt);
+        });
+
+        // Select the provided value if it matches any kit name
+        if (selectedValue) {
+          select.value = selectedValue;
+        }
+      })
+      .catch(() => {
+        // leave placeholder only on error
+      });
+  }
+
+  // Edit Subscription Plan - Open modal in edit mode
+  function editSubscriptionPlan(id) {
+    // Fetch fresh plan data before opening modal
+  const languageCode = '{{ LANGUAGE_CODE }}';
+  fetch(`/${languageCode}/settings/subscription_plan/get_subscription_plan/${id}/`, {
+      method: 'GET',
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        const plan = data.plan;
+        alert(JSON.stringify(plan)); // Debugging line to show fetched data
+
+        // Open modal and populate with fresh data
+        document.getElementById('subscriptionPlanModal').classList.remove('hidden');
+        document.getElementById('subscriptionPlanModalTitle').textContent = '{% trans "Edit Subscription Plan" %}';
+
+        document.getElementById('subscription_plan_id').value = plan.id;
+        document.getElementById('subscription_plan_name').value = plan.name;
+        // Ensure kit types are populated then select the plan's current value
+        populateKitTypes(plan.kit_type || 'standard');
+        document.getElementById('subscription_plan_plan_type').value = plan.plan_type || '';
+        document.getElementById('subscription_plan_data_gb').value = plan.data_cap_gb || '';
+        document.getElementById('subscription_plan_price').value = plan.monthly_price_usd || '';
+        document.getElementById('subscription_plan_description').value = plan.description || '';
+        document.getElementById('subscription_plan_site_type').value = plan.site_type || '';
+
+      } else {
+        alert('{% trans "Failed to load plan data:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error loading plan data:', error);
+      alert('{% trans "Error loading plan data:" %} ' + error.message);
+    });
+  }
+
+  // Toggle Subscription Plan Status
+  function toggleSubscriptionPlanStatus(id, currentStatus) {
+    const action = currentStatus ? '{% trans "deactivate" %}' : '{% trans "activate" %}';
+    const confirmMessage = `{% trans "Are you sure you want to" %} ${action} {% trans "this subscription plan?" %}`;
+
+    if (confirm(confirmMessage)) {
+  const languageCode = '{{ LANGUAGE_CODE }}';
+  fetch(`/${languageCode}/settings/subscription/toggle_plan_status/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('{% trans "Subscription plan status updated successfully!" %}');
+          loadSubscriptionPlans(); // Refresh the list
+        } else {
+          alert('{% trans "Failed to update subscription plan status:" %} ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error updating subscription plan status:', error);
+        alert('{% trans "Error updating subscription plan status:" %} ' + error.message);
+      });
+    }
+  }
+
+  // Delete Subscription Plan with confirmation
+  function deleteSubscriptionPlan(id, name) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the subscription plan" %} "${name}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+  const languageCode = '{{ LANGUAGE_CODE }}';
+  fetch(`/${languageCode}/settings/subscription/delete_plan/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('{% trans "Subscription plan deleted successfully!" %}');
+          loadSubscriptionPlans(); // Refresh the list
+        } else {
+          alert('{% trans "Failed to delete subscription plan:" %} ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting subscription plan:', error);
+        alert(`{% trans "Error deleting subscription plan:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // ===== Starlink Kits Management =====
+  function loadStarlinkKits() {
+  fetch(`{% url 'get_kits' %}`, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(res => res.json())
+      .then(data => {
+        const tbody = document.getElementById("starlinkKitTableBody");
+        const cards = document.getElementById("starlinkKitCards");
+        tbody.innerHTML = ""; cards.innerHTML = "";
+
+        if (!data.kit || data.kit.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="py-4 px-4 text-gray-500 text-center">{% trans "No Starlink kits configured." %}</td></tr>`;
+          cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No Starlink kits configured." %}</div>`;
+          return;
+        }
+
+        data.kit.forEach(kit => {
+          // desktop row
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-gray-50">
+              <td class="py-3 px-4 font-medium">${escapeHTML(kit.name)}</td>
+              <td class="py-3 px-4">${escapeHTML(kit.model || '')}</td>
+              <td class="py-3 px-4">${escapeHTML(kit.description || '').substring(0, 50)}${kit.description && kit.description.length > 50 ? '...' : ''}</td>
+              <td class="py-3 px-4">${kit.price_usd ?? '—'}</td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center gap-2 justify-end">
+                  <button onclick="editStarlinkKit('${kit.id}', '${escapeHTML(kit.name)}', '${escapeHTML(kit.model || '')}', '${escapeHTML(kit.description || '')}', '${kit.price_usd ?? ''}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+                  </button>
+                  <button onclick="deleteStarlinkKit('${kit.id}', '${escapeHTML(kit.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                    <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </td>
+            </tr>`);
+
+          // mobile card
+          cards.insertAdjacentHTML('beforeend', `
+            <div class="border rounded-lg p-4 bg-white">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="font-semibold">${escapeHTML(kit.name)}</div>
+                  <p class="text-sm text-gray-600 mt-1">{% trans "Model" %}: ${escapeHTML(kit.model || '—')}</p>
+                  <p class="text-sm text-gray-600 mt-1">${escapeHTML(kit.description || '').substring(0, 30)}${kit.description && kit.description.length > 30 ? '...' : ''}</p>
+                </div>
+                <div class="flex gap-2">
+                  <button onclick="editStarlinkKit('${kit.id}', '${escapeHTML(kit.name)}', '${escapeHTML(kit.model || '')}', '${escapeHTML(kit.description || '')}', '${kit.price_usd ?? ''}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                    <i class="fas fa-edit text-xs"></i>
+                  </button>
+                  <button onclick="deleteStarlinkKit('${kit.id}', '${escapeHTML(kit.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="text-sm font-medium text-gray-900 mt-2">${kit.price_usd ?? '—'} USD</div>
+            </div>`);
+        });
+      })
+      .catch(() => {
+        document.getElementById("starlinkKitTableBody").innerHTML =
+          `<tr><td colspan="5" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load Starlink kits." %}</td></tr>`;
+        document.getElementById("starlinkKitCards").innerHTML =
+          `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load Starlink kits." %}</div>`;
+      });
+  }
+  document.addEventListener("DOMContentLoaded", loadStarlinkKits);
+
+  // ===== Starlink Kit Modal Functions =====
+  function openStarlinkKitModal() {
+    document.getElementById('starlinkKitModal').classList.remove('hidden');
+    document.getElementById('starlinkKitModalTitle').textContent = '{% trans "Add Starlink Kit" %}';
+    document.getElementById('starlinkKitForm').reset();
+    document.getElementById('starlink_kit_id').value = '';
+  }
+
+  function closeStarlinkKitModal() {
+    document.getElementById('starlinkKitModal').classList.add('hidden');
+    document.getElementById('starlinkKitForm').reset();
+    document.getElementById('starlink_kit_id').value = '';
+  }
+
+  // Handle Starlink Kit form submission
+  function submitStarlinkKitForm() {
+    const form = document.getElementById('starlinkKitForm');
+    const formData = new FormData(form);
+    const kitId = formData.get('kit_id');
+    const name = formData.get('name').trim();
+    const model = formData.get('model').trim();
+    const kitType = formData.get('kit_type');
+    const description = formData.get('description').trim();
+    const price = formData.get('price_usd');
+
+    // Validation
+    if (!name || !model) {
+      alert('{% trans "Name and Model are required." %}');
+      return;
+    }
+
+    if (!kitType) {
+      alert('{% trans "Kit Type is required." %}');
+      return;
+    }
+
+  // Determine if editing or creating
+  const isEditing = kitId && kitId !== '';
+  const url = `/${LANGUAGE_CODE}` + (isEditing ? `/settings/starlink_kit/edit_starlink_kit/${kitId}/` : "/settings/kit/add_kit/");
+  const method = 'POST'; // Both use POST for file uploads
+
+    // Submit form
+    fetch(url, {
+      method: method,
+      headers: {
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: formData
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        const message = isEditing ? '{% trans "Starlink kit updated successfully!" %}' : '{% trans "Starlink kit added successfully!" %}';
+        alert(message);
+        closeStarlinkKitModal();
+        loadStarlinkKits(); // Refresh the list
+      } else {
+        alert('{% trans "Failed to save Starlink kit:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error saving Starlink kit:', error);
+      alert('{% trans "Error saving Starlink kit:" %} ' + error.message);
+    });
+  }
+
+  // Edit Starlink Kit - Open modal in edit mode
+  function editStarlinkKit(id, name, model, description, price) {
+    document.getElementById('starlinkKitModal').classList.remove('hidden');
+    document.getElementById('starlinkKitModalTitle').textContent = '{% trans "Edit Starlink Kit" %}';
+
+    document.getElementById('starlink_kit_id').value = id;
+    document.getElementById('starlink_kit_name').value = name;
+    document.getElementById('starlink_kit_model').value = model;
+    document.getElementById('starlink_kit_description').value = description;
+    document.getElementById('starlink_kit_price').value = price;
+  }
+
+  // Delete Starlink Kit with confirmation
+  function deleteStarlinkKit(id, name) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the Starlink kit" %} "${name}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+  fetch(`/${LANGUAGE_CODE}/settings/starlink_kit/delete_starlink_kit/${id}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('{% trans "Starlink kit deleted successfully!" %}');
+          loadStarlinkKits(); // Refresh the list
+        } else {
+          alert('{% trans "Failed to delete Starlink kit:" %} ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error deleting Starlink kit:', error);
+        alert(`{% trans "Error deleting Starlink kit:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // ===== Regions =====
+  function loadRegions() {
+    console.log('loadRegions() called'); // Debug log
+    fetch("{% url 'region_list' %}", { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
+      .then(res => res.json())
+      .then(data => {
+        console.log('Regions loaded:', data); // Debug log
+        const tbody = document.getElementById('regionsTableBody');
+        const cards = document.getElementById('regionsCards');
+        tbody.innerHTML = ''; cards.innerHTML = '';
+
+        if (!data.success || !data.regions?.length) {
+          tbody.innerHTML = `<tr><td colspan="3" class="py-4 px-4 text-gray-500 text-center">{% trans "No regions found." %}</td></tr>`;
+          cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No regions found." %}</div>`;
+          return;
+        }
+
+        data.regions.forEach((r, idx) => {
+          // desktop row
+          tbody.insertAdjacentHTML('beforeend', `
+            <tr class="hover:bg-gray-50">
+              <td class="py-3 px-4">${idx + 1}</td>
+              <td class="py-3 px-4 font-medium">${escapeHTML(r.name)}</td>
+              <td class="py-3 px-4 text-right">
+                <div class="flex items-center gap-2 justify-end">
+                  <button onclick="editRegion('${r.id}', '${escapeHTML(r.name)}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-3 py-1 rounded hover:bg-blue-50">
+                    <i class="fas fa-edit text-xs"></i> {% trans "Edit" %}
+                  </button>
+                  <button onclick="deleteRegion('${r.id}', '${escapeHTML(r.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-3 py-1 rounded hover:bg-red-50">
+                    <i class="fas fa-trash-alt text-xs"></i> {% trans "Delete" %}
+                  </button>
+                </div>
+              </td>
+            </tr>`);
+
+          // mobile card
+          cards.insertAdjacentHTML('beforeend', `
+            <div class="border rounded-lg p-4 bg-white">
+              <div class="flex items-center justify-between mb-3">
+                <div class="font-medium">${escapeHTML(r.name)}</div>
+                <div class="flex gap-2">
+                  <button onclick="editRegion('${r.id}', '${escapeHTML(r.name)}')"
+                          class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 text-sm">
+                    <i class="fas fa-edit text-xs"></i>
+                  </button>
+                  <button onclick="deleteRegion('${r.id}', '${escapeHTML(r.name)}')"
+                          class="inline-flex items-center gap-1 text-red-600 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 text-sm">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="text-sm text-gray-600">
+                <i class="fas fa-map-marker-alt mr-1"></i>
+                {% trans "Region" %} ${idx + 1}
+              </div>
+            </div>`);
+        });
+      })
+      .catch((error) => {
+        console.error('Error loading regions:', error); // Debug log
+        document.getElementById('regionsTableBody').innerHTML =
+          `<tr><td colspan="3" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load regions." %}</td></tr>`;
+        document.getElementById('regionsCards').innerHTML =
+          `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load regions." %}</div>`;
+      });
+  }
+  document.addEventListener('DOMContentLoaded', loadRegions);
+
+  // ===== Region Edit and Delete Functions =====
+
+  // Edit Region - Open modal in edit mode
+  function editRegion(id, name) {
+    // Store the region ID for editing
+    window.editingRegionId = id;
+
+    // Update modal title
+    document.querySelector('#regionModal h3').textContent = '{% trans "Edit Region" %}';
+
+    // Pre-fill the form with existing data
+    document.getElementById('regionName').value = name;
+
+    // Open the modal
+    openRegionModal();
+
+    // Wait for modal to be fully open and map initialized before loading region
+    setTimeout(() => {
+      loadRegionForEdit(id);
+    }, 200); // Give time for initializeRegionMap to complete
+  }
+
+  // Load specific region data for editing
+  function loadRegionForEdit(id) {
+    console.log('Loading region for edit with ID:', id);
+    const url = `../geo_regions/${id}/`;
+    console.log('Request URL:', url);
+
+    fetch(url, {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Raw response data:', data);
+      console.log('Data type:', typeof data);
+      console.log('Data keys:', Object.keys(data));
+
+      // Clear existing drawn items
+      drawnItems.clearLayers();
+
+      // Handle GeoJSON Feature format from GeoFeatureModelSerializer
+      let geoJsonData;
+      if (data.type === 'Feature') {
+        console.log('Converting GeoJSON Feature to FeatureCollection');
+        // Convert GeoJSON Feature to FeatureCollection for Leaflet
+        geoJsonData = {
+          type: 'FeatureCollection',
+          features: [data]
+        };
+      } else {
+        console.log('Using data as-is (not a GeoJSON Feature)');
+        geoJsonData = data;
+      }
+
+      console.log('Final geoJsonData:', geoJsonData);
+
+      // Add the region to the map for editing
+      const geoJsonLayer = L.geoJSON(geoJsonData, {
+        style: {
+          color: 'orange', // Different color for editing
+          weight: 3,
+          opacity: 0.8,
+          fillColor: 'orange',
+          fillOpacity: 0.3
+        }
+      });
+
+      console.log('Created GeoJSON layer:', geoJsonLayer);
+
+      // Extract and add to drawnItems for editing
+      geoJsonLayer.eachLayer(function (layer) {
+        console.log('Processing layer:', layer);
+        console.log('Layer type:', layer.constructor.name);
+        console.log('Layer instanceof L.Polygon:', layer instanceof L.Polygon);
+        console.log('Layer instanceof L.Polyline:', layer instanceof L.Polyline);
+
+        if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+          console.log('Adding layer to drawnItems');
+          // Store the original GeoJSON Feature data
+          layer.feature = data;
+          drawnItems.addLayer(layer);
+
+          // Store the polygon data in the form
+          const geoJSON = layer.toGeoJSON().geometry;
+          console.log('Generated GeoJSON:', geoJSON);
+          document.getElementById('regionPolygon').value = JSON.stringify(geoJSON);
+        } else {
+          console.warn('Skipping non-editable layer type:', layer.constructor.name);
+        }
+      });
+
+      console.log('Drawn items count:', drawnItems.getLayers().length);
+
+      // Fit map to the region with smooth animation
+      if (regionMap && drawnItems.getBounds().isValid()) {
+        console.log('Fitting map to bounds');
+        const bounds = drawnItems.getBounds();
+        regionMap.flyToBounds(bounds, {
+          padding: [30, 30],
+          duration: 1.5,
+          easeLinearity: 0.1
+        });
+
+        // Add a temporary highlight effect
+        setTimeout(() => {
+          drawnItems.eachLayer((layer) => {
+            if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+              // Temporarily change style to highlight the region
+              const originalStyle = layer.options;
+              layer.setStyle({
+                color: '#ff6b35',
+                weight: 4,
+                opacity: 1,
+                fillColor: '#ff6b35',
+                fillOpacity: 0.4
+              });
+
+              // Revert to original style after animation
+              setTimeout(() => {
+                layer.setStyle(originalStyle);
+              }, 2000);
+            }
+          });
+        }, 1500);
+      } else {
+        console.warn('Cannot fit map to bounds - map or bounds invalid');
+      }
+    })
+    .catch(error => {
+      console.error('Error loading region for edit:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
+      alert('{% trans "Error loading region data for editing." %}');
+    });
+  }
+
+  // Delete Region with confirmation
+  function deleteRegion(id, name) {
+    const confirmMessage = `{% trans "Are you sure you want to delete the region" %} "${name}"? {% trans "This action cannot be undone." %}`;
+
+    if (confirm(confirmMessage)) {
+      // Show loading state
+      const deleteBtn = event.target.closest('button');
+      const originalText = deleteBtn.innerHTML;
+      deleteBtn.disabled = true;
+      deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin text-xs"></i> {% trans "Deleting..." %}';
+
+      // Make DELETE request
+      fetch(`../geo_regions/${id}/`, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRFToken': getCookie('csrftoken'),
+          'X-Requested-With': 'XMLHttpRequest'
+        }
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.text(); // DELETE usually returns empty body
+      })
+      .then(() => {
+        alert('{% trans "Region deleted successfully!" %}');
+        loadRegions(); // Refresh the regions list
+      })
+      .catch(error => {
+        console.error('Error deleting region:', error);
+        alert(`{% trans "Error deleting region:" %} ${error.message}`);
+      })
+      .finally(() => {
+        // Restore button state
+        deleteBtn.disabled = false;
+        deleteBtn.innerHTML = originalText;
+      });
+    }
+  }
+
+  // Tax modal helpers already included by your partial
+  function openTaxModal(){ document.getElementById('taxModal').classList.remove('hidden'); }
+  function closeTaxModal(){ document.getElementById('taxModal').classList.add('hidden'); }
+
+  // ===== Region Modal =====
+  let regionMap = null;
+  let drawnItems = null;
+  let drawControl = null;
+  let regionLayers = {};
+
+  // Function to open the region modal and initialize the map
+  function openRegionModal() {
+    const modal = document.getElementById('regionModal');
+    modal.classList.remove('hidden');
+
+    // Initialize map after modal is shown
+    setTimeout(() => {
+      initializeRegionMap();
+    }, 100);
+  }
+
+  // Function to close the region modal and clean up
+  function closeRegionModal() {
+    const modal = document.getElementById('regionModal');
+    modal.classList.add('hidden');
+
+    // Reset modal title
+    document.querySelector('#regionModal h3').textContent = '{% trans "Add New Region" %}';
+
+    // Reset form
+    document.getElementById('regionForm').reset();
+    document.getElementById('regionPolygon').value = '';
+
+    // Reset editing mode
+    window.editingRegionId = null;
+
+    // Clean up map and regions
+    if (regionMap) {
+      regionMap.remove();
+      regionMap = null;
+      drawnItems = null;
+      drawControl = null;
+      // Clear region layers
+      Object.keys(regionLayers).forEach(key => delete regionLayers[key]);
+    }
+  }
+
+  // Function to initialize the Leaflet map in the modal
+  function initializeRegionMap() {
+    if (regionMap) return; // Already initialized
+
+    // Initialize map centered on DRC
+    regionMap = L.map('regionMap').setView([-4.0383, 21.7587], 5);
+
+    // Add tile layer
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(regionMap);
+
+    // Initialize drawn items layer
+    drawnItems = new L.FeatureGroup();
+    regionMap.addLayer(drawnItems);
+
+    // Add draw control with edit functionality
+    drawControl = new L.Control.Draw({
+      edit: {
+        featureGroup: drawnItems,
+        edit: true,
+        remove: true
+      },
+      draw: {
+        polygon: { shapeOptions: { color: 'blue' } },
+        polyline: false, rectangle: false, circle: false, marker: false, circlemarker: false
+      }
+    });
+    regionMap.addControl(drawControl);
+
+    // Handle drawing events
+    regionMap.on(L.Draw.Event.CREATED, function (e) {
+      const layer = e.layer;
+      drawnItems.addLayer(layer);
+
+      // Convert to GeoJSON and store in hidden input
+      const geoJSON = layer.toGeoJSON().geometry;
+      document.getElementById('regionPolygon').value = JSON.stringify(geoJSON);
+    });
+
+    // Handle editing events
+    regionMap.on(L.Draw.Event.EDITED, function (e) {
+      console.log('Edit event fired:', e);
+      e.layers.eachLayer(function (layer) {
+        console.log('Editing layer:', layer);
+        const geoJSON = layer.toGeoJSON().geometry;
+        console.log('Updated GeoJSON:', geoJSON);
+
+        // Check if this is an existing region being edited
+        if (layer.feature && layer.feature.id) {
+          const regionId = layer.feature.id;
+          const regionName = layer.feature.properties?.name || 'Unknown';
+
+          console.log('Updating existing region:', regionId, regionName);
+
+          // Send PUT request to update the region
+          fetch(`../geo_regions/${regionId}/`, {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+              name: regionName,
+              fence: geoJSON
+            })
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+          })
+          .then(data => {
+            console.log('Region updated successfully:', regionId);
+            alert('{% trans "Region updated successfully!" %}');
+
+            // Update the feature data with new geometry
+            layer.feature.geometry = geoJSON;
+
+            // Refresh the regions list to show updated data
+            loadRegions();
+          })
+          .catch(error => {
+            console.error('Error updating region:', error);
+            alert(`{% trans "Error updating region:" %} ${error.message}`);
+
+            // Revert the visual changes by reloading the region
+            if (window.editingRegionId) {
+              loadRegionForEdit(window.editingRegionId);
+            }
+          });
+        } else {
+          // For newly drawn shapes, just update the form field
+          document.getElementById('regionPolygon').value = JSON.stringify(geoJSON);
+        }
+      });
+    });
+
+    // Handle deletion events
+    regionMap.on(L.Draw.Event.DELETED, function (e) {
+      console.log('Delete event fired:', e);
+
+      e.layers.eachLayer(function (layer) {
+        console.log('Deleting layer:', layer);
+
+        // Check if this is an existing region (has feature data)
+        if (layer.feature && layer.feature.id) {
+          const regionId = layer.feature.id;
+          const regionName = layer.feature.properties?.name || 'Unknown';
+
+          console.log('Deleting existing region:', regionId, regionName);
+
+          // Send DELETE request to backend
+          fetch(`../geo_regions/${regionId}/`, {
+            method: 'DELETE',
+            headers: {
+              'X-CSRFToken': getCookie('csrftoken'),
+              'X-Requested-With': 'XMLHttpRequest'
+            }
+          })
+          .then(response => {
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            console.log('Region deleted successfully:', regionId);
+            // Refresh the regions list
+            loadRegions();
+          })
+          .catch(error => {
+            console.error('Error deleting region:', error);
+            alert(`{% trans "Error deleting region:" %} ${error.message}`);
+          });
+        } else {
+          console.log('Deleting newly drawn shape (no backend action needed)');
+        }
+      });
+
+      // Clear the polygon data if no shapes remain
+      if (drawnItems.getLayers().length === 0) {
+        document.getElementById('regionPolygon').value = '';
+      }
+    });
+
+    // Force map to recalculate size after modal is shown
+    setTimeout(() => {
+      regionMap.invalidateSize();
+      // Load existing regions after map is ready
+      loadExistingRegions();
+    }, 200);
+  }
+
+  // Function to load and display existing regions on the map
+  function loadExistingRegions() {
+    fetch('../geo_regions/', {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Loading existing regions:', data);
+
+      // Clear existing region layers
+      Object.keys(regionLayers).forEach(key => {
+        if (regionLayers[key]) {
+          regionMap.removeLayer(regionLayers[key]);
+        }
+        delete regionLayers[key];
+      });
+
+      // Handle different data formats
+      let features = [];
+      if (Array.isArray(data)) {
+        features = data;
+      } else if (data && typeof data === 'object') {
+        if (data.results && Array.isArray(data.results)) {
+          features = data.results;
+        } else if (data.features && Array.isArray(data.features)) {
+          features = data.features;
+        } else {
+          console.error('Unexpected data structure:', data);
+          return;
+        }
+      } else {
+        console.error('Data is not an array or object:', data);
+        return;
+      }
+
+      console.log('Processing', features.length, 'regions');
+
+      features.forEach(feature => {
+        try {
+          // Create GeoJSON layer with styling
+          const geoJsonLayer = L.geoJSON(feature, {
+            style: {
+              color: 'red',
+              weight: 2,
+              opacity: 0.8,
+              fillColor: 'red',
+              fillOpacity: 0.2
+            }
+          });
+
+          // Extract individual layers from GeoJSON LayerGroup and add them to drawnItems
+          geoJsonLayer.eachLayer(function (layer) {
+            // Only add editable layer types (Polygon, Polyline)
+            if (layer instanceof L.Polygon || layer instanceof L.Polyline) {
+              // Store original feature data for later use
+              layer.feature = feature;
+
+              // Add to drawnItems FeatureGroup so it can be edited
+              drawnItems.addLayer(layer);
+
+              // Store reference for tracking
+              regionLayers[feature.id] = layer;
+
+              console.log('Added editable region:', feature.properties?.name || feature.id);
+            } else {
+              console.warn('Skipping non-editable layer type:', layer.constructor.name);
+            }
+          });
+
+        } catch (error) {
+          console.error('Error adding region to map:', error, feature);
+        }
+      });
+
+      console.log('Successfully loaded', features.length, 'regions on map');
+    })
+    .catch(error => {
+      console.error('Error loading existing regions:', error);
+    });
+  }
+
+  // Function to submit the region form via AJAX
+  function submitRegionForm() {
+    const form = document.getElementById('regionForm');
+    const name = document.getElementById('regionName').value.trim();
+    const fence = document.getElementById('regionPolygon').value;
+
+    // Validate form
+    if (!name) {
+      alert('{% trans "Please enter a region name." %}');
+      return;
+    }
+
+    if (!fence) {
+      alert('{% trans "Please draw a region on the map." %}');
+      return;
+    }
+
+    // Prepare data
+    const data = {
+      name: name,
+      fence: JSON.parse(fence)
+    };
+
+    // Determine if we're editing or creating
+    const isEditing = window.editingRegionId;
+    const url = isEditing ? `../geo_regions/${window.editingRegionId}/` : `{% url "region_add" %}`;
+    const method = isEditing ? 'PUT' : 'POST';
+    const successMessage = isEditing ?
+      '{% trans "Region updated successfully!" %}' :
+      '{% trans "Region created successfully!" %}';
+
+    // For creation, prepare FormData to match our Django view expectations
+    let requestBody, contentType;
+    if (isEditing) {
+      // For editing, use JSON as expected by the ViewSet
+      requestBody = JSON.stringify(data);
+      contentType = 'application/json';
+    } else {
+      // For creation, use FormData to match our Django view
+      const formData = new FormData();
+      formData.append('name', data.name);
+      formData.append('fence', JSON.stringify(data.fence));
+      requestBody = formData;
+      contentType = null; // Let browser set the content type for FormData
+    }
+
+    // Submit via AJAX
+    const headers = {
+      'X-CSRFToken': getCookie('csrftoken'),
+      'X-Requested-With': 'XMLHttpRequest'
+    };
+
+    if (contentType) {
+      headers['Content-Type'] = contentType;
+    }
+
+    fetch(url, {
+      method: method,
+      headers: headers,
+      body: requestBody
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Region creation response:', data); // Debug log
+
+      if (data.success) {
+        // Success case - our view returns {success: true}
+        alert(successMessage);
+        closeRegionModal();
+        loadRegions(); // Refresh the regions list
+
+        // Clear form after successful creation
+        document.getElementById('regionForm').reset();
+        document.getElementById('regionPolygon').value = '';
+        window.editingRegionId = null;
+      } else if (data.detail || data.message) {
+        // Error case with detail/message
+        alert(data.detail || data.message);
+      } else {
+        // Fallback
+        alert(successMessage);
+        closeRegionModal();
+        loadRegions(); // Refresh the regions list
+      }
+    })
+    .catch(error => {
+      console.error('Error saving region:', error);
+      alert(`{% trans "Error saving region:" %} ${error.message}`);
+    });
+  }
+
+  // Close modal when clicking outside
+  document.getElementById('regionModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      closeRegionModal();
+    }
+  });
+
+  // ===== Site Survey Checklist Management =====
+  let currentChecklistPage = 1;
+  const checklistItemsPerPage = 10;
+
+  function loadChecklistItems(page = 1) {
+    currentChecklistPage = page;
+    fetch(`{% url 'get_site_survey_checklist' %}?page=${page}&per_page=${checklistItemsPerPage}`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => {
+      displayChecklistItems(data.checklist_items);
+      updateChecklistPagination(data.pagination);
+    })
+    .catch(() => {
+      document.getElementById("checklistTableBody").innerHTML =
+        `<tr><td colspan="7" class="py-4 px-4 text-red-500 text-center">{% trans "Failed to load checklist items." %}</td></tr>`;
+      document.getElementById("checklistCards").innerHTML =
+        `<div class="border rounded-lg p-4 text-center text-red-500">{% trans "Failed to load checklist items." %}</div>`;
+    });
+  }
+
+  function displayChecklistItems(items) {
+    const tbody = document.getElementById("checklistTableBody");
+    const cards = document.getElementById("checklistCards");
+    tbody.innerHTML = "";
+    cards.innerHTML = "";
+
+    if (!items || items.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="7" class="py-4 px-4 text-gray-500 text-center">{% trans "No checklist items configured." %}</td></tr>`;
+      cards.innerHTML = `<div class="border rounded-lg p-4 text-center text-gray-500">{% trans "No checklist items configured." %}</div>`;
+      return;
+    }
+
+    items.forEach(item => {
+      // Desktop table row
+      const statusBadge = item.is_active
+        ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">{% trans "Active" %}</span>`
+        : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{% trans "Inactive" %}</span>`;
+
+      const requiredBadge = item.is_required
+        ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">{% trans "Required" %}</span>`
+        : `<span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">{% trans "Optional" %}</span>`;
+
+      tbody.insertAdjacentHTML('beforeend', `
+        <tr class="hover:bg-gray-50">
+          <td class="py-3 px-4">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+              ${escapeHTML(item.category_display)}
+            </span>
+          </td>
+          <td class="py-3 px-4">
+            <div class="max-w-xs truncate" title="${escapeHTML(item.question)}">
+              ${escapeHTML(item.question)}
+            </div>
+          </td>
+          <td class="py-3 px-4">${escapeHTML(item.question_type_display)}</td>
+          <td class="py-3 px-4">${requiredBadge}</td>
+          <td class="py-3 px-4">${item.display_order}</td>
+          <td class="py-3 px-4">${statusBadge}</td>
+          <td class="py-3 px-4 text-right">
+            <div class="flex items-center gap-2 justify-end">
+              <button onclick="editChecklistItem(${item.id})"
+                      class="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <i class="fas fa-edit text-sm"></i>
+              </button>
+              <button onclick="deleteChecklistItem(${item.id}, '${escapeHTML(item.question)}')"
+                      class="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <i class="fas fa-trash text-sm"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `);
+
+      // Mobile card
+      cards.insertAdjacentHTML('beforeend', `
+        <div class="border rounded-lg p-4 space-y-3">
+          <div class="flex items-start justify-between">
+            <div class="flex-1">
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 mb-2">
+                ${escapeHTML(item.category_display)}
+              </span>
+              <h3 class="font-medium text-gray-900 mb-1">${escapeHTML(item.question)}</h3>
+              <p class="text-sm text-gray-600">${escapeHTML(item.question_type_display)}</p>
+            </div>
+            <div class="flex items-center gap-2 ml-4">
+              <button onclick="editChecklistItem(${item.id})"
+                      class="inline-flex items-center justify-center w-8 h-8 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                <i class="fas fa-edit text-sm"></i>
+              </button>
+              <button onclick="deleteChecklistItem(${item.id}, '${escapeHTML(item.question)}')"
+                      class="inline-flex items-center justify-center w-8 h-8 text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                <i class="fas fa-trash text-sm"></i>
+              </button>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 text-xs">
+            ${requiredBadge}
+            ${statusBadge}
+            <span class="text-gray-500">Order: ${item.display_order}</span>
+          </div>
+        </div>
+      `);
+    });
+  }
+
+  function updateChecklistPagination(pagination) {
+    document.getElementById("checklist-showing-start").textContent =
+      pagination.page_number === 1 ? 1 : (pagination.page_number - 1) * checklistItemsPerPage + 1;
+    document.getElementById("checklist-showing-end").textContent =
+      Math.min(pagination.page_number * checklistItemsPerPage, pagination.total_items);
+    document.getElementById("checklist-total-items").textContent = pagination.total_items;
+    document.getElementById("checklist-current-page").textContent = pagination.page_number;
+    document.getElementById("checklist-total-pages").textContent = pagination.total_pages;
+
+    const prevBtn = document.getElementById("checklist-prev-page");
+    const nextBtn = document.getElementById("checklist-next-page");
+
+    prevBtn.disabled = !pagination.has_previous;
+    nextBtn.disabled = !pagination.has_next;
+
+    prevBtn.onclick = pagination.has_previous ? () => loadChecklistItems(pagination.page_number - 1) : null;
+    nextBtn.onclick = pagination.has_next ? () => loadChecklistItems(pagination.page_number + 1) : null;
+  }
+
+  function openChecklistModal(item = null) {
+    const modal = document.getElementById("checklistModal");
+    const form = document.getElementById("checklistForm");
+    const title = document.getElementById("checklistModalTitle");
+
+    form.reset();
+
+    if (item) {
+      // Edit mode
+      title.textContent = "{% trans 'Edit Checklist Item' %}";
+      document.getElementById("checklistId").value = item.id;
+      document.getElementById("checklistCategory").value = item.category;
+      document.getElementById("checklistQuestion").value = item.question;
+      document.getElementById("checklistQuestionType").value = item.question_type;
+      document.getElementById("checklistDisplayOrder").value = item.display_order;
+      document.getElementById("checklistIsRequired").checked = item.is_required;
+      document.getElementById("checklistIsActive").checked = item.is_active;
+
+      if (item.question_type === "multiple_choice" && item.choices) {
+        document.getElementById("checklistChoices").value = item.choices.join(", ");
+        document.getElementById("choicesField").classList.remove("hidden");
+      }
+    } else {
+      // Create mode
+      title.textContent = "{% trans 'Add Checklist Item' %}";
+      document.getElementById("checklistId").value = "";
+      document.getElementById("choicesField").classList.add("hidden");
+    }
+
+    modal.classList.remove("hidden");
+  }
+
+  function closeChecklistModal() {
+    document.getElementById("checklistModal").classList.add("hidden");
+  }
+
+  function toggleChoicesField() {
+    const questionType = document.getElementById("checklistQuestionType").value;
+    const choicesField = document.getElementById("choicesField");
+
+    if (questionType === "multiple_choice") {
+      choicesField.classList.remove("hidden");
+    } else {
+      choicesField.classList.add("hidden");
+      document.getElementById("checklistChoices").value = "";
+    }
+  }
+
+  function saveChecklistItem() {
+    const form = document.getElementById("checklistForm");
+    const formData = new FormData(form);
+    const checklistId = document.getElementById("checklistId").value;
+
+    const data = {
+      category: formData.get("category"),
+      question: formData.get("question"),
+      question_type: formData.get("question_type"),
+      choices: formData.get("choices"),
+      is_required: formData.has("is_required"),
+      display_order: parseInt(formData.get("display_order")) || 0,
+      is_active: formData.has("is_active"),
+    };
+
+    if (checklistId) {
+      data.checklist_id = checklistId;
+    }
+
+    const url = checklistId ? `{% url 'update_checklist_item' %}` : `{% url 'create_checklist_item' %}`;
+
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify(data),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        closeChecklistModal();
+        loadChecklistItems(currentChecklistPage);
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(error => {
+      console.error("Error saving checklist item:", error);
+      alert("{% trans 'Error saving checklist item.' %}");
+    });
+  }
+
+  function editChecklistItem(id) {
+    fetch(`{% url 'get_site_survey_checklist' %}?page=1&per_page=1000`, {
+      headers: { "X-Requested-With": "XMLHttpRequest" }
+    })
+    .then(res => res.json())
+    .then(data => {
+      const item = data.checklist_items.find(item => item.id === id);
+      if (item) {
+        openChecklistModal(item);
+      } else {
+        alert("{% trans 'Checklist item not found.' %}");
+      }
+    })
+    .catch(error => {
+      console.error("Error loading checklist item:", error);
+      alert("{% trans 'Error loading checklist item.' %}");
+    });
+  }
+
+  function deleteChecklistItem(id, question) {
+    if (!confirm(`{% trans "Are you sure you want to delete this checklist item?" %}\n\n"${question}"`)) {
+      return;
+    }
+
+    fetch(`{% url 'delete_checklist_item' %}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest",
+      },
+      body: JSON.stringify({ checklist_id: id }),
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(data.message);
+        loadChecklistItems(currentChecklistPage);
+      } else {
+        alert(data.message);
+      }
+    })
+    .catch(error => {
+      console.error("Error deleting checklist item:", error);
+      alert("{% trans 'Error deleting checklist item.' %}");
+    });
+  }
+
+  // Load checklist items on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    loadChecklistItems();
+  });
+</script>
+
+{% endblock %}

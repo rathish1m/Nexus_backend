@@ -1,0 +1,95 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- Edit Plan Modal -->
+<div id="hardware_edit" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+        <button onclick="closeModal('hardware_edit')"
+                class="absolute top-3 right-4 text-gray-500 hover:text-gray-700 text-xl">&times;
+        </button>
+
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">{% trans "Starlink Kit Add" %}</h2>
+
+        <form id="edit_kit_form" method="POST" class="space-y-4">
+            {% csrf_token %}
+            <input type="hidden" name="kit_id" id="edit_kit_id">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">{% trans "Kit Name" %}</label>
+                <input type="text" name="name" id="edit_name" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+            <div>
+                <label for="model"
+                       class="block text-sm font-medium text-gray-700">{% trans "Model" %}</label>
+                <input type="text" name="model" id="edit_model" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+            <div>
+                <label for="description"
+                       class="block text-sm font-medium text-gray-700">{% trans "Description" %}</label>
+                <textarea name="description" id="edit_description" rows="3"
+                          class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm"></textarea>
+            </div>
+
+
+            <div>
+                <label for="price_usd"
+                       class="block text-sm font-medium text-gray-700">{% trans "Price (USD)" %}</label>
+                <input type="number" name="price_usd" step="0.01" id="edit_price_usd" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+            <div class="mb-4">
+                <label for="kit_picture" class="block text-sm font-medium text-gray-700">{% trans "Kit Image" %}</label>
+                <input type="file" name="picture" id="edit_kit_picture" accept="image/*"
+                       class="mt-1 block w-full text-sm text-gray-700 border rounded px-3 py-2 file:bg-blue-50 file:border file:rounded file:mr-3 file:py-2 file:px-4"/>
+            </div>
+
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium">
+                    {% trans "Save Plan" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+document.getElementById("edit_kit_form").addEventListener("submit", function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const formData = new FormData(form);
+  const kitId = formData.get("kit_id");
+  const csrfToken = getCSRFToken();
+
+  fetch(`/settings/kit/edit_kit/${kitId}/`, {
+    method: "POST",
+    headers: {
+      "X-CSRFToken": csrfToken,
+      "X-Requested-With": "XMLHttpRequest"
+    },
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert("✅ Kit updated successfully!");
+      closeModal('hardware_edit');
+      fetchKits(); // Refresh list
+    } else {
+      alert("❌ " + (data.message || "Failed to update kit."));
+    }
+  })
+  .catch(err => {
+    console.error("Update error:", err);
+    alert("⚠️ Something went wrong");
+  });
+});
+
+
+</script>

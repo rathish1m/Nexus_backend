@@ -1,0 +1,13 @@
+Hello {{ feedback.customer.full_name|default:feedback.customer.email }},
+
+Our team has replied to your feedback for job {{ order.order_reference|default:feedback.installation.id }}.
+
+Reply:
+{{ feedback.staff_reply|default:"(no message provided)" }}
+
+See the full conversation: {{ site_url }}/client/feedbacks/{{ feedback.installation.id }}/
+
+Thank you for choosing Nexus Telecoms.
+
+--
+Nexus Telecoms Support

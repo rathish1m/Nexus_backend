@@ -1,0 +1,435 @@
+{% extends 'backoffice/dispatch_console_base.html' %}
+{% load static i18n %}
+
+{% block content %}
+<div class="w-full px-6 py-6">
+
+  <!-- Flash Messages -->
+  {% if messages %}
+    <div class="mb-6 space-y-3">
+      {% for message in messages %}
+        <div class="flex items-center gap-2 px-4 py-3 rounded-xl border
+                    {% if message.tags == 'success' %} bg-emerald-50 border-emerald-200 text-emerald-800
+                    {% elif message.tags == 'warning' %} bg-amber-50 border-amber-200 text-amber-800
+                    {% elif message.tags == 'error' %} bg-rose-50 border-rose-200 text-rose-800
+                    {% else %} bg-slate-50 border-slate-200 text-slate-800{% endif %}">
+          <i class="fas {% if message.tags == 'success' %}fa-check-circle{% elif message.tags == 'warning' %}fa-exclamation-triangle{% elif message.tags == 'error' %}fa-times-circle{% else %}fa-info-circle{% endif %}"></i>
+          <span class="text-sm">{{ message }}</span>
+        </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Header -->
+  <header class="rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 shadow-lg text-white mb-8">
+    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="inline-grid place-items-center w-12 h-12 rounded-xl bg-white/15 ring-1 ring-white/20">
+          <i class="fas fa-tools text-2xl"></i>
+        </span>
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight">{% trans "Completed Installations" %}</h1>
+          <p class="text-white/80 text-sm mt-1">{% trans "Validated & submitted installation reports with technician performance insights." %}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 text-sm">
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/20">
+          <i class="fas fa-clipboard-check"></i>
+          {{ total_completed|default:"0" }} {% trans "reports" %}
+        </span>
+        {% if selected_technician or date_from or date_to %}
+        <span class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 ring-1 ring-white/20">
+          <i class="fas fa-filter"></i> {% trans "filtered" %}
+        </span>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- Daily Unbilled Alert -->
+  {% if unbilled_today_count and unbilled_today_count > 0 %}
+    <div class="mb-8 rounded-xl border border-amber-200 bg-amber-50 p-4">
+      <div class="flex items-start gap-3">
+        <i class="fas fa-bell text-amber-600 mt-0.5"></i>
+        <div class="flex-1">
+          <div class="font-semibold text-amber-900">
+            {% blocktrans %}There are {{ unbilled_today_count }} installation report(s) from today without billing activated.{% endblocktrans %}
+          </div>
+          <details class="mt-2">
+            <summary class="cursor-pointer text-amber-800 text-sm hover:underline">
+              {% trans "Show list" %}
+            </summary>
+            <div class="mt-3 space-y-2">
+              {% for inst in unbilled_today %}
+                <div class="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white px-3 py-2">
+                  <div class="text-sm">
+                    <div class="font-medium text-slate-900">
+                      <a href="{% url 'installation_report_detail' inst.id %}" class="hover:underline">
+                        {{ inst.order.order_reference }}
+                      </a>
+                      · {{ inst.technician.get_full_name|default:"—" }}
+                    </div>
+                    <div class="text-xs text-slate-600">
+                      {% trans "Completed" %}: {{ inst.completed_at|date:"Y-m-d H:i" }}
+                      {% if inst.started_at and inst.completed_at %} · {% trans "Duration" %}: {{ inst.completed_at|timesince:inst.started_at }}{% endif %}
+                    </div>
+                  </div>
+                  <form method="post" action="{% url 'start_billing' inst.id %}" class="shrink-0">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700">
+                      <i class="fas fa-file-invoice-dollar"></i> {% trans "Start Billing" %}
+                    </button>
+                  </form>
+                </div>
+              {% endfor %}
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+  <!-- Global KPI Cards -->
+  <section class="mb-8 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="text-slate-500 text-xs uppercase font-semibold">{% trans "Total Completed" %}</div>
+      <div class="mt-2 flex items-end justify-between">
+        <div class="text-3xl font-bold text-slate-900">{{ total_completed|default:"0" }}</div>
+        <i class="fas fa-clipboard-check text-slate-400 text-2xl"></i>
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="text-slate-500 text-xs uppercase font-semibold">{% trans "Completed Today" %}</div>
+      <div class="mt-2 flex items-end justify-between">
+        <div class="text-3xl font-bold text-slate-900">{{ completed_today|default:"0" }}</div>
+        <i class="fas fa-calendar-day text-slate-400 text-2xl"></i>
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="text-slate-500 text-xs uppercase font-semibold">{% trans "Avg Completion Time" %}</div>
+      <div class="mt-2 flex items-end justify-between">
+        <div class="text-3xl font-bold text-slate-900">{{ avg_completion_minutes|default:"—" }}<span class="text-base font-normal text-slate-500"> min</span></div>
+        <i class="fas fa-stopwatch text-slate-400 text-2xl"></i>
+      </div>
+    </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-4">
+      <div class="text-slate-500 text-xs uppercase font-semibold">{% trans "Unbilled Today" %}</div>
+      <div class="mt-2 flex items-end justify-between">
+        <div class="text-3xl font-bold {% if unbilled_today_count %}text-amber-700{% else %}text-slate-900{% endif %}">
+          {{ unbilled_today_count|default:"0" }}
+        </div>
+        <i class="fas fa-file-invoice-dollar text-slate-400 text-2xl"></i>
+      </div>
+    </div>
+  </section>
+
+  <!-- Filters -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+    <form method="get">
+      <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 items-end">
+
+        <!-- Technician -->
+        <div class="xl:col-span-2">
+          <label for="technician" class="block text-sm font-medium text-slate-700 mb-1">
+            <i class="fas fa-user-tie mr-1 text-slate-500"></i>{% trans "Technician" %}
+          </label>
+          <select name="technician" id="technician"
+                  class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+            <option value="">{% trans "All technicians" %}</option>
+            {% for tech in technicians %}
+              <option value="{{ tech.pk }}" {% if selected_technician|stringformat:"s" == tech.pk|stringformat:"s" %}selected{% endif %}>
+                {{ tech.get_full_name|default:tech.email }}
+              </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <!-- Date From -->
+        <div>
+          <label for="date_from" class="block text-sm font-medium text-slate-700 mb-1">
+            <i class="fas fa-calendar-alt mr-1 text-slate-500"></i>{% trans "Start date" %}
+          </label>
+          <input type="date" name="date_from" id="date_from" value="{{ date_from|default:'' }}"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+        </div>
+
+        <!-- Date To -->
+        <div>
+          <label for="date_to" class="block text-sm font-medium text-slate-700 mb-1">
+            <i class="fas fa-calendar-check mr-1 text-slate-500"></i>{% trans "End date" %}
+          </label>
+          <input type="date" name="date_to" id="date_to" value="{{ date_to|default:'' }}"
+                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+          <button type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-semibold">
+            <i class="fas fa-filter"></i> {% trans "Filter" %}
+          </button>
+          <a href="{% url 'completed_installations' %}"
+             class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-50 font-semibold">
+            <i class="fas fa-rotate-right"></i> {% trans "Reset" %}
+          </a>
+        </div>
+      </div>
+    </form>
+
+    {% if selected_technician or date_from or date_to %}
+    <div class="mt-4 flex flex-wrap gap-2 items-center text-sm">
+      <span class="text-slate-600">
+        <i class="fas fa-filter mr-1"></i>{% trans "Active filters:" %}
+      </span>
+      {% if selected_technician %}
+        {% for tech in technicians %}
+          {% if tech.pk|stringformat:"s" == selected_technician|stringformat:"s" %}
+            <span class="inline-flex items-center gap-2 px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full">
+              <i class="fas fa-user-tie"></i> {{ tech.get_full_name|default:tech.email }}
+              <a href="?{% if date_from %}date_from={{ date_from }}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}"
+                 class="ml-1 hover:text-blue-900"><i class="fas fa-times-circle"></i></a>
+            </span>
+          {% endif %}
+        {% endfor %}
+      {% endif %}
+      {% if date_from %}
+        <span class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+          <i class="fas fa-calendar-alt"></i> {% trans "From" %} {{ date_from }}
+          <a href="?{% if selected_technician %}technician={{ selected_technician }}&{% endif %}{% if date_to %}date_to={{ date_to }}{% endif %}"
+             class="ml-1 hover:text-emerald-900"><i class="fas fa-times-circle"></i></a>
+        </span>
+      {% endif %}
+      {% if date_to %}
+        <span class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full">
+          <i class="fas fa-calendar-check"></i> {% trans "To" %} {{ date_to }}
+          <a href="?{% if selected_technician %}technician={{ selected_technician }}&{% endif %}{% if date_from %}date_from={{ date_from }}{% endif %}"
+             class="ml-1 hover:text-emerald-900"><i class="fas fa-times-circle"></i></a>
+        </span>
+      {% endif %}
+    </div>
+    {% endif %}
+  </section>
+
+  <!-- Technician KPI Table -->
+  {% if tech_kpis %}
+  <section class="mb-8 rounded-2xl border border-slate-200 bg-white overflow-hidden">
+    <div class="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-slate-900">{% trans "Technician KPIs" %}</h2>
+      <span class="text-xs text-slate-500">{% trans "Average & median completion times are based on the current filter." %}</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold">
+          <tr>
+            <th class="py-3 px-4 text-left">{% trans "Technician" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Completed" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Avg Time (min)" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Median (min)" %}</th>
+            <th class="py-3 px-4 text-right">{% trans "Avg Rating" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-800">
+          {% for row in tech_kpis %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3">
+              <div class="font-medium">{{ row.technician.get_full_name|default:row.technician.email }}</div>
+              <div class="text-xs text-slate-500">{{ row.technician.email }}</div>
+            </td>
+            <td class="px-4 py-3 text-right font-semibold">{{ row.count|default:"0" }}</td>
+            <td class="px-4 py-3 text-right">{{ row.avg_minutes|default:"—" }}</td>
+            <td class="px-4 py-3 text-right">{{ row.median_minutes|default:"—" }}</td>
+            <td class="px-4 py-3 text-right">
+              {% if row.avg_rating %}
+                <span class="inline-flex items-center gap-1"><i class="fas fa-star text-amber-400"></i>{{ row.avg_rating|floatformat:1 }}</span>
+              {% else %}
+                <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Installations Table -->
+  <section class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-slate-600 uppercase text-xs font-semibold tracking-wider">
+          <tr>
+            <th class="py-3 px-4 text-left">{% trans "Order" %}</th>
+            <th class="py-3 px-4 text-left">{% trans "Customer" %}</th>
+            <th class="py-3 px-4 text-left">{% trans "Technician" %}</th>
+            <th class="py-3 px-4 text-left">{% trans "Completed At" %}</th>
+            <th class="py-3 px-4 text-left">{% trans "Time to Complete" %}</th>
+            <th class="py-3 px-4 text-left">{% trans "Report Submitted" %}</th>
+            <th class="py-3 px-4 text-center">{% trans "Rating" %}</th>
+            <th class="py-3 px-4 text-center">{% trans "Billing" %}</th>
+            <th class="py-3 px-4 text-center">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-slate-800">
+          {% for installation in installations %}
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-3">
+              <div class="font-medium text-indigo-600">
+                <a href="{% url 'installation_report_detail' installation.id %}" class="hover:underline">
+                  {{ installation.order.order_reference }}
+                </a>
+              </div>
+              <div class="text-xs text-slate-500">{{ installation.order.created_at|date:"Y-m-d" }}</div>
+            </td>
+
+            <td class="px-4 py-3">
+              <div class="font-medium">{{ installation.order.user.get_full_name|default:installation.order.user.email }}</div>
+              <div class="text-xs text-slate-500">{{ installation.order.user.email }}</div>
+            </td>
+
+            <td class="px-4 py-3">
+              <div class="font-medium">{{ installation.technician.get_full_name|default:"—" }}</div>
+              {% if installation.technician %}
+                <div class="text-xs text-slate-500">{{ installation.technician.email }}</div>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-3">
+              {% if installation.completed_at %}
+                <span class="inline-flex items-center gap-2 px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-semibold">
+                  <i class="fas fa-check-circle"></i> {{ installation.completed_at|date:"Y-m-d H:i" }}
+                </span>
+              {% else %}<span class="text-slate-400">—</span>{% endif %}
+            </td>
+
+            <td class="px-4 py-3">
+              {% if installation.started_at and installation.completed_at %}
+                <span class="text-sm font-medium text-slate-900">{{ installation.completed_at|timesince:installation.started_at }}</span>
+              {% else %}
+                <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-3">
+              {% if installation.submitted_at %}
+                <span class="inline-flex items-center gap-2 px-2 py-1 rounded bg-cyan-100 text-cyan-700 text-xs font-semibold">
+                  <i class="fas fa-paper-plane"></i> {{ installation.submitted_at|date:"Y-m-d H:i" }}
+                </span>
+              {% else %}<span class="text-slate-400">—</span>{% endif %}
+            </td>
+
+            <td class="px-4 py-3 text-center">
+              {% if installation.customer_rating %}
+                <span class="inline-flex items-center gap-1">
+                  <i class="fas fa-star text-amber-400"></i>
+                  <span class="font-semibold">{{ installation.customer_rating }}/5</span>
+                </span>
+              {% else %}
+                <span class="text-slate-400">—</span>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-3 text-center">
+              {% if installation.order.subscription and installation.order.subscription.status == 'active' %}
+                <span class="inline-flex items-center gap-1 text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full text-xs font-semibold">
+                  <i class="fas fa-badge-check"></i> {% trans "Active" %}
+                </span>
+              {% else %}
+                <span class="inline-flex items-center gap-1 text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full text-xs font-semibold">
+                  <i class="fas fa-circle-pause"></i> {% trans "Not Started" %}
+                </span>
+              {% endif %}
+            </td>
+
+            <td class="px-4 py-3">
+              <div class="flex justify-center gap-2">
+                <a href="{% url 'installation_report_detail' installation.id %}"
+                   class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-indigo-600 text-white text-xs hover:bg-indigo-700">
+                  <i class="fas fa-eye"></i> {% trans "View" %}
+                </a>
+
+                {% if not installation.order.subscription or installation.order.subscription.status != 'active' %}
+                <form method="post" action="{% url 'start_billing' installation.id %}"
+                      onsubmit="return confirm('{% trans 'Activate billing for this installation?' %}');">
+                  {% csrf_token %}
+                  <button type="submit"
+                          class="inline-flex items-center gap-2 px-3 py-1.5 rounded bg-emerald-600 text-white text-xs hover:bg-emerald-700">
+                    <i class="fas fa-file-invoice-dollar"></i> {% trans "Start Billing" %}
+                  </button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr>
+            <td colspan="9" class="px-4 py-12 text-center text-slate-500">
+              <i class="fas fa-inbox text-4xl mb-3 text-slate-300"></i>
+              <p class="text-lg">{% trans "No completed installations" %}</p>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-sm">
+      <div class="text-slate-600">
+        {% trans "Page" %} {{ page_obj.number }} {% trans "of" %} {{ page_obj.paginator.num_pages }}
+      </div>
+      <div class="flex gap-2">
+        {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}{% if selected_technician %}&technician={{ selected_technician }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+           class="px-3 py-1.5 rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50">
+          <i class="fas fa-chevron-left"></i> {% trans "Previous" %}
+        </a>
+        {% endif %}
+        {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}{% if selected_technician %}&technician={{ selected_technician }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}"
+           class="px-3 py-1.5 rounded bg-white border border-slate-300 text-slate-700 hover:bg-slate-50">
+          {% trans "Next" %} <i class="fas fa-chevron-right"></i>
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    {% endif %}
+  </section>
+</div>
+
+<script>
+// date inputs: prevent future dates & basic validation
+document.addEventListener('DOMContentLoaded', function(){
+  const dateFrom = document.getElementById('date_from');
+  const dateTo   = document.getElementById('date_to');
+  const today = new Date().toISOString().split('T')[0];
+  if (dateFrom) dateFrom.max = today;
+  if (dateTo)   dateTo.max   = today;
+
+  function validate() {
+    const f = dateFrom?.value, t = dateTo?.value;
+    const btn = document.querySelector('section form button[type="submit"]');
+    const errCls = ['border-rose-500','focus:ring-rose-500','focus:border-rose-500'];
+    [dateFrom,dateTo].forEach(i=> i?.classList.remove(...errCls));
+    document.querySelectorAll('.date-error').forEach(el=>el.remove());
+    let bad = false;
+
+    if (f && t && t < f) {
+      bad = true;
+      dateTo.classList.add(...errCls);
+      const m = document.createElement('div');
+      m.className = 'date-error text-rose-600 text-xs mt-1';
+      m.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>{% trans "End date must be after start date" %}';
+      dateTo.parentNode.appendChild(m);
+    }
+    if (f && f > today) { bad = true; dateFrom.classList.add(...errCls); }
+    if (t && t > today) { bad = true; dateTo.classList.add(...errCls); }
+    if (btn) { btn.disabled = bad; btn.classList.toggle('opacity-50', bad); btn.classList.toggle('cursor-not-allowed', bad); }
+  }
+  dateFrom?.addEventListener('change', validate);
+  dateTo?.addEventListener('change', validate);
+  validate();
+});
+</script>
+{% endblock %}

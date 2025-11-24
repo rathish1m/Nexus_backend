@@ -1,0 +1,86 @@
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+<!-- Create Subscription Plan Modal -->
+<div id="planModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center px-4">
+    <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+        <button onclick="closeModal('planModal')"
+                class="absolute top-3 right-4 text-gray-500 hover:text-gray-700 text-xl">&times;
+        </button>
+
+        <h2 class="text-xl font-semibold text-gray-800 mb-4">{% trans "Create Subscription Plan" %}</h2>
+
+        <form id="subscription_plan_form" method="POST" class="space-y-4">
+            {% csrf_token %}
+
+            <div>
+                <label for="plan_name" class="block text-sm font-medium text-gray-700">{% trans "Plan Name" %}</label>
+                <input type="text" name="name" id="plan_name" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+            <div>
+                <label for="planDescription"
+                       class="block text-sm font-medium text-gray-700">{% trans "Description" %}</label>
+                <textarea name="description" id="planDescription" rows="3"
+                          class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm"></textarea>
+            </div>
+
+            <div>
+                <label for="standard_data_gb" class="block text-sm font-medium text-gray-700">{% trans "Data Cap in GB" %}</label>
+                <input type="text" name="standard_data_gb" id="standard_data_gb" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+            <div>
+                <label for="price_usd"
+                       class="block text-sm font-medium text-gray-700">{% trans "Monthly Price (USD)" %}</label>
+                <input type="number" name="price_usd" step="0.01" id="planPrice" required
+                       class="w-full border border-gray-300 px-3 py-2 rounded focus:outline-none focus:ring focus:border-blue-500 text-sm">
+            </div>
+
+
+            <div class="flex justify-end">
+                <button type="submit"
+                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium">
+                    {% trans "Save Plan" %}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById("subscription_plan_form").addEventListener("submit", function (e) {
+        e.preventDefault();
+
+        const form = e.target;
+        const formData = new FormData(form);
+        const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+        fetch("{% url 'create_subscription_plan' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": csrfToken,
+                "X-Requested-With": "XMLHttpRequest"
+            },
+            body: formData
+        })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert("✅ Plan created successfully!");
+                    closeModal('planModal');
+                    fetchSubscriptionPlans();
+                    form.reset();
+                    {#location.reload();#}
+                } else {
+                    alert("❌ " + (data.message || "Something went wrong"));
+                }
+            })
+            .catch(error => {
+                console.error("Error submitting plan:", error);
+                alert("⚠️ Error submitting form.");
+            });
+    });
+</script>

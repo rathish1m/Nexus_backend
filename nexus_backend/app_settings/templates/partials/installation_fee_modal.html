@@ -1,0 +1,153 @@
+{% load static i18n %}
+
+<!-- Installation Fee Modal -->
+<div id="installationFeeModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center px-4">
+  <div class="bg-white rounded-lg shadow-lg max-w-md w-full p-6 relative">
+    <button onclick="closeInstallationFeeModal()" class="absolute top-2 right-3 text-gray-600 hover:text-black text-xl">&times;</button>
+    <h2 id="installationFeeModalTitle" class="text-lg font-bold text-gray-800 mb-4">{% trans "Add Installation Fee" %}</h2>
+
+    <form id="installationFeeForm">
+      <input type="hidden" name="fee_id" id="edit_fee_id">
+
+      <div class="mb-4">
+        <label for="fee_region" class="block text-sm font-medium mb-1">{% trans "Region" %}</label>
+        <select name="region" id="fee_region" class="w-full px-3 py-2 border rounded text-sm" required>
+          <option value="" disabled selected>{% trans "Select a region" %}</option>
+          <!-- Options will be loaded dynamically -->
+        </select>
+      </div>
+
+      <div class="mb-4">
+        <label for="fee_amount" class="block text-sm font-medium mb-1">{% trans "Amount (USD)" %}</label>
+        <input type="number" name="amount_usd" id="fee_amount" step="0.01" min="0" class="w-full px-3 py-2 border rounded text-sm" required placeholder="0.00">
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeInstallationFeeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded">{% trans "Cancel" %}</button>
+        <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded">{% trans "Save" %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Load region choices for the dropdown
+  function loadInstallationFeeRegionChoices() {
+    return fetch("{% url 'installation_fee_choices' %}", {
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success && data.choices) {
+        const select = document.getElementById('fee_region');
+        // Clear existing options except the first one
+        select.innerHTML = '<option value="" disabled selected>{% trans "Select a region" %}</option>';
+
+        // Add new options
+        data.choices.forEach(choice => {
+          const option = document.createElement('option');
+          option.value = choice.value;
+          option.textContent = choice.label;
+          select.appendChild(option);
+        });
+      }
+      return data;
+    })
+    .catch(error => {
+      console.error('Error loading region choices:', error);
+      throw error;
+    });
+  }
+
+  // Installation Fee Modal Functions
+  function openInstallationFeeModal() {
+    document.getElementById('installationFeeModal').classList.remove('hidden');
+    document.getElementById('installationFeeModalTitle').textContent = '{% trans "Add Installation Fee" %}';
+    document.getElementById('installationFeeForm').reset();
+    document.getElementById('edit_fee_id').value = '';
+
+    // Load region choices when opening the modal
+    loadInstallationFeeRegionChoices();
+  }
+
+  function closeInstallationFeeModal() {
+    document.getElementById('installationFeeModal').classList.add('hidden');
+    document.getElementById('installationFeeForm').reset();
+    document.getElementById('edit_fee_id').value = '';
+  }
+
+  // Handle form submission
+  document.getElementById('installationFeeForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const form = e.target;
+    const formData = new FormData(form);
+    const feeId = formData.get('fee_id');
+    const region = formData.get('region').trim();
+    const amount = parseFloat(formData.get('amount_usd'));
+
+    // Validation
+    if (!region) {
+      alert('{% trans "Please enter a region name." %}');
+      return;
+    }
+
+    if (isNaN(amount) || amount < 0) {
+      alert('{% trans "Please enter a valid positive amount." %}');
+      return;
+    }
+
+    // Determine if editing or creating
+    const isEditing = feeId && feeId !== '';
+    const url = isEditing ? `/settings/installation_fee/${feeId}/` : "{% url 'installation_fee_add' %}";
+    const method = isEditing ? 'PUT' : 'POST';
+
+    // Submit form
+    fetch(url, {
+      method: method,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCookie('csrftoken'),
+        'X-Requested-With': 'XMLHttpRequest'
+      },
+      body: JSON.stringify({
+        region: region,
+        amount_usd: amount
+      })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        const message = isEditing ? '{% trans "Installation fee updated successfully!" %}' : '{% trans "Installation fee added successfully!" %}';
+        alert(message);
+        closeInstallationFeeModal();
+        loadInstallationFees(); // Refresh the list
+      } else {
+        alert('{% trans "Failed to save installation fee:" %} ' + (data.message || 'Unknown error'));
+      }
+    })
+    .catch(error => {
+      console.error('Error saving installation fee:', error);
+      alert('{% trans "Error saving installation fee:" %} ' + error.message);
+    });
+  });
+
+  // Function to edit an installation fee (called from the table)
+  function openEditInstallationFeeModal(id, region, amount) {
+    document.getElementById('installationFeeModal').classList.remove('hidden');
+    document.getElementById('installationFeeModalTitle').textContent = '{% trans "Edit Installation Fee" %}';
+
+    document.getElementById('edit_fee_id').value = id;
+
+    // Load region choices first, then set the values
+    loadInstallationFeeRegionChoices().then(() => {
+      document.getElementById('fee_region').value = region;
+      document.getElementById('fee_amount').value = amount;
+    });
+  }
+</script>

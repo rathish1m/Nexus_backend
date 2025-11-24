@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Customer Ledger · Grand livre client</title>
+  <style>
+    @page { size: A4; margin: 16pt; }
+    body { font-family: "Inter","Segoe UI",Arial,Helvetica,sans-serif; font-size: 10.5px; color:#111; }
+    .hdr { border-bottom: 2px solid #2563eb; padding-bottom: 6pt; margin-bottom: 8pt; }
+    .co h1 { margin:0 0 2pt 0; font-size: 14px; color:#0f172a; }
+    .co p { margin:0; color:#555; font-size:9.5px; }
+    .title { text-align:right; color:#2563eb; font-weight:700; font-size:16px; }
+    .meta { text-align:right; color:#666; font-size:9px; }
+    table { width:100%; border-spacing:0; }
+    th { background:#2563eb; color:#fff; text-align:left; padding:4pt; font-size:9.5px; }
+    td { border-bottom:1px solid #e5e7eb; padding:4pt; font-size:10px; }
+    .ta-r{ text-align:right; }
+    .muted{ color:#666; }
+    .note { font-size:9px; color:#666; margin-top:6pt; }
+    .summary { margin-top:8pt; border:1px solid #e5e7eb; }
+    .summary td { padding:4pt; font-size:10px; }
+  </style>
+</head>
+<body>
+  <div class="hdr">
+    <table>
+      <tr>
+        <td style="width:60%;">
+          <div class="co">
+            <h1>{{ company.trade_name|default:company.legal_name|default:"COMPANY" }}</h1>
+            <p>
+              {{ company.street_address }}{% if company.city %}, {{ company.city }}{% endif %}
+              {% if company.province %}, {{ company.province }}{% endif %}
+              {% if company.country %}, {{ company.country }}{% endif %}
+            </p>
+            <p>
+              {% if company.email %}Email: {{ company.email }}{% endif %}
+              {% if company.phone %} · Tel: {{ company.phone }}{% endif %}
+              {% if company.website %} · {{ company.website }}{% endif %}
+            </p>
+          </div>
+        </td>
+        <td style="width:40%; text-align:right;">
+          <div class="title">Customer Ledger · Grand livre client</div>
+          <div class="meta">
+            {% if filters.from or filters.to %}
+              Period · Période: {{ filters.from|default:"—" }} → {{ filters.to|default:"—" }}
+            {% else %}
+              All dates · Toutes les dates
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Type · Type</th>
+        <th>Description · Description</th>
+        <th class="ta-r">Debit (USD) · Débit (USD)</th>
+        <th class="ta-r">Credit (USD) · Crédit (USD)</th>
+        <th class="ta-r">Balance (USD) · Solde (USD)</th>
+        {% if filters.include_cdf %}
+        <th class="ta-r">Amount (CDF) · Montant (CDF)</th>
+        <th class="ta-r">Balance (CDF) · Solde (CDF)</th>
+        {% endif %}
+        <th>Order Ref · Réf. commande</th>
+        <th>Subscription ID</th>
+        <th>Payment Ref</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>{{ filters.from|default:"" }}</td>
+        <td>Opening Balance · Solde d'ouverture</td>
+        <td></td>
+        <td class="ta-r"></td>
+        <td class="ta-r"></td>
+        <td class="ta-r">${{ opening_balance|floatformat:2 }}</td>
+        {% if filters.include_cdf %}
+        <td class="ta-r"></td>
+        <td class="ta-r"></td>
+        {% endif %}
+        <td></td>
+        <td></td>
+        <td></td>
+      </tr>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.date }}</td>
+        <td>{{ r.type }}</td>
+        <td>{{ r.description }}</td>
+        <td class="ta-r">{% if r.debit_usd %}${{ r.debit_usd|floatformat:2 }}{% endif %}</td>
+        <td class="ta-r">{% if r.credit_usd %}${{ r.credit_usd|floatformat:2 }}{% endif %}</td>
+        <td class="ta-r">${{ r.balance_usd|floatformat:2 }}</td>
+        {% if filters.include_cdf %}
+        <td class="ta-r">{% if r.amount_cdf %}CDF {{ r.amount_cdf|floatformat:2 }}{% endif %}</td>
+        <td class="ta-r">{% if r.balance_cdf %}CDF {{ r.balance_cdf|floatformat:2 }}{% endif %}</td>
+        {% endif %}
+        <td>{{ r.order_ref }}</td>
+        <td>{{ r.subscription_id }}</td>
+        <td>{{ r.payment_id }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="11" class="muted">No entries · Aucune écriture</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p class="note">
+    Amounts in USD. If CDF is shown, per‑row values use the official daily rate applicable on the entry date. ·
+    Montants en USD. Si le CDF est affiché, les valeurs par ligne utilisent le taux officiel du jour de l'écriture.
+  </p>
+
+  <table class="summary">
+    <tr>
+      <td><strong>Notes</strong></td>
+      <td class="muted">Generated on {% now "Y-m-d H:i" %}</td>
+    </tr>
+  </table>
+</body>
+</html>

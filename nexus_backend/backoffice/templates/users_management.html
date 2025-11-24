@@ -1,0 +1,333 @@
+{% extends 'backoffice/../../templates/user/users_management.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+<h2 class="text-2xl font-bold text-gray-800 mb-6">Users Management</h2>
+
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+  <div class="bg-white shadow rounded p-4 border hover:border-yellow-500">
+    <h2 class="text-sm text-gray-500">{% trans "Active Users" %}</h2>
+    <p class="text-xl font-semibold text-yellow-500 mt-2">{{ assigned_order_count }}</p>
+  </div>
+  <div class="bg-white shadow rounded p-4 border hover:border-green-500">
+    <h2 class="text-sm text-gray-500">{% trans "Non Active Users" %}</h2>
+    <p class="text-xl font-semibold text-green-600 mt-2">{{ dispatched_order }}</p>
+  </div>
+  <div class="bg-white shadow rounded p-4 border hover:border-red-500">
+    <h2 class="text-sm text-gray-500">{% trans "Total Users" %}</h2>
+    <p class="text-xl font-semibold text-red-500 mt-2">{{ total_dispatched }}</p>
+  </div>
+</div>
+
+<!-- Filters -->
+<div class="flex flex-wrap items-center gap-4 mb-4 mt-10">
+  <input type="text" id="searchInput" placeholder="Search by name or email..." class="flex-1 border px-3 py-2 rounded-lg shadow-sm text-sm focus:ring-2 focus:ring-blue-500" />
+  <select id="regionFilter" class="border px-3 py-2 rounded-lg shadow-sm text-sm">
+    <option value="">All Regions</option>
+    <option value="Lubumbashi">Lubumbashi</option>
+    <option value="Kinshasa">Kinshasa</option>
+    <option value="Other">Other</option>
+  </select>
+  <input type="date" id="startDate" class="border px-3 py-2 rounded-lg text-sm" />
+  <input type="date" id="endDate" class="border px-3 py-2 rounded-lg text-sm" />
+</div>
+
+<!-- User Table Section -->
+<div class="w-full px-6 py-6">
+  <div class="flex justify-between items-center mb-4">
+    <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
+    <button onclick="openUserModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow">
+      + Add User
+    </button>
+  </div>
+
+  <div class="bg-white rounded-2xl shadow-lg p-6 w-full border border-gray-200">
+    <div class="overflow-x-auto">
+      <table class="w-full table-auto text-sm text-left">
+        <thead class="bg-gray-100 text-gray-700 uppercase text-xs rounded-t-xl">
+          <tr>
+            <th class="px-4 py-3">#</th>
+            <th class="px-4 py-3">Full Name</th>
+            <th class="px-4 py-3">Email</th>
+            <th class="px-4 py-3">Phone</th>
+            <th class="px-4 py-3">Region</th>
+            <th class="px-4 py-3">Roles</th>
+            <th class="px-4 py-3">Last Login</th>
+            <th class="px-4 py-3">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="usersTableBody" class="divide-y divide-gray-100">
+          <!-- JS will populate this -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div id="userModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-white rounded-2xl shadow-lg p-6 w-full max-w-2xl">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">Add Staff</h2>
+
+    <form id="userForm">
+      {% csrf_token %}
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+          <input type="text" name="full_name" required placeholder="Enter full name" class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+          <input type="email" name="email" required placeholder="example@example.com" class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+          <input type="text" name="phone" placeholder="+243..." class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Region</label>
+          <select name="region_id" required class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+            <option value="">Select Region</option>
+            {% for region in regions %}
+              <option value="{{ region.id }}">{{ region.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-sm font-medium text-gray-700 mb-1">Assign Roles</label>
+          <select name="roles" multiple class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+            {% for group in roles %}
+              <option value="{{ group.id }}">{{ group.name }}</option>
+            {% endfor %}
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Hold Ctrl (Windows) or Cmd (Mac) to select multiple roles.</p>
+        </div>
+
+        <div class="md:col-span-2 flex justify-end">
+          <button type="button" onclick="generatePassword()" class="text-sm text-blue-600 hover:underline">Generate Strong Password</button>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+          <input type="password" name="password" required placeholder="Create password" class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+          <input type="password" name="confirm_password" required placeholder="Repeat password" class="w-full border px-4 py-2 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-3 mt-8">
+        <button type="button" onclick="closeUserModal()" class="bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded">Cancel</button>
+        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded">Create User</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- JavaScript Logic -->
+<script>
+function closeUserModal() {
+  document.getElementById("userModal").classList.add("hidden");
+}
+
+function generatePassword(length = 12) {
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#&*!";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * charset.length);
+    password += charset[randomIndex];
+  }
+
+  document.querySelector('input[name="password"]').value = password;
+  document.querySelector('input[name="confirm_password"]').value = password;
+
+  alert("Password generated and filled.");
+}
+
+async function openUserModal() {
+  document.getElementById("userModal").classList.remove("hidden");
+
+  const roleSelect = document.querySelector('select[name="roles"]');
+  const regionSelect = document.querySelector('select[name="region_id"]');
+
+  roleSelect.innerHTML = "";
+  regionSelect.innerHTML = '<option value="">Select Region</option>';
+
+  try {
+    const response = await fetch("{% url 'get_roles_region' %}");
+    const data = await response.json();
+
+    data.roles.forEach(role => {
+      const option = document.createElement("option");
+      option.value = role.value;
+      option.textContent = role.label;
+      roleSelect.appendChild(option);
+    });
+
+    data.regions.forEach(region => {
+      const option = document.createElement("option");
+      option.value = region.value;
+      option.textContent = region.label;
+      regionSelect.appendChild(option);
+    });
+
+  } catch (error) {
+    alert("Failed to load roles and regions.");
+  }
+}
+
+document.getElementById("userForm").addEventListener("submit", async function (e) {
+  e.preventDefault();
+
+  const form = e.target;
+  const password = form.password.value;
+  const confirmPassword = form.confirm_password.value;
+
+  if (password !== confirmPassword) {
+    alert("Passwords do not match.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("full_name", form.full_name.value);
+  formData.append("email", form.email.value);
+  formData.append("phone", form.phone.value);
+  formData.append("region_id", form.region_id.value);
+  formData.append("password", password);
+  formData.append("confirm_password", confirmPassword);
+
+  const selectedRoles = Array.from(form.roles.selectedOptions).map(opt => opt.value);
+  selectedRoles.forEach(role => formData.append("roles", role));
+
+  const response = await fetch("{% url 'staff_creation' %}", {
+    method: "POST",
+    headers: { "X-CSRFToken": "{{ csrf_token }}" },
+    body: formData
+  });
+
+  const result = await response.json();
+  if (result.success) {
+    alert("User created successfully.");
+    closeUserModal();
+    location.reload();
+  } else {
+    alert(result.error || "Failed to create user.");
+  }
+});
+
+async function loadUsers() {
+  const tbody = document.querySelector("tbody");
+  tbody.innerHTML = "";
+
+  try {
+    const response = await fetch("{% url 'get_users_data' %}");
+    if (!response.ok) throw new Error("Failed to load users");
+
+    const data = await response.json();
+
+    data.users.forEach((user, index) => {
+      const rolesDisplay = Array.isArray(user.roles)
+        ? user.roles.join(', ')
+        : typeof user.roles === 'string'
+          ? user.roles
+          : '';
+
+      const regionDisplay = user.region || '';
+      const phoneDisplay = user.phone || '';
+      const lastLoginDisplay = user.last_login || '';
+      const actionLabel = user.is_active ? 'Deactivate' : 'Activate';
+      const actionClass = user.is_active
+        ? 'bg-red-500 hover:bg-red-600'
+        : 'bg-green-500 hover:bg-green-600';
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td class="px-4 py-2">${index + 1}</td>
+        <td class="px-4 py-2">${user.full_name}</td>
+        <td class="px-4 py-2">${user.email}</td>
+        <td class="px-4 py-2">${phoneDisplay}</td>
+        <td class="px-4 py-2">${regionDisplay}</td>
+        <td class="px-4 py-2">${rolesDisplay}</td>
+        <td class="px-4 py-2">${lastLoginDisplay}</td>
+        <td class="px-4 py-2 space-x-2">
+          <button onclick="openEditUserModal('${user.email}')" class="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded text-xs">Edit</button>
+          <button onclick="resetPassword('${user.email}')" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-xs">Reset Password</button>
+          <button onclick="toggleUserStatus('${user.email}', ${user.is_active})" class="${actionClass} text-white px-2 py-1 rounded text-xs">${actionLabel}</button>
+        </td>
+      `;
+      tbody.appendChild(row);
+    });
+  } catch (error) {
+    console.error("Error loading users:", error);
+    alert("Failed to load users");
+  }
+}
+
+// Toggle user active status
+function toggleUserStatus(email, isActive) {
+  const action = isActive ? "deactivate" : "activate";
+  if (!confirm(`Are you sure you want to ${action} this user?`)) return;
+
+  fetch(`/api/users/${email}/toggle-status/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRFToken": "{{ csrf_token }}"
+    },
+    body: JSON.stringify({ email })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert(`User ${action}d successfully.`);
+        loadUsers();
+      } else {
+        alert("Error: " + (data.error || "Unknown error"));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Something went wrong.");
+    });
+}
+
+function openEditUserModal(email) {
+  alert("Open edit modal for " + email);
+}
+
+function resetPassword(email) {
+  if (confirm(`Reset password for ${email}?`)) {
+    fetch("{% url 'reset_user_password' %}", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": "{{ csrf_token }}"
+      },
+      body: JSON.stringify({ email })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        alert("Password reset successfully. New password: " + data.new_password);
+      } else {
+        alert("Failed: " + (data.error || "Unknown error"));
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Something went wrong.");
+    });
+  }
+}
+
+window.addEventListener("DOMContentLoaded", loadUsers);
+</script>
+{% endblock %}

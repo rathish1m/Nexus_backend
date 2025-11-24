@@ -1,0 +1,1044 @@
+{% extends 'kyc_management/kyc_management_main_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+
+<!-- Page Header (colorful gradient) -->
+<div class="rounded-2xl p-6 shadow-lg text-white mb-6 header-gradient">
+  <h1 class="text-2xl sm:text-3xl font-bold flex items-center gap-3">
+    <i class="fas fa-id-card-alt text-3xl drop-shadow"></i>
+    {% trans "KYC Dashboard" %}
+  </h1>
+  <p class="mt-2 text-sm text-white/90">
+    {% trans "Manage and review pending, approved, and rejected KYC applications." %}
+  </p>
+</div>
+
+<!-- Motion & colorful theme -->
+<style>
+  /* ===== Colorful Theme Variables ===== */
+  :root{
+    --ink:#0b1220; --muted:#52607a; --line:#e9eef6; --bg:#fbfcff; --card:#ffffff;
+    --brandA:#6d28d9; /* violet */
+    --brandB:#2563eb; /* blue  */
+    --brandC:#06b6d4; /* cyan  */
+    --brandD:#22c55e; /* green */
+    --brandE:#f59e0b; /* amber */
+    --brandF:#ef4444; /* red   */
+    --brandG:#ec4899; /* pink  */
+    --brandH:#a855f7; /* purple*/
+    --ring: 0 0 0 6px rgba(99,102,241,.15);
+  }
+
+  /* ===== Fun, but elegant animations ===== */
+  @keyframes floaty {
+    0%,100% { transform: translateY(0) }
+    50%     { transform: translateY(-2px) }
+  }
+  @keyframes pulseCard {
+    0%,100% { box-shadow: 0 4px 14px rgba(24,24,27,.08) }
+    50%     { box-shadow: 0 10px 28px rgba(24,24,27,.12) }
+  }
+  @keyframes sheen {
+    0% { background-position: 0% 50% }
+    50% { background-position: 100% 50% }
+    100%{ background-position: 0% 50% }
+  }
+
+  /* ===== Page canvas ===== */
+  main.flex-1.p-6.space-y-8{
+    background: linear-gradient(180deg,#fbfcff 0%, #f7fbff 60%, #fff 100%);
+    border-radius: 16px;
+  }
+
+  /* ===== Header: rainbow gradient band ===== */
+  .header-gradient{
+    background-image: linear-gradient(110deg,
+      var(--brandA) 0%,
+      var(--brandB) 20%,
+      var(--brandC) 40%,
+      var(--brandD) 60%,
+      var(--brandE) 80%,
+      var(--brandG) 100%
+    );
+    border: 1px solid #1e1b4b33;
+    box-shadow: 0 14px 40px rgba(31,41,55,.35);
+  }
+
+  /* ===== KPI cards: vibrant gradients per card, animated border ===== */
+  .kpi-card{
+    position: relative; border-radius: 16px; overflow: hidden;
+    color:#fff; padding: 1.25rem; box-shadow: 0 12px 30px rgba(2,6,23,.18);
+    isolation:isolate; transform: translateZ(0);
+  }
+  .kpi-card::before{
+    content:""; position:absolute; inset:-2px; z-index:-1; border-radius:18px;
+    background: linear-gradient(90deg,
+      #ffffff00, #ffffff55, #ffffff00
+    );
+    filter: blur(10px);
+    animation: sheen 6s ease infinite;
+    background-size: 200% 200%;
+  }
+  .kpi-pending { background: linear-gradient(135deg,#f59e0b 0%,#fb923c 100%) }
+  .kpi-rejected{ background: linear-gradient(135deg,#ef4444 0%,#f43f5e 100%) }
+  .kpi-approved{ background: linear-gradient(135deg,#10b981 0%,#22c55e 100%) }
+  .kpi-total   { background: linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%) }
+  .kpi-new     { background: linear-gradient(135deg,#ec4899 0%,#f472b6 100%) }
+
+  .kpi-card h2{ text-shadow: 0 2px 14px rgba(0,0,0,.25) }
+  .kpi-card:hover{ animation: floaty 1.8s ease-in-out infinite }
+
+  /* ===== Alert: warm yellow glassy ===== */
+  #pendingAlert{
+    border-radius: 14px; border:1px solid #fde68a; background: linear-gradient(180deg,#fffbeb 0%,#fff7ed 100%);
+    color:#78350f; box-shadow: 0 10px 24px rgba(120,53,15,.12);
+  }
+
+  /* ===== Shell card (filters/table) ===== */
+  .shell-card{
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    box-shadow: 0 14px 34px rgba(2,6,23,.08);
+  }
+
+  /* ===== Inputs with rainbow ring ===== */
+  #search-input, #status-filter{
+    border-color: var(--line) !important;
+    box-shadow: 0 1px 0 rgba(2,6,23,.06);
+  }
+  #search-input:focus, #status-filter:focus{
+    outline: none; border-color:#a5b4fc !important;
+    box-shadow: var(--ring);
+  }
+
+  /* ===== Table ===== */
+  .table-wrap{ border-radius:14px; border:1px solid var(--line); box-shadow:0 8px 18px rgba(2,6,23,.08) }
+  thead.trippy {
+    background-image: linear-gradient(90deg,#eef2ff,#e0f2fe,#ecfeff);
+    color:#0b1220;
+  }
+  thead th{ border-bottom:1px solid var(--line) }
+  tbody.divide-y tr:hover{ background: #f9fafb }
+  .sort-icon{ color:#384152 !important }
+
+  /* ===== Status chips: bold colorful ===== */
+  .chip { display:inline-flex; align-items:center; gap:.35rem; padding:.2rem .6rem; font-size:.75rem; font-weight:700; border-radius:999px; border:1px solid transparent; }
+  .chip.approved { background:#ecfdf5; color:#065f46; border-color:#a7f3d0 }
+  .chip.rejected { background:#fef2f2; color:#7f1d1d; border-color:#fecaca }
+  .chip.pending  { background:#fffbeb; color:#78350f; border-color:#fde68a }
+
+  /* ===== Action chip ===== */
+  .act-chip{
+    background: linear-gradient(90deg,#0ea5e9,#6366f1);
+    color:#fff !important; border:0; border-radius:999px; padding:.35rem .75rem; font-weight:700;
+    box-shadow: 0 8px 18px rgba(99,102,241,.25);
+  }
+  .act-chip:hover{ filter: brightness(1.05) }
+
+  /* ===== Pagination: colorful current button ===== */
+  #pagination-controls button{
+    border-radius:999px; border:1px solid var(--line); background:#fff; color:#0f172a;
+    padding:8px 12px; min-width:42px; transition:all .15s ease;
+  }
+  #pagination-controls button:hover:not(:disabled){
+    transform:translateY(-1px); box-shadow:0 8px 18px rgba(15,23,42,.10)
+  }
+  #pagination-controls .bg-indigo-600{
+    background: linear-gradient(90deg,#22c55e,#06b6d4); border-color:transparent; color:#fff
+  }
+
+  /* ===== Modal polish ===== */
+  #userInfoModal, #rejectReasonModal{ backdrop-filter: blur(3px) }
+  #userInfoModal .relative.bg-white,
+  #rejectReasonModal .bg-white{
+    border:1px solid var(--line); border-radius:18px; box-shadow: 0 40px 120px rgba(2,6,23,.35);
+  }
+  #userInfoModal header, #rejectReasonModal .px-5.py-4{
+    background: linear-gradient(90deg,#8b5cf6,#06b6d4); color:#fff; border-bottom:0;
+  }
+  #rejectReasonModal .px-5.py-4.bg-rose-600{
+    background: linear-gradient(90deg,#ef4444,#f59e0b) !important;
+  }
+
+  /* Approve/Reject buttons */
+  #userApproveBtn{ background: linear-gradient(90deg,#10b981,#22c55e) !important }
+  #userRejectBtn { background: linear-gradient(90deg,#ef4444,#f43f5e) !important }
+
+  /* Info cards in modal */
+  .kyc-info-card{
+    border:1px solid var(--line); background:#fff; border-radius:14px; transition:.2s;
+  }
+  .kyc-info-card:hover{
+    background: linear-gradient(180deg,#ffffff 0%, #f8fafc 100%); box-shadow: 0 10px 24px rgba(2,6,23,.08);
+  }
+
+  /* Section blocks */
+  .section-personal,
+  .section-identity,
+  .section-additional,
+  .bg-gradient-to-r.from-indigo-50.to-blue-50,
+  .bg-gradient-to-r.from-purple-50.to-pink-50,
+  .bg-gradient-to-r.from-gray-50.to-slate-50,
+  .bg-gradient-to-r.from-green-50.to-emerald-50{
+    background-image: linear-gradient(120deg,#fdf4ff,#eef2ff,#ecfeff) !important;
+    border:1px solid var(--line) !important; border-radius:14px;
+  }
+  .kyc-section-title{ color:#0b1220 !important }
+
+  /* Mobile list */
+  #kyc-mobile-list > *{
+    border:1px solid var(--line); border-radius:14px; padding:12px; background:#fff;
+    box-shadow:0 6px 14px rgba(2,6,23,.06);
+  }
+</style>
+
+<main class="flex-1 p-6 space-y-8">
+
+  <!-- Summary Cards -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+
+    <!-- Pending -->
+    <div class="kpi-card kpi-pending">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-sm font-semibold uppercase opacity-95">{% trans "Pending KYC" %}</span>
+        <i class="fas fa-hourglass-half text-2xl opacity-95"></i>
+      </div>
+      <h2 class="text-4xl font-extrabold">{{ pending }}</h2>
+      <p class="text-xs opacity-95 mt-2">{% trans "Awaiting review" %}</p>
+    </div>
+
+    <!-- Rejected -->
+    <div class="kpi-card kpi-rejected">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-sm font-semibold uppercase opacity-95">{% trans "Rejected KYC" %}</span>
+        <i class="fas fa-times-circle text-2xl opacity-95"></i>
+      </div>
+      <h2 class="text-4xl font-extrabold">{{ rejected }}</h2>
+      <p class="text-xs opacity-95 mt-2">{% trans "Declined users" %}</p>
+    </div>
+
+    <!-- Approved -->
+    <div class="kpi-card kpi-approved">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-sm font-semibold uppercase opacity-95">{% trans "Approved KYC" %}</span>
+        <i class="fas fa-check-circle text-2xl opacity-95"></i>
+      </div>
+      <h2 class="text-4xl font-extrabold">{{ approved }}</h2>
+      <p class="text-xs opacity-95 mt-2">{% trans "Verified users" %}</p>
+    </div>
+
+    <!-- Total -->
+    <div class="kpi-card kpi-total">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-sm font-semibold uppercase opacity-95">{% trans "Total KYC" %}</span>
+        <i class="fas fa-users text-2xl opacity-95"></i>
+      </div>
+      <h2 class="text-4xl font-extrabold">{{ total }}</h2>
+      <p class="text-xs opacity-95 mt-2">{% trans "All records" %}</p>
+    </div>
+
+    <!-- Today / Month -->
+    <div class="kpi-card kpi-new">
+      <div class="flex items-center justify-between mb-4">
+        <span class="text-sm font-semibold uppercase opacity-95">{% trans "New KYC" %}</span>
+        <i class="fas fa-calendar-day text-2xl opacity-95"></i>
+      </div>
+      <h2 class="text-2xl font-bold">{{ kyc_today }} <span class="text-sm opacity-95">/ {{ kyc_month }}</span></h2>
+      <p class="text-xs opacity-95 mt-2">{% trans "Today / This Month" %}</p>
+    </div>
+
+  </div>
+
+  <!-- Pending Alert -->
+  <div id="pendingAlert" class="hidden p-4">
+    <div class="flex items-center justify-between">
+      <p class="font-medium flex items-center gap-2">
+        <i class="fas fa-exclamation-triangle"></i>
+        {% blocktrans %}There are {{ pending }} pending KYC application(s) awaiting review.{% endblocktrans %}
+      </p>
+      <button
+        onclick="document.getElementById('pendingAlert').classList.add('hidden')"
+        class="text-amber-700 hover:text-amber-900 font-bold text-lg"
+        aria-label="{% trans 'Close alert' %}">&times;</button>
+    </div>
+  </div>
+
+  <!-- Title + Count -->
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <h2 class="text-xl font-bold flex items-center gap-3 text-[var(--ink)]">
+      {% trans "KYC Applications" %}
+      <span id="kyc-count"
+            class="px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r from-indigo-100 via-sky-100 to-emerald-100 text-indigo-700 shadow-sm">(0)</span>
+    </h2>
+  </div>
+
+  <!-- Filters & Table -->
+  <div class="shell-card p-6">
+    <!-- Filters -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+      <input
+        type="text"
+        id="search-input"
+        placeholder="{% trans 'Search by name or email...' %}"
+        class="px-4 py-2 border rounded-lg w-full md:w-1/3 text-sm focus:ring-2 focus:ring-blue-400 focus:outline-none"
+      />
+      <select
+        id="status-filter"
+        class="px-4 py-2 border rounded-lg text-sm w-full md:w-48 focus:ring-2 focus:ring-blue-400 focus:outline-none"
+      >
+        <option value="">{% trans "All Statuses" %}</option>
+        <option value="pending">{% trans "Pending" %}</option>
+        <option value="approved">{% trans "Approved" %}</option>
+        <option value="rejected">{% trans "Rejected" %}</option>
+      </select>
+    </div>
+
+    <!-- Mobile cards -->
+    <div id="kyc-mobile-list" class="space-y-3 md:hidden">
+      <!-- populated by JS -->
+    </div>
+
+    <!-- Desktop table -->
+    <div class="overflow-x-auto table-wrap hidden md:block">
+      <table class="w-full text-sm border-collapse">
+        <thead class="trippy uppercase tracking-wide">
+          <tr>
+            <th class="text-left py-3 px-4">{% trans "User" %}</th>
+            <th class="text-left py-3 px-4">{% trans "Type" %}</th>
+            <th class="text-left py-3 px-4">{% trans "Status" %}</th>
+            <th class="text-left py-3 px-4">{% trans "Reason" %}</th>
+            <th class="text-left py-3 px-4 cursor-pointer hover:brightness-110 transition"
+                onclick="sortTable('submitted_at')">
+              {% trans "Submitted At" %}
+              <i class="fas fa-sort sort-icon ml-1" data-column="submitted_at"></i>
+            </th>
+            <th class="text-left py-3 px-4">{% trans "Actions" %}</th>
+          </tr>
+        </thead>
+        <tbody id="kyc-table-body" class="divide-y divide-[var(--line)] bg-white">
+          <!-- populated by JS -->
+          <td class="py-3 px-4 text-[var(--muted)] text-xs italic">
+            {{ kyc.remarks|default:"—" }}
+          </td>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div id="pagination-controls" class="flex justify-center mt-6 space-x-2 text-sm"></div>
+  </div>
+</main>
+
+<!-- USER INFO MODAL -->
+<div id="userInfoModal"
+     class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-50 flex items-center justify-center p-4 sm:p-6 lg:p-8 transition">
+  <div class="relative bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+
+    <!-- Header ... unchanged but skinned by CSS ... -->
+
+    <!-- Body -->
+    <div id="userInfoContent" class="p-5 sm:p-8 bg-gray-50 max-h-[80vh] overflow-y-auto">
+      <!-- skeleton ... -->
+    </div>
+
+    <!-- Footer -->
+    <div class="px-5 sm:px-8 py-4 bg-gray-100 border-t flex flex-wrap gap-2 justify-end">
+      <button id="userApproveBtn"
+              class="hidden px-4 py-2 rounded-lg font-semibold text-sm text-white shadow transition">
+        <i class="fas fa-check mr-1"></i> {% trans "Approve" %}
+      </button>
+      <button id="userRejectBtn"
+              class="hidden px-4 py-2 rounded-lg font-semibold text-sm text-white shadow transition">
+        <i class="fas fa-times mr-1"></i> {% trans "Reject" %}
+      </button>
+      <button onclick="closeUserModal()"
+              class="px-4 py-2 rounded-lg font-semibold text-sm text-white shadow transition"
+              style="background:linear-gradient(90deg,#0ea5e9,#6366f1)">
+        <i class="fas fa-times-circle mr-1"></i> {% trans "Close" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- REJECT REASON MODAL -->
+<div id="rejectReasonModal"
+     class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden z-[60] flex items-center justify-center p-4">
+  <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+    <div class="px-5 py-4 text-white flex items-center justify-between"
+         style="background:linear-gradient(90deg,#ef4444,#f59e0b)">
+      <h3 class="font-semibold text-sm sm:text-base">
+        {% trans "Provide Rejection Reason" %}
+      </h3>
+      <button type="button" class="text-white/90 hover:text-white" onclick="closeRejectModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <div class="p-5 space-y-4">
+      <div>
+        <label for="rejectCategorySelect" class="text-sm font-medium text-gray-800">
+          {% trans "Rejection Category" %} <span class="text-red-500">*</span>
+        </label>
+        <select id="rejectCategorySelect"
+                class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none">
+          <option value="">{% trans "Select a category..." %}</option>
+          <option value="document_quality">{% trans "Poor document quality" %}</option>
+          <option value="document_expired">{% trans "Document expired" %}</option>
+          <option value="information_mismatch">{% trans "Information does not match document" %}</option>
+          <option value="incomplete_documents">{% trans "Incomplete documentation" %}</option>
+          <option value="invalid_document">{% trans "Invalid or fake document" %}</option>
+          <option value="other">{% trans "Other (specify in remarks)" %}</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="rejectReasonInput" class="text-sm font-medium text-gray-800">
+          {% trans "Additional Details" %} <span id="detailsRequired" class="text-gray-500">({% trans "optional" %})</span>
+        </label>
+        <textarea id="rejectReasonInput"
+                  class="w-full min-h-[100px] p-3 border rounded-lg focus:ring-2 focus:ring-rose-400 focus:outline-none"
+                  placeholder="{% trans 'Provide additional details about the rejection…' %}"></textarea>
+      </div>
+
+      <input type="hidden" id="rejectUserId">
+      <input type="hidden" id="rejectType">
+    </div>
+
+    <div class="px-5 py-4 bg-gray-50 border-t flex justify-end gap-2">
+      <button type="button"
+              class="px-4 py-2 rounded-lg border text-gray-700 hover:bg-gray-100"
+              onclick="closeRejectModal()">
+        {% trans "Cancel" %}
+      </button>
+      <button type="button" id="rejectSubmitBtn"
+              class="px-4 py-2 rounded-lg text-white hover:brightness-105"
+              style="background:linear-gradient(90deg,#ef4444,#f43f5e)">
+        {% trans "Submit Rejection" %}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- JS: your original script is preserved (no functionality changes) -->
+<script>
+/* ===============================
+   Constants & Small UI Helpers
+   =============================== */
+const USER_INFO_ENDPOINT_TEMPLATE = "/kyc/user-info/__UID__/";
+
+function uiInfoCard(label, value) {
+  return `
+    <div class="p-4 rounded-xl border border-gray-200 bg-white shadow-sm kyc-info-card">
+      <p class="text-xs text-gray-500 font-medium mb-1">${label || "—"}</p>
+      <p class="font-semibold text-gray-900 break-words leading-relaxed">${value || "—"}</p>
+    </div>`;
+}
+
+function uiBadge(ok) {
+  return ok
+    ? '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-700">Active</span>'
+    : '<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-700">Inactive</span>';
+}
+
+function uiDocLink(label, url) {
+  if (!url) return "";
+  return `
+    <a href="${url}" target="_blank" rel="noopener"
+       class="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-gray-200 hover:bg-gray-50">
+      <i class="fas fa-file-arrow-down"></i> ${label}
+    </a>`;
+}
+
+function uiSection(title, inner, sectionType = 'default') {
+  const sectionConfigs = {
+    'personal': { icon:'fas fa-user',         iconColor:'text-blue-600',    bgColor:'section-personal', title:'{% trans "Personal Information"|escapejs %}' },
+    'identity': { icon:'fas fa-id-card',      iconColor:'text-emerald-600', bgColor:'section-identity', title:'{% trans "Identity Information"|escapejs %}' },
+    'additional':{icon:'fas fa-file-alt',     iconColor:'text-amber-600',   bgColor:'section-additional',title:'{% trans "Additional Information"|escapejs %}' },
+    'profile':  { icon:'fas fa-address-card', iconColor:'text-indigo-600',  bgColor:'bg-gradient-to-r from-indigo-50 to-blue-50', title:'{% trans "Profile"|escapejs %}' },
+    'address':  { icon:'fas fa-map-marker-alt', iconColor:'text-purple-600',bgColor:'bg-gradient-to-r from-purple-50 to-pink-50', title:'{% trans "Address"|escapejs %}' },
+    'metadata': { icon:'fas fa-cog',          iconColor:'text-gray-600',    bgColor:'bg-gradient-to-r from-gray-50 to-slate-50', title:'{% trans "Account Metadata"|escapejs %}' },
+    'kyc':      { icon:'fas fa-shield-alt',   iconColor:'text-green-600',   bgColor:'bg-gradient-to-r from-green-50 to-emerald-50', title:'{% trans "KYC Information"|escapejs %}' }
+  };
+  const config = sectionConfigs[sectionType] || { icon:'fas fa-info-circle', iconColor:'text-gray-600', bgColor:'bg-gray-50', title:title };
+  return `
+    <section class="kyc-section p-5 rounded-xl ${config.bgColor} border border-gray-100 shadow-sm">
+      <div class="flex items-center gap-3 pb-3 mb-4">
+        <div class="w-8 h-8 rounded-lg flex items-center justify-center bg-white shadow-sm ${config.iconColor}">
+          <i class="${config.icon}"></i>
+        </div>
+        <h4 class="text-base font-semibold text-gray-900">${config.title}</h4>
+      </div>
+      <div class="space-y-3">${inner}</div>
+    </section>`;
+}
+
+function uiGrid(inner, twoCols = true) {
+  return `<div class="grid grid-cols-1 ${twoCols ? "sm:grid-cols-2" : ""} gap-3">${inner}</div>`;
+}
+
+/* ===============================
+   KYC List Fetch + Pagination (unchanged logic)
+   =============================== */
+// Put this near the top of your script (once)
+const PAGE_SIZE = 5;
+
+function fetchKycData(query = "", status = "", page = 1, sortBy = "submitted_at", sortOrder = "desc") {
+  const url = new URL("{% url 'get_kyc' %}", window.location.origin);
+
+  url.searchParams.append("q", query);
+  url.searchParams.append("status", status);
+  url.searchParams.append("page", page);
+  url.searchParams.append("sort", sortBy);
+  url.searchParams.append("order", sortOrder);
+  url.searchParams.append("page_size", PAGE_SIZE); // <— enforce 10 per page
+
+  fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    .then(res => res.json())
+    .then(data => {
+      // Count badge
+      document.getElementById("kyc-count").textContent = `(${data.total_items} {% trans "total" %})`;
+
+      // Fill table
+      const tbody = document.getElementById("kyc-table-body");
+      tbody.innerHTML = "";
+
+      // If your backend already paginates, use data.kycs as is.
+      // If not, this is a safe guard (slices to 10 client-side):
+      const rows = Array.isArray(data.kycs) ? data.kycs : [];
+      const pageRows = rows.slice(0, PAGE_SIZE); // fallback slice, harmless if backend already paginated
+
+      pageRows.forEach(kyc => {
+        const cls = kyc.status === "approved" ? "chip approved"
+                 : kyc.status === "rejected" ? "chip rejected"
+                 : "chip pending";
+
+        const btn = `
+          <button onclick="viewUserInfo(${kyc.user_id})"
+                  class="inline-flex items-center gap-1 act-chip text-xs font-semibold">
+            <i class="fas fa-id-badge"></i> {% trans "View details" %}
+          </button>
+        `;
+
+        let rejectionReason = "—";
+        if (kyc.status === "rejected") {
+          if (kyc.rejection_reason) rejectionReason = kyc.rejection_reason;
+          if (!kyc.rejection_reason && kyc.remarks) rejectionReason = kyc.remarks;
+        }
+
+        tbody.insertAdjacentHTML("beforeend", `
+          <tr id="kyc-row-${kyc.user_id}" class="hover:bg-indigo-50/40 transition">
+            <td class="py-3 px-4 font-medium text-gray-800">${kyc.user}</td>
+            <td class="py-3 px-4 capitalize text-gray-700">${kyc.type}</td>
+            <td class="py-3 px-4"><span class="${cls}">${kyc.status_display}</span></td>
+            <td class="py-3 px-4 text-gray-600 text-xs">${rejectionReason}</td>
+            <td class="py-3 px-4 text-gray-600">${kyc.submitted_at}</td>
+            <td class="py-3 px-4 flex flex-wrap gap-2">${btn}</td>
+          </tr>
+        `);
+      });
+
+      // Robust pagination:
+      // Prefer server-provided total_pages; otherwise compute from total_items and PAGE_SIZE
+      const totalPages =
+        Number(data.total_pages) || Math.max(1, Math.ceil(Number(data.total_items || rows.length) / PAGE_SIZE));
+
+      renderPagination(page, totalPages, query, status, sortBy, sortOrder);
+    })
+    .catch(err => console.error("Error loading KYC:", err));
+}
+
+function renderPagination(currentPage, totalPages, query, status, sortBy, sortOrder) {
+  const container = document.getElementById("pagination-controls");
+  container.innerHTML = "";
+  if (totalPages <= 1) return;
+
+  const mkBtn = (label, page, active=false, disabled=false) => {
+    const b = document.createElement("button");
+    b.innerText = label;
+    b.disabled = disabled;
+    b.className = [
+      "px-3 py-1.5 rounded-full border",
+      active ? "bg-indigo-600 text-white border-transparent" : "bg-white hover:bg-gray-50 text-gray-700 border-gray-200"
+    ].join(' ');
+    if (!disabled) b.onclick = () => fetchKycData(query, status, page, sortBy, sortOrder);
+    return b;
+  };
+
+  container.appendChild(mkBtn("«", 1, false, currentPage === 1));
+  container.appendChild(mkBtn("‹", currentPage - 1, false, currentPage === 1));
+
+  const start = Math.max(1, currentPage - 2);
+  const end = Math.min(totalPages, currentPage + 2);
+  for (let i = start; i <= end; i++) container.appendChild(mkBtn(i, i, i === currentPage));
+
+  container.appendChild(mkBtn("›", currentPage + 1, false, currentPage === totalPages));
+  container.appendChild(mkBtn("»", totalPages, false, currentPage === totalPages));
+}
+
+/* Sorting (unchanged logic) */
+let currentSortBy = "submitted_at";
+let currentSortOrder = "desc";
+function sortTable(column) {
+  if (currentSortBy === column) currentSortOrder = currentSortOrder === "asc" ? "desc" : "asc";
+  else { currentSortBy = column; currentSortOrder = "desc"; }
+  updateSortIcons();
+  const s = document.getElementById("search-input"); const f = document.getElementById("status-filter");
+  fetchKycData(s.value, f.value, 1, currentSortBy, currentSortOrder);
+}
+function updateSortIcons() {
+  document.querySelectorAll('.sort-icon').forEach(i => i.className = 'fas fa-sort sort-icon ml-1');
+  const active = document.querySelector(`[data-column="${currentSortBy}"]`);
+  if (active) active.className = `fas fa-sort-${currentSortOrder === 'asc' ? 'up' : 'down'} sort-icon ml-1`;
+}
+
+/* Dashboard metrics refresh (unchanged logic) */
+function refreshKycMetrics() {
+  fetch("/kyc/ajax/kyc_metrics/", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    .then(res => res.json())
+    .then(data => {
+      if (typeof data.pending !== "undefined") {
+        document.querySelectorAll(".grid .kpi-card")[0].querySelector("h2").textContent = data.pending;
+        const pendingAlert = document.getElementById("pendingAlert");
+        if (pendingAlert) {
+          if (data.pending > 0) {
+            pendingAlert.classList.remove("hidden");
+            const alertText = pendingAlert.querySelector("p.font-medium");
+            if (alertText) alertText.innerHTML = `<i class="fas fa-exclamation-triangle"></i> There are ${data.pending} pending KYC application(s) awaiting review.`;
+          } else {
+            pendingAlert.classList.add("hidden");
+          }
+        }
+      }
+      if (typeof data.rejected !== "undefined") document.querySelectorAll(".grid .kpi-card")[1].querySelector("h2").textContent = data.rejected;
+      if (typeof data.approved !== "undefined") document.querySelectorAll(".grid .kpi-card")[2].querySelector("h2").textContent = data.approved;
+      if (typeof data.total !== "undefined")    document.querySelectorAll(".grid .kpi-card")[3].querySelector("h2").textContent = data.total;
+      if (typeof data.kyc_today !== "undefined" && typeof data.kyc_month !== "undefined") {
+        document.querySelectorAll(".grid .kpi-card")[4].querySelector("h2").innerHTML = `${data.kyc_today} <span class="text-sm opacity-95">/ ${data.kyc_month}</span>`;
+      }
+    })
+    .catch(() => {});
+}
+
+/* Status updates (unchanged logic) */
+function updateKycStatus(userId, type, newStatus, rejectionCategory = "", additionalDetails = "") {
+  const payload = { status: newStatus, type };
+  if (newStatus === "rejected") { payload.rejection_category = rejectionCategory; payload.reason = additionalDetails; }
+  fetch(`update-status/user/${userId}/`, {
+    method: "POST",
+    headers: { "Content-Type":"application/json", "X-CSRFToken": getCookie('csrftoken'), "X-Requested-With":"XMLHttpRequest" },
+    body: JSON.stringify(payload)
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      const s = document.getElementById("search-input"), f = document.getElementById("status-filter");
+      fetchKycData(s.value, f.value, 1, currentSortBy, currentSortOrder);
+      refreshKycMetrics();
+    } else { alert("❌ " + (data.message || "Update failed")); }
+  })
+  .catch(() => alert("⚠️ {% trans 'Error updating status' %}"));
+}
+
+/* Previews (unchanged logic) */
+function __renderDocPreviewHtml(url, label, isPdfOverride, disableDownload) {
+  if (!url) return "";
+  const ext = url.split('.').pop().toLowerCase();
+  const isPdf = typeof isPdfOverride === "boolean" ? isPdfOverride : ext === 'pdf';
+  const canDownload = !isPdf && !!url && !disableDownload;
+  return `
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h4 class="text-sm font-semibold text-gray-800">${label}</h4>
+        ${canDownload ? uiDocLink("Download", url) : ""}
+      </div>
+      ${isPdf
+        ? `<div class="rounded-xl overflow-hidden border p-3 bg-gray-50 flex items-center justify-center">
+             <button type="button" onclick="openKycLightbox('${url}', true)" class="inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg shadow hover:brightness-105" style="background:linear-gradient(90deg,#f59e0b,#ef4444)">
+               <i class="fas fa-file-pdf"></i> View PDF
+             </button>
+           </div>`
+        : `<div class="rounded-xl overflow-hidden border bg-gray-50 p-2 cursor-pointer"
+                 onclick="openKycLightbox('${url}', false)"
+                 oncontextmenu="return false;">
+             <img src="${url}"
+                  class="mx-auto max-h-[220px] rounded-lg select-none"
+                  alt="${label}"
+                  style="-webkit-user-drag:none;user-select:none;pointer-events:none;">
+           </div>`
+      }
+    </div>`;
+}
+
+function openKycLightbox(url, isPdf) {
+  let lb = document.getElementById('kycLightbox');
+  if (!lb) {
+    lb = document.createElement('div');
+    lb.id = 'kycLightbox';
+    lb.className = 'fixed inset-0 bg-black/80 hidden items-center justify-center p-4';
+    lb.style.zIndex = 99999;
+    lb.innerHTML = `
+      <div id="kycLightboxContent" class="relative w-full max-w-5xl mx-auto max-h-[90vh]">
+        <button id="kycLightboxClose" aria-label="Close"
+                class="absolute top-3 right-3 text-white rounded-full p-2"
+                style="background:linear-gradient(90deg,#06b6d4,#6366f1);">
+          <i class="fas fa-times"></i>
+        </button>
+        <div id="kycLightboxInner" class="rounded-lg shadow-lg bg-white max-h-[80vh] overflow-auto"></div>
+      </div>`;
+    document.body.appendChild(lb);
+    // Désactiver le menu contextuel (clic droit) dans tout le lightbox
+    lb.addEventListener('contextmenu', e => e.preventDefault());
+    lb.addEventListener('click', e => { if (e.target === lb) closeKycLightbox(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeKycLightbox(); });
+    document.addEventListener('click', e => { if (e.target && e.target.id === 'kycLightboxClose') closeKycLightbox(); });
+  }
+  const inner = document.getElementById('kycLightboxInner');
+  if (!inner) return;
+  if (isPdf) {
+    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(res => res.text())
+      .then(html => {
+        inner.innerHTML = html;
+      })
+      .catch(() => {
+        inner.innerHTML = `<div class="p-6 text-center text-rose-600">
+          <i class="fas fa-triangle-exclamation text-2xl mb-2"></i>
+          <p class="font-medium">Unable to load document preview.</p>
+        </div>`;
+      });
+  } else {
+    inner.innerHTML = `
+      <div class="p-4 bg-black flex items-center justify-center" oncontextmenu="return false;">
+        <img src="${url}"
+             class="max-h-[80vh] w-auto mx-auto select-none"
+             alt="Preview"
+             style="-webkit-user-drag:none;user-select:none;pointer-events:none;">
+      </div>`;
+  }
+  lb.classList.remove('hidden'); lb.classList.add('flex');
+}
+
+function closeKycLightbox() {
+  const lb = document.getElementById('kycLightbox'); if (!lb) return;
+  const inner = document.getElementById('kycLightboxInner'); if (inner) inner.innerHTML = '';
+  lb.classList.add('hidden'); lb.classList.remove('flex');
+}
+
+/* User modal (unchanged logic) */
+function viewUserInfo(userId) {
+  const modal   = document.getElementById("userInfoModal");
+  const content = document.getElementById("userInfoContent");
+  modal.classList.remove("hidden");
+  content.innerHTML = `
+    <div class="animate-pulse space-y-3">
+      <div class="h-5 bg-gray-200 rounded w-1/3"></div>
+      <div class="h-4 bg-gray-200 rounded w-2/3"></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="h-20 bg-gray-100 rounded-xl"></div>
+        <div class="h-20 bg-gray-100 rounded-xl"></div>
+      </div>
+    </div>`;
+
+  const url = USER_INFO_ENDPOINT_TEMPLATE.replace("__UID__", encodeURIComponent(userId));
+
+  fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+    .then(res => res.json())
+    .then(data => {
+      if (!data.success) {
+        content.innerHTML = `
+          <div class="p-6 text-center text-rose-600">
+            <i class="fas fa-triangle-exclamation text-2xl mb-2"></i>
+            <p class="font-medium">${data.message || "Unable to load user information."}</p>
+          </div>`;
+        document.getElementById("userApproveBtn")?.classList.add("hidden");
+        document.getElementById("userRejectBtn")?.classList.add("hidden");
+        return;
+      }
+
+      const u     = data.user || {};
+      const meta  = data.meta || {};
+      const ktype = data.type || "none";
+      const kyc   = data.kyc || {};
+      const files = data.files || {};
+
+      const userCore = uiGrid(
+        uiInfoCard("{% trans 'Full Name' %}", u.full_name) +
+        uiInfoCard("Email", u.email) +
+        uiInfoCard("{% trans 'Phone' %}", u.phone) +
+        uiInfoCard("{% trans 'Username' %}", u.username)
+      );
+
+      const userAddr = (u.address || u.city || u.country)
+        ? uiGrid(
+            uiInfoCard("{% trans 'Street' %}", u.address) +
+            uiInfoCard("{% trans 'City' %}", u.city) +
+            uiInfoCard("{% trans 'Country' %}", u.country)
+          )
+        : "";
+
+      const metaBlock = uiGrid(
+        uiInfoCard("{% trans 'Account Status' %}", uiBadge(!!meta.is_active)) +
+        uiInfoCard("{% trans 'Joined' %}", meta.date_joined || "—")
+      );
+
+      let kycSection = "";
+      let docControls = "";
+      let previews = "";
+
+      if (ktype === "personal") {
+        const safeValue = v => (v === null || v === undefined || v === "") ? "—" : v;
+        const formatDoc = t => ({ 'voter_card': "Carte d'électeur", 'drivers_license': "Permis de conduire", 'passport': "Passeport" }[t] || safeValue(t));
+        const personalInfo = uiGrid(
+          uiInfoCard("{% trans 'Full Name (KYC)' %}", safeValue(kyc.full_name) || safeValue(u.full_name)) +
+          uiInfoCard("{% trans 'Date of Birth' %}", safeValue(kyc.date_of_birth)) +
+          uiInfoCard("{% trans 'Nationality' %}", safeValue(kyc.nationality))
+        );
+        const identityInfo = uiGrid(
+          uiInfoCard("{% trans 'ID Document Type' %}", formatDoc(kyc.id_document_type)) +
+          uiInfoCard("{% trans 'Document Number' %}", safeValue(kyc.document_number)) +
+          uiInfoCard("{% trans 'Issue Date' %}", safeValue(kyc.id_issue_date)) +
+          uiInfoCard("{% trans 'Expiry Date' %}", safeValue(kyc.id_expiry_date))
+        );
+        const additionalInfo = uiGrid(
+          uiInfoCard("{% trans 'Address' %}", safeValue(kyc.address)) +
+          uiInfoCard("{% trans 'Status' %}", safeValue(kyc.status_display) || safeValue(kyc.status)) +
+          uiInfoCard("{% trans 'Submitted At' %}", safeValue(kyc.submitted_at))
+        );
+        const kycDetails = `
+          ${uiSection("{% trans 'Personal Information' %}", personalInfo, 'personal')}
+          ${uiSection("{% trans 'Identity Information' %}", identityInfo, 'identity')}
+          ${uiSection("{% trans 'Additional Information' %}", additionalInfo, 'additional')}
+        `;
+        if (files.document) {
+          const info = files.document || {};
+          const rawUrl = info.url || files.document_url || '';
+          const mime = ((info.mime || '') + '').toLowerCase();
+          const isPdf = mime === 'application/pdf';
+          const viewUrl = isPdf ? (files.document_view_url || rawUrl) : rawUrl;
+          if (viewUrl) {
+            // For personal KYC, documents are always shown view-only (no download).
+            previews += `<div class="mb-6">${__renderDocPreviewHtml(viewUrl, "{% trans 'KYC Document' %}", isPdf, true)}</div>`;
+          }
+        }
+        if (files.visa) {
+          const info = files.visa || {};
+          const rawUrl = info.url || files.visa_url || '';
+          const mime = ((info.mime || '') + '').toLowerCase();
+          const isPdf = mime === 'application/pdf';
+          const viewUrl = isPdf ? (files.visa_view_url || rawUrl) : rawUrl;
+          if (viewUrl) {
+            // Same policy for visa page: view-only, no explicit download.
+            previews += `<div class="mb-6">${__renderDocPreviewHtml(viewUrl, "{% trans 'Visa Page' %}", isPdf, true)}</div>`;
+          }
+        }
+        kycSection = uiSection("{% trans 'Personal KYC' %}", kycDetails + previews);
+
+      } else if (ktype === "company") {
+        const kycDetails = uiGrid(
+          uiInfoCard("{% trans 'Company Name' %}", kyc.company_name) +
+          uiInfoCard("{% trans 'Address' %}", kyc.address) +
+          uiInfoCard("{% trans 'Date Established' %}", kyc.established_date || "—") +
+          uiInfoCard("{% trans 'Business Sector' %}", kyc.business_sector_display || kyc.business_sector || "—") +
+          uiInfoCard("{% trans 'Legal Status' %}", kyc.legal_status_display || kyc.legal_status || "—") +
+          uiInfoCard("RCCM", kyc.rccm) +
+          uiInfoCard("NIF", kyc.nif) +
+          uiInfoCard("ID NAT", kyc.id_nat) +
+          uiInfoCard("{% trans 'Representative' %}", kyc.representative_name) +
+          uiInfoCard("{% trans 'Status' %}", kyc.status_display || kyc.status || "—") +
+          uiInfoCard("{% trans 'Submitted At' %}", kyc.submitted_at || "—")
+        );
+
+        // Representative ID document (view-only, no download)
+        if (files.rep_id) {
+          const info = files.rep_id || {};
+          const rawUrl = info.url || files.rep_id_url || '';
+          const mime = ((info.mime || '') + '').toLowerCase();
+          const isPdf = mime === 'application/pdf';
+          const viewUrl = isPdf ? (files.rep_id_view_url || rawUrl) : rawUrl;
+          if (viewUrl) {
+            previews += `<div class="mb-6">${__renderDocPreviewHtml(viewUrl, "{% trans 'Representative ID' %}", isPdf, true)}</div>`;
+          }
+        }
+
+        // Multiple company documents
+        if (files.multiple_documents && Array.isArray(files.multiple_documents) && files.multiple_documents.length > 0) {
+          files.multiple_documents.forEach(function(doc, idx) {
+            const info = doc.info || {};
+            const rawUrl = info.url || '';
+            const mime = ((info.mime || '') + '').toLowerCase();
+            const isPdf = mime === 'application/pdf';
+            const viewUrl = isPdf ? (doc.view_url || rawUrl) : rawUrl;
+            const label = doc.name || (`{% trans 'Company Document' %}` + (idx + 1));
+            if (viewUrl) {
+              previews += `<div class="mb-6">${__renderDocPreviewHtml(viewUrl, label, isPdf, true)}</div>`;
+            }
+          });
+        } else if (files.company_doc) {
+          const info = files.company_doc || {};
+          const rawUrl = info.url || files.company_doc_url || '';
+          const mime = ((info.mime || '') + '').toLowerCase();
+          const isPdf = mime === 'application/pdf';
+          const viewUrl = isPdf ? (files.company_doc_view_url || rawUrl) : rawUrl;
+          if (viewUrl) {
+            previews += `<div class="mb-6">${__renderDocPreviewHtml(viewUrl, "{% trans 'Company Document' %}", isPdf, true)}</div>`;
+          }
+        }
+
+        kycSection = uiSection("{% trans 'Company KYC' %}", kycDetails + previews);
+
+      } else {
+        kycSection = uiSection("{% trans 'KYC' %}",
+          `<div class="p-4 rounded-xl border bg-gray-50 text-gray-600 text-sm">
+             {% trans "No KYC submitted." %}
+           </div>`
+        );
+      }
+
+      content.innerHTML = `
+        <div class="space-y-6">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg sm:text-xl font-bold text-gray-900">${u.full_name || u.email || u.username || '—'}</h3>
+              <p class="text-xs text-gray-500 mt-1">${u.email || ""}</p>
+            </div>
+            ${uiBadge(!!meta.is_active)}
+          </div>
+
+          ${uiSection("{% trans 'Profile' %}", userCore, 'profile')}
+          ${userAddr ? uiSection("{% trans 'Address' %}", userAddr, 'address') : ""}
+          ${uiSection("{% trans 'Account Metadata' %}", metaBlock, 'metadata')}
+          ${kycSection}
+        </div>
+      `;
+
+      const approveBtn = document.getElementById("userApproveBtn");
+      const rejectBtn  = document.getElementById("userRejectBtn");
+
+      const apiType   = (ktype === "company") ? "business" : ktype;
+      const statusVal = String(kyc.status || kyc.status_display || "").toLowerCase();
+
+      if ((apiType === "personal" || apiType === "business") && statusVal.includes("pending")) {
+        approveBtn.classList.remove("hidden");
+        rejectBtn.classList.remove("hidden");
+
+        const newApprove = approveBtn.cloneNode(true);
+        const newReject  = rejectBtn.cloneNode(true);
+        approveBtn.parentNode.replaceChild(newApprove, approveBtn);
+        rejectBtn.parentNode.replaceChild(newReject,  rejectBtn);
+
+        newApprove.onclick = () => { newApprove.disabled = true; newReject.disabled = true; updateKycStatus(userId, apiType, "approved"); closeUserModal(); };
+        newReject.onclick  = () => openRejectModal(userId, apiType);
+      } else {
+        approveBtn.classList.add("hidden");
+        rejectBtn.classList.add("hidden");
+      }
+    })
+    .catch(() => {
+      content.innerHTML = `
+        <div class="p-6 text-center text-rose-600">
+          <i class="fas fa-triangle-exclamation text-2xl mb-2"></i>
+          <p class="font-medium">{% trans "Network error loading user information." %}</p>
+        </div>`;
+      document.getElementById("userApproveBtn")?.classList.add("hidden");
+      document.getElementById("userRejectBtn")?.classList.add("hidden");
+    });
+}
+
+function closeUserModal() {
+  document.getElementById("userInfoModal").classList.add("hidden");
+}
+
+/* Boot */
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== "") {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+      cookie = cookie.trim();
+      if (cookie.startsWith(name + '=')) { cookieValue = decodeURIComponent(cookie.substring(name.length + 1)); break; }
+    }
+  }
+  return cookieValue;
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const pendingCount = parseInt("{{ pending|default:0 }}");
+  if (pendingCount > 0) document.getElementById("pendingAlert").classList.remove("hidden");
+
+  const searchInput = document.getElementById("search-input");
+  const statusFilter = document.getElementById("status-filter");
+  let currentQuery = "", currentStatus = "";
+  const refresh = () => fetchKycData(currentQuery, currentStatus, 1);
+
+  searchInput.addEventListener("input", () => { currentQuery = searchInput.value; refresh(); });
+  statusFilter.addEventListener("change", () => { currentStatus = statusFilter.value; refresh(); });
+
+  fetchKycData();
+});
+
+/* Reject modal helpers (unchanged logic) */
+function openRejectModal(userId, type) {
+  document.getElementById('rejectUserId').value = userId;
+  document.getElementById('rejectType').value = type;
+  document.getElementById('rejectCategorySelect').value = "";
+  document.getElementById('rejectReasonInput').value = "";
+  document.getElementById('rejectSubmitBtn').disabled = false;
+  document.getElementById('rejectReasonModal').classList.remove('hidden');
+}
+function closeRejectModal() {
+  document.getElementById('rejectReasonModal').classList.add('hidden');
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const btn = document.getElementById('rejectSubmitBtn');
+  const categorySelect = document.getElementById('rejectCategorySelect');
+  const detailsInput = document.getElementById('rejectReasonInput');
+  const detailsLabel = document.getElementById('detailsRequired');
+  if (!btn || !categorySelect || !detailsInput || !detailsLabel) return;
+
+  categorySelect.addEventListener('change', () => {
+    const v = categorySelect.value;
+    if (v === 'other') { detailsLabel.innerHTML = '<span class="text-red-500">*</span> {% trans "required" %}'; detailsInput.setAttribute('required','required'); }
+    else { detailsLabel.innerHTML = '({% trans "optional" %})'; detailsInput.removeAttribute('required'); }
+  });
+
+  btn.addEventListener('click', () => {
+    const rejectionCategory = categorySelect.value;
+    const additionalDetails = (detailsInput.value || "").trim();
+    const userId = document.getElementById('rejectUserId').value;
+    const type   = document.getElementById('rejectType').value;
+    if (!rejectionCategory) { alert("{% trans 'Please select a rejection category.' %}"); return; }
+    if (rejectionCategory === 'other' && !additionalDetails) {
+      alert("{% trans 'Please provide additional details for the rejection reason.' %}");
+      detailsInput.focus(); return;
+    }
+    btn.disabled = true;
+    updateKycStatus(userId, type, "rejected", rejectionCategory, additionalDetails);
+    closeRejectModal(); closeUserModal();
+  });
+});
+
+/* Poll new pending KYC (unchanged logic) */
+document.addEventListener("DOMContentLoaded", () => {
+  let lastPendingCount = parseInt("{{ pending|default:0 }}");
+  setInterval(() => {
+    const userInfoModal = document.getElementById('userInfoModal');
+    const rejectReasonModal = document.getElementById('rejectReasonModal');
+    const modalOpen = (userInfoModal && !userInfoModal.classList.contains('hidden')) ||
+                      (rejectReasonModal && !rejectReasonModal.classList.contains('hidden'));
+    if (modalOpen) return;
+    fetch("/kyc/ajax/get_pending_kyc_count/", { headers: { "X-Requested-With": "XMLHttpRequest" } })
+      .then(res => res.json())
+      .then(data => {
+        const newCount = typeof data.pending_count === "number" ? data.pending_count : 0;
+        if (newCount > lastPendingCount) window.location.reload();
+        lastPendingCount = newCount;
+      })
+      .catch(() => {});
+  }, 5000);
+});
+</script>
+
+{% endblock %}

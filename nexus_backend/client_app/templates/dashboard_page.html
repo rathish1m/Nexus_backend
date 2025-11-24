@@ -1,0 +1,28 @@
+{% extends 'client/dashboard_page_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block modal %}
+    {% include 'partials/orders_modal.html' %}
+    {% include 'partials/checkout_modal.html' %}
+    <!-- ================== KYC Modal ================== -->
+    {% include 'partials/kyc_modal.html' %}
+<script>
+    const dashboardTranslations = {
+        fileSizeError: "{{ _('File size must not exceed 10MB.')|escapejs }}"
+    };
+
+    function validateFile(input) {
+        const file = input.files[0];
+        if (file && file.size > 10 * 1024 * 1024) {
+            alert(dashboardTranslations.fileSizeError);
+            input.value = "";
+        }
+    }
+</script>
+        {% include 'partials/balance_due.html' %}
+{% endblock %}
+
+{% block content %}
+    {% include 'partials/main_content_card.html' %}
+{% endblock %}

@@ -1,0 +1,298 @@
+
+{% load static i18n %}
+
+<div class="w-full px-4 sm:px-6 lg:px-8 py-8">
+
+  {% if kyc_status == "pending" %}
+    {# ====== Pending / Under Review Card ====== #}
+    <div class="max-w-4xl mx-auto" data-kyc-card="pending">
+      <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 p-8 text-center animate-fade-in relative overflow-hidden">
+
+        {# subtle animated background accent #}
+        <div class="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-gradient-to-tr from-emerald-400/20 to-cyan-400/20 blur-3xl animate-pulse"></div>
+
+        {# Accent line #}
+        <div class="h-1 w-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 rounded mb-6"></div>
+
+        {# Animated review icon (spinner ring + check mark hover) #}
+        <div class="relative inline-grid place-items-center mb-6">
+          <div class="h-16 w-16 rounded-full border-4 border-emerald-200 border-t-emerald-500 animate-spin"></div>
+          <div class="absolute inset-0 grid place-items-center">
+            <i class="fas fa-file-check text-emerald-600 text-2xl"></i>
+          </div>
+        </div>
+
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-3 tracking-tight">
+          {% trans "Documents received — under review" %}
+        </h2>
+
+        <p class="text-gray-700 text-base sm:text-lg mb-5 max-w-2xl mx-auto leading-relaxed">
+          {% trans "Thanks for submitting your KYC information. Our compliance team is reviewing your documents to verify your identity and ensure regulatory compliance." %}
+        </p>
+
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-900 rounded-lg p-4 text-sm max-w-xl mx-auto text-left">
+          <div class="flex items-start gap-3">
+            <span class="mt-0.5">
+              <i class="fas fa-bell"></i>
+            </span>
+              <p class="leading-relaxed">
+                {% blocktrans %}Once your KYC is <strong>approved</strong>, you’ll receive a notification on your <strong>registered phone number</strong> and <strong>email address</strong>. You can then proceed to access all services.{% endblocktrans %}
+              </p>
+          </div>
+        </div>
+
+        <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+
+          <a href="{% url 'settings' %}"
+             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 shadow-sm">
+            <i class="fas fa-user-gear"></i>
+            {% trans "Review contact details" %}
+          </a>
+
+          <a href="{% url 'support' %}"
+             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-white font-semibold shadow-lg hover:shadow-xl hover:from-emerald-600 hover:to-cyan-600">
+            <i class="fas fa-circle-question"></i>
+            {% trans "Need help?" %}
+          </a>
+        </div>
+
+        <p class="text-gray-500 text-xs mt-4">
+          {% trans "Typical review time: 20–30 minutes during workhours. <br>Business hours: 08h00 – 17h00, Monday to Friday" %}
+        </p>
+      </div>
+    </div>
+
+  {% elif kyc_status == "Not submitted" %}
+    {# ====== KYC Required (Start) Card ====== #}
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-gray-200 p-8 text-center animate-fade-in">
+
+        <div class="h-1 w-full bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 rounded mb-6"></div>
+
+        <div class="p-5 bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-full shadow-lg mb-6 inline-block">
+          <i class="fas fa-user-shield text-3xl"></i>
+        </div>
+
+        <h2 class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-3 tracking-tight">
+          {% trans "KYC Verification Required" %}
+        </h2>
+
+        <p class="text-gray-700 text-base sm:text-lg mb-6 max-w-2xl mx-auto leading-relaxed">
+          {% trans "To activate your services and manage orders, please verify your identity. This helps us comply with AML/CFT regulations and keep your account secure." %}
+        </p>
+
+        <ul class="mt-4 text-gray-700 text-[.95rem] sm:text-base space-y-2 text-left max-w-md mx-auto">
+          <li class="flex items-start gap-2">
+            <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+            {% trans "Government ID (passport or national ID)" %}
+          </li>
+{#          <li class="flex items-start gap-2">#}
+{#            <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>#}
+{#            Selfie (liveness check)#}
+{#          </li>#}
+          <li class="flex items-start gap-2">
+            <span class="mt-1 h-1.5 w-1.5 rounded-full bg-gray-400"></span>
+            {% trans "Address details" %}
+          </li>
+        </ul>
+
+        <div class="mt-6 p-4 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm leading-relaxed max-w-md mx-auto text-left">
+          <i class="fas fa-building mr-2 text-amber-600"></i>
+          {% trans "If you are registering an enterprise account, additional documents (e.g., company registration, tax ID, representative ID) may be required." %}
+        </div>
+
+        <div class="mt-8">
+          <button onclick="openKycModal()"
+             class="inline-flex items-center gap-2 px-6 py-3
+                    bg-gradient-to-r from-blue-500 to-purple-500
+                    text-white text-base font-semibold rounded-full shadow-lg
+                    hover:shadow-xl hover:from-blue-600 hover:to-purple-600
+                    transition animate-pulse scale-110 ring-4 ring-blue-300 hover:ring-blue-400">
+            📝 {% trans "Start KYC" %}
+          </button>
+        </div>
+
+        <p class="text-gray-500 text-xs mt-4">
+          {% trans "Takes ~3–5 minutes. Your data is encrypted and handled securely." %}
+        </p>
+      </div>
+    </div>
+
+  {# removed old rejected card, now always rendered below #}
+
+  {% endif %}
+
+  {# Always render the rejection card, but hide it if not rejected #}
+  {% if kyc_status == 'rejected' %}
+  <div id="kyc-rejection-card" class="max-w-4xl mx-auto">
+    {% if personal_kyc and personal_kyc.status == 'rejected' %}
+      <script>
+        window.kycType = "personal";
+        window.kycData = {
+          full_name: "{{ personal_kyc.full_name|escapejs }}",
+          date_of_birth: "{{ personal_kyc.date_of_birth|date:'Y-m-d' }}",
+          nationality: "{{ personal_kyc.nationality|escapejs }}",
+          id_document_type: "{{ personal_kyc.id_document_type|escapejs }}",
+          id_number: "{{ personal_kyc.document_number|escapejs }}",
+          id_issue_date: "{{ personal_kyc.id_issue_date|escapejs }}",
+          id_expiry_date: "{{ personal_kyc.id_expiry_date|escapejs }}",
+          address: "{{ personal_kyc.address|escapejs }}"
+        };
+      </script>
+    {% elif company_kyc and company_kyc.status == 'rejected' %}
+      <script>
+        window.kycType = "business";
+        window.kycData = {
+          company_name: "{{ company_kyc.company_name|escapejs }}",
+          address: "{{ company_kyc.address|escapejs }}",
+          representative_name: "{{ company_kyc.representative_name|escapejs }}",
+          established_date: "{{ company_kyc.established_date|escapejs }}",
+          business_sector: "{{ company_kyc.business_sector|escapejs }}",
+          legal_status: "{{ company_kyc.legal_status|escapejs }}",
+          id_nat: "{{ company_kyc.id_nat|escapejs }}",
+          rccm_number: "{{ company_kyc.rccm|escapejs }}",
+          nif: "{{ company_kyc.nif|escapejs }}"
+        };
+      </script>
+    {% else %}
+      <script>
+        window.kycType = null;
+        window.kycData = {};
+      </script>
+    {% endif %}
+  {% else %}
+  <div id="kyc-rejection-card" class="max-w-4xl mx-auto" style="display:none;">
+  {% endif %}
+    <div class="bg-white/80 backdrop-blur-xl rounded-2xl shadow-lg border border-red-200 p-8 text-center animate-fade-in">
+      <div class="h-1 w-full bg-gradient-to-r from-rose-500 via-red-500 to-orange-500 rounded mb-6"></div>
+      <div class="p-5 bg-gradient-to-br from-rose-500 to-red-600 text-white rounded-full shadow-lg mb-6 inline-block">
+        <i class="fas fa-triangle-exclamation text-3xl"></i>
+      </div>
+      <h2 id="kyc-rejection-reason" class="text-2xl sm:text-3xl font-extrabold text-gray-800 mb-3 tracking-tight">
+        <strong>{% trans "Reason" %}:</strong> <span id="kyc-rejection-reason-text">{{ kyc_rejection_reason }}</span>
+      </h2>
+      <p id="kyc-rejection-details" class="text-gray-700 text-base sm:text-lg mb-5 max-w-2xl mx-auto leading-relaxed0">
+        <strong>{% trans "Additional Details" %}:</strong> <span id="kyc-rejection-details-text">{{ kyc_rejection_details }}</span>
+      </p>
+      <p class="text-xs text-red-600 mt-2">
+        {% trans "Please review the feedback above and resubmit your KYC with the necessary corrections." %}
+      </p>
+      <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <button onclick="resubmitKyc()"
+           class="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-red-500 to-orange-500 text-white font-semibold shadow-lg hover:shadow-xl hover:from-red-600 hover:to-orange-600">
+          <i class="fas fa-arrow-rotate-right"></i>
+          {% trans "Resubmit KYC" %}
+        </button>
+        <a href=""
+           class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-gray-300 bg-white text-gray-800 hover:bg-gray-50 shadow-sm">
+          <i class="fas fa-headset"></i>
+          {% trans "Contact support" %}
+        </a>
+      </div>
+      <p class="text-gray-500 text-xs mt-4">
+        {% trans "You'll receive confirmation by SMS and email once the new submission is approved." %}
+      </p>
+    </div>
+  </div>
+<script>
+function resubmitKyc() {
+  console.log('resubmitKyc called, kycType:', window.kycType, 'kycData:', window.kycData);
+
+  // Set a flag to indicate this is a resubmission
+  window.isResubmitting = true;
+
+  openKycModal();
+  console.log('openKycModal called, modal should be visible');
+
+  // Use setTimeout to ensure the modal is fully rendered and reset is complete
+  setTimeout(function() {
+    window.isResubmitting = false; // Clear the flag
+
+    if (window.kycType === 'personal') {
+      document.getElementById('kycTypeChooser').style.display = 'none';
+      document.getElementById('personalKycForm').classList.remove('hidden');
+
+      console.log('Populating personal KYC form fields...');
+      for (var key in window.kycData) {
+        var input = document.querySelector('#personalKycForm [name="' + key + '"]');
+        console.log('Field:', key, 'Value:', window.kycData[key], 'Input element:', input);
+        if (input) {
+          if (input.tagName === 'SELECT') {
+            for (var i = 0; i < input.options.length; i++) {
+              if (input.options[i].value == window.kycData[key]) {
+                input.selectedIndex = i;
+                break;
+              }
+            }
+          } else {
+            input.value = window.kycData[key];
+            // Trigger input event to ensure any listeners are notified
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        } else {
+          console.warn('Could not find input for field:', key);
+        }
+      }
+      // Update submit button state after populating fields
+      if (typeof updatePersonalSubmit === 'function') {
+        updatePersonalSubmit();
+      }
+    } else if (window.kycType === 'business') {
+      document.getElementById('kycTypeChooser').style.display = 'none';
+      document.getElementById('businessKycForm').classList.remove('hidden');
+      for (var key in window.kycData) {
+        var input = document.querySelector('#businessKycForm [name="' + key + '"]');
+        if (input) {
+          if (input.tagName === 'SELECT') {
+            for (var i = 0; i < input.options.length; i++) {
+              if (input.options[i].value == window.kycData[key]) {
+                input.selectedIndex = i;
+                break;
+              }
+            }
+          } else {
+            input.value = window.kycData[key];
+            // Trigger input event to ensure any listeners are notified
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      }
+      // Update submit button state after populating fields
+      if (typeof updateBusinessSubmit === 'function') {
+        updateBusinessSubmit();
+      }
+    }
+  }, 300); // Increased delay to ensure modal is fully rendered and reset is complete
+}
+</script>
+
+
+  {% if kyc_status == "approved" %}
+    <div class="max-w-3xl mx-auto">
+      <div class="bg-white rounded-2xl border border-emerald-200 p-6 text-center shadow-sm animate-fade-in">
+        <h3 class="text-xl font-semibold text-emerald-700">
+          KYC approved — you’re all set!
+        </h3>
+        <p class="text-gray-600 mt-2">
+          You can now access all services.
+        </p>
+        <div class="mt-4">
+          <a href="{% url 'dashboard' %}" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-emerald-600 text-white hover:bg-emerald-700">
+            <i class="fas fa-gauge-high"></i>
+            Go to dashboard
+          </a>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<!-- Local animations -->
+<style>
+@keyframes fadeIn { from { opacity:0; transform: translateY(6px);} to { opacity:1; transform:none; } }
+@keyframes gradientMove { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes grow { from { width: 0% } to { width: 60% } }
+@keyframes shine { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+</style>
+</div>

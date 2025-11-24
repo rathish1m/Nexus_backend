@@ -1,0 +1,94 @@
+{% extends 'client/landing_page_base.html' %}
+{% load static i18n %}
+{% get_current_language as LANGUAGE_CODE %}
+
+{% block content %}
+        {% include 'partials/landing_page_content.html' %}
+        <script>
+        // Polling AJAX pour redirection automatique dès que le KYC est approuvé ou rejeté
+        (function() {
+            var kycStatus = "{{ kyc_status|escapejs }}";
+            // alert(kycStatus);
+            var lastKycStatus = kycStatus;
+            if (kycStatus !== "approved") {
+                var interval = setInterval(function() {
+                    fetch("{% url 'get_kyc_status' %}", {
+                        credentials: 'same-origin',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    })
+                    .then(function(response) {
+                        if (!response.ok) {
+                            console.error('HTTP error:', response.status, response.statusText);
+                            return null;
+                        }
+                        // Try to parse JSON, but handle exceptions
+                        return response.text().then(function(text) {
+                            try {
+                                return JSON.parse(text);
+                            } catch (e) {
+                                console.error('JSON parse error:', e, 'Response text:', text.substring(0, 200) + '...');
+                                return null;
+                            }
+                        });
+                    })
+                    .then(function(data) {
+                        if (!data) return; // Skip if response was invalid
+                        // Validate that data is a proper object and has expected properties
+                        if (typeof data !== 'object' || data === null) {
+                            console.error('Invalid response data:', data);
+                            return;
+                        }
+
+                        // Always update global KYC type and data
+                        if (data.kyc_status === "rejected" && data.kyc_data) {
+                            window.kycType = data.kyc_data.company_name ? "business" : "personal";
+                            window.kycData = data.kyc_data;
+                        } else {
+                            window.kycType = null;
+                            window.kycData = {};
+                        }
+
+                        if (data.kyc_status === "approved") {
+                            clearInterval(interval);
+                            window.location.href = "{% url 'dashboard' %}";
+                        } else if (data.kyc_status === "rejected" && lastKycStatus !== "rejected") {
+                            // console.log(data)
+                            // alert(JSON.stringify(data.kyc_data));
+                            clearInterval(interval);
+                            // Update rejection reason/details in DOM if present
+                            if (data.kyc_rejection_reason) {
+                                var reasonElem = document.getElementById("kyc-rejection-reason-text");
+                                if (reasonElem) reasonElem.textContent = data.kyc_rejection_reason;
+                            }
+                            if (data.kyc_rejection_details) {
+                                var detailsElem = document.getElementById("kyc-rejection-details-text");
+                                if (detailsElem) detailsElem.textContent = data.kyc_rejection_details;
+                            }
+
+                            // Unhide the rejection card if hidden
+                            var rejectionCard = document.getElementById("kyc-rejection-card");
+                            if (rejectionCard) rejectionCard.style.display = "";
+
+                            // Hide the pending card if present
+                            var pendingCard = document.querySelector('[data-kyc-card="pending"]');
+                            if (pendingCard) pendingCard.style.display = "none";
+
+                            // Update debug block live
+                            var debugStatus = document.getElementById("debug-kyc-status");
+                            var debugReason = document.getElementById("debug-kyc-rejection-reason");
+                            var debugDetails = document.getElementById("debug-kyc-rejection-details");
+                            if (debugStatus) debugStatus.textContent = data.kyc_status;
+                            if (debugReason) debugReason.textContent = data.kyc_rejection_reason;
+                            if (debugDetails) debugDetails.textContent = data.kyc_rejection_details;
+                        }
+                        lastKycStatus = data.kyc_status;
+                    });
+                }, 5000); // Vérifie toutes les 5 secondes
+            }
+        })();
+        </script>
+{% endblock %}
+
+<!-- ================== KYC Modal ================== -->
+
+{% include 'partials/kyc_modal.html' %}
